@@ -1,0 +1,21 @@
+{pkgs, ... }:{
+	users.users.retblast.packages = with pkgs; [
+		# Web Browsers
+		google-chrome
+
+		# Chat/Voice Chat apps
+		tdesktop discord mumble
+
+		# Password management
+		bitwarden 
+
+		# Downloaders
+		curl wget aria megacmd
+
+		# VPN
+		# protonvpn-gui
+
+		# Virtual classes
+		zoom-us
+	];
+}
