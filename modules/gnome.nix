@@ -31,7 +31,10 @@
 					games.enable = false;
 				};
 			};
-
+			fonts.fontconfig.subpixel = {
+				rgba = "none";
+				lcdfilter = "none";
+			};
 			programs = {
 				# TODO: ask why these 2 and gnome-power-manager aren't in any of the 3 gnome toggles.
 				# TODO: https://github.com/NixOS/nixpkgs/pull/368610/commits/8c17fbe4656087e9a86a573b5a0d76e939225f21

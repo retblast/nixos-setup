@@ -16,7 +16,10 @@
 					wayland.enable = true;
 				};
 			};
-			
+			fonts.fontconfig.subpixel = {
+				rgba = "rgb";
+				lcdfilter = "default";
+			};
 			programs = {
 				kdeconnect.enable = true;
 					partition-manager.enable = true;
@@ -37,6 +40,15 @@
 					kdePackages.kleopatra
 					bibata-cursors
 					kdePackages.kdevelop
+					kdePackages.ksystemlog
+					kdePackages.kcharselect
+					kdePackages.skanpage
+					kdePackages.k3b
+					kdePackages.kamoso
+					kdePackages.sweeper
+					kdePackages.akregator
+					kdePackages.kmplot
+					kdePackages.kitinerary
 				] ++ lib.optionals (! cfg.plasma.minimal.enable) [
 					# Sound
 					kid3-kde
@@ -44,18 +56,19 @@
 					# Video players/MPV Frontends
 					haruna vlc
 
-					# Audio players
+					# Audio consumption
 					# FTBFS https://github.com/NixOS/nixpkgs/issues/399801
 					# fooyin
+					kdePackages.kasts
+
+					# Digital books
+					kdePackages.arianna
 
 					# Chat Apps
-					kdePackages.neochat nheko kaidan zapzap
+					kdePackages.neochat zapzap
 			
 					# Downloaders
-					kdePackages.kget
-
-					# Web browser
-					kdePackages.falkon # kdePackages.angelfish
+					kdePackages.kget kdePackages.ktorrent
 
 					# QT LO
 					libreoffice-qt-fresh
@@ -70,9 +83,16 @@
 					kdePackages.yakuake
 
 					# Images
-					krita
+					krita kdePackages.kolourpaint digikam kdePackages.kontrast
 
+					# Development
+					kdePackages.kompare kdePackages.kcachegrind kdePackages.umbrello
 
+					# Learning
+					kdePackages.kiten
+
+					# Miscellanous
+					kbibtex
 				];
 				sessionVariables = {
 					# System wide stem darkening

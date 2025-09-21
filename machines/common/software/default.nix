@@ -61,9 +61,12 @@
 			intel-gpu-tools libva-utils mesa-demos vulkan-tools lm_sensors htop clinfo s-tui compsize smartmontools nvme-cli btop pciutils usbutils powertop btrfs-progs nvtopPackages.intel powerstat iotop smem nix-info kdiskmark file stress-ng btop fastfetch cpu-x
 			# System management
 			gparted
-
+			# Miscellanous cli apps
+			xorg.xeyes bc xdg-utils trash-cli
 			# Extra
 			nano
+			# Nix QoL
+			nix-prefetch-scripts
 		];
 		sessionVariables = {
 			# https://github.com/NixOS/nixpkgs/issues/53631

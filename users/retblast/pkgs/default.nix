@@ -4,7 +4,8 @@
     ./media
     ./gaming.nix
     ./internet.nix
-	./software-development.nix
+		./software-development.nix
+		./uni-software.nix
   ];
 
   users.users.retblast.packages = with pkgs; [
@@ -18,9 +19,6 @@
 
 			# File compressors
 			rar p7zip
-
-			# Miscellanous cli apps
-			xorg.xeyes bc xdg-utils trash-cli
 
 			# Phone stuff
 			scrcpy

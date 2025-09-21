@@ -20,11 +20,12 @@
 			# "atkbd.reset=1"
 
 			# Testing the Xe kernel driver
-			# "i915.force_probe=!46a6"
-			# "xe.force_probe=46a6"
+			"i915.force_probe=!46a6"
+			"xe.force_probe=46a6"
 
 			# Enable Intel IOMMU
-			"intel_iommu=on"
+			# Testing whether this fugs up the xe kernel driverino.
+			# "intel_iommu=on"
 		];
 		extraModprobeConfig = ''
 			# Godforsaken MT7921

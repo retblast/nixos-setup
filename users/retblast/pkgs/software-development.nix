@@ -5,15 +5,17 @@
 		# Text editors, IDEs
 		my-vscode
 
+		# Linux containers just in case
 		toolbox distrobox
+		
 		# Computer Graphics
-		# blender 
+		blender 
 		
 		# Compilers, configurers
 		patchelf
 
 		# Nix tooling
-		nixd nix-prefetch-scripts 
+		nixd 
 
 		# Debuggers
 		gdb valgrind
@@ -26,13 +28,5 @@
 
 		# Gamedev
 		#unityhub # https://nixpk.gs/pr-tracker.html?pr=368851
-
-		# Containers
-		arion
-
-		# mysql
-		mysql-workbench
-		# Misc
-		swi-prolog-gui
   ];
 }

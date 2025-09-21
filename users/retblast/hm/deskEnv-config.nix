@@ -62,6 +62,11 @@
 		};
 	};
 
+	# qt = {
+	#	platformTheme.name = "qtct";
+	#	style.name = "kv";
+	#};
+
 	# TODO: does this break anything in KDE?
 	# Probably not
 	dconf = {
@@ -169,7 +174,7 @@
 				font-name = "system-ui 11";
 				document-font-name = "serif 11";
 				monospace-font-name = "monospace 11";
-				font-hinting = "none";
+				font-hinting = "slight";
 				font-rendering = "manual";
 			};
 		};

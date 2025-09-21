@@ -66,14 +66,10 @@
 		fontconfig = {
 			cache32Bit = true;
 			useEmbeddedBitmaps = false;
-			subpixel = {
-				rgba = "none";
-				lcdfilter = "none";
-			};
 			hinting = {
-				enable = false;
-				style = "none";
-				autohint = false;
+				enable = true;
+				style = "slight";
+				autohint = true;
 			};
 			localConf = ''
 				<fontconfig>
