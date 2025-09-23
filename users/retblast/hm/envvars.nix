@@ -11,8 +11,6 @@
 			LXVST_PATH  = "$HOME/.nix-profile/lib/lxvst:$HOME/.lxvst:/etc/profiles/per-user/retblast/lib/lxvst:/run/current-system/sw/lib/lxvst:$HOME/.vst:/etc/profiles/per-user/retblast/lib/vst:/run/current-system/sw/lib/vst";
 			VST_PATH    = "$HOME/.nix-profile/lib/vst:$HOME/.vst:/etc/profiles/per-user/retblast/lib/vst:/etc/profiles/per-user/retblast/lib/vst:/run/current-system/sw/lib/vst";
 			VST3_PATH    = "$HOME/.nix-profile/lib/vst3:$HOME/.vst3:/etc/profiles/per-user/retblast/lib/vst3:/etc/profiles/per-user/retblast/lib/vst3:/run/current-system/sw/lib/vst3";
-			# Enable wayland for some apps that don't default to wayland yet
-			QT_QPA_PLATFORM = "wayland";
 			# Diff program
 			DIFFPROG = "delta";
 			# Electron on Wayland

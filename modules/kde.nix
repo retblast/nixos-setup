@@ -86,13 +86,12 @@
 					krita kdePackages.kolourpaint digikam kdePackages.kontrast
 
 					# Development
-					kdePackages.kompare kdePackages.kcachegrind kdePackages.umbrello
+					kdePackages.kompare kdePackages.kcachegrind # kdePackages.umbrello
 
 					# Learning
 					kdePackages.kiten
 
 					# Miscellanous
-					kbibtex
 				];
 				sessionVariables = {
 					# System wide stem darkening
