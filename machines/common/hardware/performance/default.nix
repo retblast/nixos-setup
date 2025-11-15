@@ -96,7 +96,7 @@
 			enableUserSlices = true;
 			# This is not
 			enableRootSlice = true;
-			extraConfig = {
+			settings.OOM = {
 				# DefaultMemoryPressureLimit = "85%";
 				SwapUsedLimit = "75%";
 			};

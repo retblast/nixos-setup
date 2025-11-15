@@ -10,7 +10,6 @@
 			anonymousPro
 			Bitter-Pro
 			noto-fonts
-			noto-fonts-extra
 			# noto-fonts-emoji
 			noto-fonts-emoji-blob-bin
 			noto-fonts-cjk-sans
@@ -104,7 +103,7 @@
 						"Cantarell"
 					];
 				serif = [ "IBM Plex Serif" ];
-				monospace = [ "Input Mono" ];
+				monospace = [ "Input Mono Condensed" ];
 				emoji = [ "Blobmoji" ];
 			};
 		};

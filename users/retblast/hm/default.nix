@@ -16,9 +16,10 @@
 	# Might be undeeded, but keep it just in case
 	# nix.package = lib.mkIf (!config ? home-manager.users) pkgs.nix;
 
+	# Disable given that the configurations I'd set here are already set system wide.
 	fonts = {
 		fontconfig = {
-			enable = true;
+			enable = false;
 		};
 	};
 

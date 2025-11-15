@@ -11,6 +11,9 @@
   users.users.retblast.packages = with pkgs; [
 		# TODO: Organize better
 
+			# AI
+			llama-cpp-vulkan
+			
 			# Virt
 			virt-manager
 

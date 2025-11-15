@@ -4,9 +4,9 @@
 		wineWowPackages.stagingFull dxvk  winetricks  bottles
 
 		# Games & Fun
-		protontricks sl gamescope proton-caller
+		protontricks sl
 
 		# Emulators
-		dolphin-emu-beta ppsspp-sdl-wayland # pcsx2
+		dolphin-emu ppsspp-sdl-wayland # pcsx2
 	];
 }

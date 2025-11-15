@@ -16,6 +16,8 @@
 					wayland.enable = true;
 				};
 			};
+			
+			# I notice it and its annoying
 			fonts.fontconfig.subpixel = {
 				rgba = "rgb";
 				lcdfilter = "default";
@@ -97,6 +99,9 @@
 					# System wide stem darkening
 					# Testing: Inconsistent in plasma/QT
 					# FREETYPE_PROPERTIES = "cff:no-stem-darkening=0 autofitter:no-stem-darkening=0";
+					
+					# https://zamundaaa.github.io/wayland/2025/10/23/more-kms-offloading.html
+					KWIN_USE_OVERLAYS = "1";
 				};
 			};
 			# system.replaceDependencies.replacements = [

@@ -1,10 +1,13 @@
 { pkgs, ...}:{
 
 	users.users.retblast.packages = with pkgs; [
-    # COMDAT
-    ciscoPacketTracer8 putty wireshark-qt
+		# ARQORG
+		dosbox-staging
+		# COMDAT
+		#ciscoPacketTracer8 
+		putty wireshark-qt
 		# BASDAT2
-		mysql-workbench
+		mysql-workbench # dia
 		# INTART
 		swi-prolog-gui
   ];

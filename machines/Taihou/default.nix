@@ -82,13 +82,13 @@
 
 
 	# Desktop Environment
-	localModule.gnome.enable = true;
-	localModule.gnome.minimal.enable = false;
+	localModule.plasma.enable = true;
+	localModule.plasma.minimal.enable = false;
 
 	localModule.intel_lpmd.enable = false;
 	localModule.performance.memory = {
 		zswap = {
-			enable = true;
+			enable = false;
 			size = 23726;
 			hibernation = {
 				enable = true;
@@ -97,7 +97,7 @@
 			};
 		};
 		zram = {
-			enable = false;
+			enable = true;
 			size = 200;
 		};
 	};
@@ -133,8 +133,11 @@
 
 			];
 		};
+		# Currently not feasible to run
+		# 1. Laptop iGPU 2 slow :(
+		# 2. Llama-cpp with vulkan is slower
 		open-webui = {
-			enable = true;
+			enable = false;
 			port = 8080;
 			environment = {
 				WEBUI_AUTH = "False";

@@ -4,11 +4,14 @@
 		extensions = [
 			# Alphabetical App Grid
 			{ package = pkgs.gnomeExtensions.alphabetical-app-grid; }
+			
+			# Disabled given that I now use Vitals
 			# System Monitor
-			{
-				id = "system-monitor@gnome-shell-extensions.gcampax.github.com";
-				package = pkgs.gnome-shell-extensions;
-			}
+			# {
+			#	id = "system-monitor@gnome-shell-extensions.gcampax.github.com";
+			#	package = pkgs.gnome-shell-extensions;
+			# }
+			
 			# GTK3 Themes
 			# For adw-gtk3
 			{
@@ -25,7 +28,11 @@
 			{ package = pkgs.gnomeExtensions.caffeine; }
 
 			# CamPeek
-			{ package = pkgs.gnomeExtensions.campeek; }
+			# Doesn't really work
+			# { package = pkgs.gnomeExtensions.campeek; }
+
+			# Vitals
+			{ package = pkgs.gnomeExtensions.vitals; }
 			
 			# Dock from dash
 			# Disabled until these 2 issues are fixed!
@@ -38,6 +45,9 @@
 		];
 	};
 
+	#programs.plasma = {
+	#	enable = taihouConfig.services.desktopManager.plasma.enable;
+	#};
 	xresources.properties = if taihouConfig.services.desktopManager.plasma6.enable then {
 		"Xft.rgba" = "rgb";
 		"Xft.lcdfilter" = "lcddefault";
@@ -78,6 +88,27 @@
 			# 	transparent-background = false;
 			# 	window-position = "bottom";
 			# };
+
+			"org/gnome/nautilus/list-view" = {
+					default-zoom-level = "small";
+				};
+			
+			"org/gnome/shell/extensions/vitals" = {
+				menu-centered = true;
+				show-gpu = true;
+				include-static-info = true;
+				include-static-gpu-info = true;
+				update-time = lib.hm.gvariant.mkInt32 1;
+				hot-sensors = lib.hm.gvariant.mkArray lib.hm.gvariant.type.string [
+					"_processor_usage_"
+					"_memory_allocated_"
+					"_memory_swap_used_"
+					"__network-rx_max__"
+					"__network-tx_max__"
+					"__temperature_avg__"
+					"_system_load_1m_"
+				];
+			};
 			"org/gnome/shell/extensions/caffeine" = {
 				trigger-apps-mode = "on-active-workspace";
 			};
@@ -90,9 +121,6 @@
 			"org/gnome/shell/extensions/azwallpaper" = {
 				slideshow-directory = "/home/retblast/Pictures/Wallpapers";
 				slideshow-slide-duration = lib.hm.gvariant.mkTuple [1 0 0];
-			};
-			"org/gtk/gtk4/settings/file-chooser" = {
-				show-hidden = true;
 			};
 			"org/gnome/nautilus" = {
 				show-create-link = true;

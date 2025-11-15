@@ -2,9 +2,10 @@ let toolsOverlay = (final: prev: {
 	intel_lpmd = prev.callPackage ../modules/pkgs/intel_lpmd.nix {};
 		# Make ppd only use balance-performance
 		# TODO: https://gitlab.freedesktop.org/upower/power-profiles-daemon/-/issues/151
-		power-profiles-daemon = prev.power-profiles-daemon.overrideAttrs (old: {
-			patches = prev.power-profiles-daemon.patches ++ [ ./patches/ppd-intel-balance-performance.patch ];
-		});
+		# TODO a test fails
+		#power-profiles-daemon = prev.power-profiles-daemon.overrideAttrs (old: {
+		#	patches = prev.power-profiles-daemon.patches ++ [ ./patches/ppd-intel-balance-performance.patch ];
+		#});
 		
 
 	threadsFile = prev.runCommandLocal "cores-for-hardware-config" {} '' 

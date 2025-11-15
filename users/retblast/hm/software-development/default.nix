@@ -28,21 +28,20 @@
 			# mutableKeys and mutableTrust are enabled by default
 
 		};
+		delta.enable = true;
+		delta.enableGitIntegration = true;
 		git = {
 			enable = true;
 			package = pkgs.gitFull;
-			userName = "${username}";
-			userEmail = "retblast@proton.me";
-			delta = {
-				enable = true;
-			};
+			settings.user.name = "${username}";
+			settings.user.email = "retblast@proton.me";
 			lfs = {
 				enable = true;
 			};
 			signing = {
 				format = "ssh";
 				signByDefault = true;
-				key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJGPyYbZ9VUdt/It/xAIFwzXwyGnOe45KyxoXp3qHXpM retblast@proton.me";
+				key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJwbRtK+7/ORqvgG7FMd37txvbORP/MmvmlgUWBu/kAP retblast@proton.me";
 			};
 
 		};

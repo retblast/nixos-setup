@@ -2,7 +2,7 @@
 	description = "retblast's NixOS setup";
 
 	inputs = {
-		# nixpkgs.url = "nixpkgs/9807714d6944a957c2e036f84b0ff8caf9930bc0";
+		# nixpkgs.url = "nixpkgs/7df7ff7";
 		nixpkgs.url = "nixpkgs/nixos-unstable";
 		# nixpkgs.url = "github:NixOS/nixpkgs/pull/426048/head";
 		home-manager = {
@@ -18,9 +18,11 @@
 				url = "github:nix-community/disko/latest";
 			inputs.nixpkgs.follows = "nixpkgs";
 		};
-		aagl = {
-			url = "github:ezKEa/aagl-gtk-on-nix";
+		# Let's try this
+		plasma-manager = {
+			url = "github:nix-community/plasma-manager";
 			inputs.nixpkgs.follows = "nixpkgs";
+			inputs.home-manager.follows = "home-manager";
 		};
 	};
 
@@ -65,6 +67,7 @@
 							home-manager.useUserPackages = true;
 							home-manager.backupFileExtension = "homeManagerBackupFile";
 							home-manager.users.retblast = import ./users/retblast/hm;
+							# home-manager.sharedModules = [ plasma-manager.homeModules.plasma-manager ];
 							home-manager.extraSpecialArgs = {
 								# Read my laptop config
 								taihouConfig = nixosConfigurations.Taihou.config;

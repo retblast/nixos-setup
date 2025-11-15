@@ -1,6 +1,12 @@
 { pkgs, ... }:{
 
 	programs = {
+		gamescope = {
+			enable = true;
+			# https://github.com/NixOS/nixpkgs/issues/351516
+			# https://discourse.nixos.org/t/unable-to-activate-gamescope-capsysnice-option/37843/15
+			capSysNice = false;
+		};
 		steam = {
 			enable = true;
 			remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
@@ -34,7 +40,5 @@
 		adb.enable = true;
 		# nix-index conflicts with this, so let's disable it.
 		command-not-found.enable = false;
-		# ZZZ launcher
-		sleepy-launcher.enable = true;
 	};
 }

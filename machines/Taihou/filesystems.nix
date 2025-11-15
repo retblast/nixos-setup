@@ -43,30 +43,33 @@
 									# settings.keyFile = "/tmp/secret.key";
 									# additionalKeyFiles = [ "/tmp/additionalSecret.key" ];
 									content = {
-										type = "btrfs";
-										extraArgs = [ "-f" ];
-										subvolumes = {
-											"@" = {
-											mountpoint = "/";
-											mountOptions = [ "compress=zstd:1" ];
-											};
-											"@home" = {
-											mountpoint = "/home";
-											mountOptions = [ "compress=zstd:1" ];
-											};
-											"@nix" = {
-											mountpoint = "/nix";
-											mountOptions = [ "compress=zstd:1" ];
-											};
-											"@var_log" = {
-											mountpoint = "/var/log";
-											mountOptions = [ "compress=zstd:1" ];
-											};
-											"@swap" = {
-											mountpoint = "/swap";
-											mountOptions = [ "compress=zstd:1" ];
-											};
-										};
+										type = "filesystem";
+										format = "xfs";
+										# extraArgs = [ "-f" ];
+										# mountOptions = [ "compress-force=zstd:1" ];
+										mountpoint = "/";
+										#subvolumes = {
+										#	"@" = {
+										#	mountpoint = "/";
+										#	mountOptions = [ "compress=zstd:1" ];
+										#	};
+										#	"@home" = {
+										#	mountpoint = "/home";
+										#	mountOptions = [ "compress=zstd:1" ];
+										#	};
+										#	"@nix" = {
+										#	mountpoint = "/nix";
+										#	mountOptions = [ "compress=zstd:1" ];
+										#	};
+										#	"@var_log" = {
+										#	mountpoint = "/var/log";
+										#	mountOptions = [ "compress=zstd:1" ];
+										#	};
+										#	"@swap" = {
+										#	mountpoint = "/swap";
+										#	mountOptions = [ "compress=zstd:1" ];
+										#	};
+										#};
 									};
 								};
 							};

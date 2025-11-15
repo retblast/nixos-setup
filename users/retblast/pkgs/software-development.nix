@@ -21,7 +21,8 @@
 		gdb valgrind
 
 		# Documentation tools
-		zeal
+		# FTBFS https://github.com/NixOS/nixpkgs/pull/455354
+		# zeal
 
 		# Java libraries
 		commonsIo

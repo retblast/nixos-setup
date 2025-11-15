@@ -4,13 +4,13 @@
 		google-chrome
 
 		# Chat/Voice Chat apps
-		tdesktop discord mumble
+		telegram-desktop discord mumble
 
 		# Password management
-		bitwarden 
+		bitwarden-desktop 
 
 		# Downloaders
-		curl wget aria megacmd
+		curl wget aria2 megacmd
 
 		# VPN
 		# protonvpn-gui

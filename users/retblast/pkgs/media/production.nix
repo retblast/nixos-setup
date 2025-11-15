@@ -18,7 +18,7 @@
 		audacity qpwgraph reaper ardour
 
 		# Music production: plugins
-		distrho-ports dragonfly-reverb lsp-plugins x42-plugins chowmatrix auburn-sounds-graillon-2 tal-reverb-4 calf CHOWTapeModel zam-plugins gxplugins-lv2 tap-plugins
+		distrho-ports dragonfly-reverb lsp-plugins x42-plugins chowmatrix auburn-sounds-graillon-2 tal-reverb-4 calf chow-tape-model zam-plugins gxplugins-lv2 tap-plugins
 
 		# Images
 		gimp3-with-plugins imagemagickBig waifu2x-converter-cpp  libjxl libavif

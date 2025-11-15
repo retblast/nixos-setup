@@ -83,7 +83,7 @@
 					fontforge-gtk
 
 					# AI
-					alpaca
+					# alpaca
 
 					# Chat apps
 					fractal dino
@@ -95,13 +95,16 @@
 					foliate
 
 					# Digital media players/readers/streamers/frontends
-					g4music gthumb# celluloid
+					gapless gthumb# celluloid
 
 					# Images
 					pinta gnome-obfuscate eyedropper # upscaler
 					
 					# Video
 					# pitivi
+
+					# Download manager
+					varia
 				];
 			};
 
