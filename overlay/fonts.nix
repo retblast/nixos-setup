@@ -164,7 +164,7 @@ let fontsOverlay = (
 			set -l options 'srcPath=' 'localPath=' 'fontFormat='
 			argparse $options -- $argv
 
-			set command ${prev.python3Packages.opentype-feature-freezer}/bin/pyftfeatfreeze
+			set command ${final.python3Packages.opentype-feature-freezer-fixed}/bin/pyftfeatfreeze
 
 			for font in "$_flag_srcPath"/*."$_flag_fontFormat"
 				# This enables those flags, and gets the font filename (without the .otf) to save the font file

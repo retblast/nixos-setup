@@ -9,6 +9,16 @@ let fixesOverlay = (
 				rm -rf $out/etc
 			'';
 		});
+		python3Packages = prev.python3Packages.overrideScope(scopeFinal: scopePrev: {
+			opentype-feature-freezer-fixed = scopePrev.opentype-feature-freezer.overrideAttrs(old: {
+			postPatch = ''
+	substituteInPlace src/opentype_feature_freezer/__init__.py \
+		--replace "import fontTools.ttLib as ttLib" \
+"import fontTools
+import fontTools.ttLib as ttLib"
+'';
+			});
+		});
 	}
 );
 in fixesOverlay

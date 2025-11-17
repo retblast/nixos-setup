@@ -3,7 +3,8 @@
 
 	inputs = {
 		# nixpkgs.url = "nixpkgs/7df7ff7";
-		nixpkgs.url = "nixpkgs/nixos-unstable";
+		# nixpkgs.url = "nixpkgs/nixos-unstable";
+		nixpkgs.url = "nixpkgs/9da7f1c";
 		# nixpkgs.url = "github:NixOS/nixpkgs/pull/426048/head";
 		home-manager = {
 			url = "github:nix-community/home-manager";
@@ -18,15 +19,15 @@
 				url = "github:nix-community/disko/latest";
 			inputs.nixpkgs.follows = "nixpkgs";
 		};
-		# Let's try this
-		plasma-manager = {
-			url = "github:nix-community/plasma-manager";
-			inputs.nixpkgs.follows = "nixpkgs";
-			inputs.home-manager.follows = "home-manager";
-		};
+		# Let's not try this
+		# plasma-manager = {
+		# 	url = "github:nix-community/plasma-manager";
+		# 	inputs.nixpkgs.follows = "nixpkgs";
+		# 	inputs.home-manager.follows = "home-manager";
+		# };
 	};
 
-	outputs = { self, nixpkgs, home-manager, nix-index-database, disko, aagl, ... }@inputs: let
+	outputs = { self, nixpkgs, home-manager, nix-index-database, disko, ... }@inputs: let
 	system = "x86_64-linux";
 	pkgs = import nixpkgs {
 			inherit system;
@@ -57,7 +58,6 @@
 					system = system;
 					pkgs = pkgs;
 					modules = [
-						aagl.nixosModules.default
 						nix-index-database.nixosModules.nix-index
 						disko.nixosModules.disko
 						./modules/default.nix

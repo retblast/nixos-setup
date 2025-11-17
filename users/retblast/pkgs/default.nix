@@ -24,7 +24,7 @@
 			rar p7zip
 
 			# Phone stuff
-			scrcpy
+			scrcpy nmap
 			
 			# Spellchecking dictionaries
 			#TODO: Write about this in the future NixOS article I wanna write.

@@ -82,8 +82,8 @@
 
 
 	# Desktop Environment
-	localModule.plasma.enable = true;
-	localModule.plasma.minimal.enable = false;
+	localModule.gnome.enable = true;
+	localModule.gnome.minimal.enable = false;
 
 	localModule.intel_lpmd.enable = false;
 	localModule.performance.memory = {

@@ -4,10 +4,10 @@
 		# ARQORG
 		dosbox-staging
 		# COMDAT
-		#ciscoPacketTracer8 
+		ciscoPacketTracer8 
 		putty wireshark-qt
 		# BASDAT2
-		mysql-workbench # dia
+		mysql-workbench dia
 		# INTART
 		swi-prolog-gui
   ];

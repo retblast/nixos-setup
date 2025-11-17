@@ -12,9 +12,7 @@
 				"nix-command"
 				"flakes"
 			];
-		} 
-		# The aagl substituters
-		// inputs.aagl.nixConfig ;
+		};
 		# Set this thanks to:
 		# https://dataswamp.org/~solene/2022-07-20-nixos-flakes-command-sync-with-system.html
 		registry.nixpkgs.flake = inputs.nixpkgs;
