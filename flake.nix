@@ -3,8 +3,22 @@
 
 	inputs = {
 		# nixpkgs.url = "nixpkgs/7df7ff7";
-		# nixpkgs.url = "nixpkgs/nixos-unstable";
-		nixpkgs.url = "nixpkgs/9da7f1c";
+		# nixOS unstable, which is what I actually run
+		nixpkgs.url = "nixpkgs/nixos-unstable";
+		# Should be the current stable
+		# I use this for things I need the stable version for
+		# Basically, easy "forwardporting"
+		# Currently for: 
+		# TODO: ollama 0.12.11 (https://github.com/NixOS/nixpkgs/tree/c97c47f2bac4fa59e2cbdeba289686ae615f8ed4)
+		#
+		nixpkgs-stable.url = "nixpkgs/c97c47f2bac4fa59e2cbdeba289686ae615f8ed4";
+		# As of writing, 6th december 2025, nixpkgs has pyannote-audio 4.0.1, which doesn't work with whisperX 
+		# TODO: https://github.com/m-bain/whisperX/issues/1241
+		nixpkgs-usable-whisperx.url = "nixpkgs/baa35fb3cd45d75c9e4e4466a191e6c99c3b2d31";
+		# TODO: https://github.com/NixOS/nixpkgs/issues/467263
+		# In general, the QT update was a mess, I'll try again with normal EE when this gets fixed.
+		nixpkgs-usable-easyeffects.url = "nixpkgs/21a328d166594e938deb8d5c668ff3527ca3d9a0";
+		# nixpkgs.url = "nixpkgs/9da7f1c";
 		# nixpkgs.url = "github:NixOS/nixpkgs/pull/426048/head";
 		home-manager = {
 			url = "github:nix-community/home-manager";
@@ -36,7 +50,7 @@
 			overlays = [
 				# TODO: Someday get how the n-v-e overlay works/is constructed
 				inputs.nix-vscode-extensions.overlays.default
-				] ++ import ./overlay;
+				] ++ import ./overlay {inherit inputs;};
 		hostPlatform = system;
 		config = {
 			allowUnfree = true;
@@ -47,8 +61,9 @@
 					# FIXME: https://github.com/NixOS/nixpkgs/issues/269713
 					# It's for steam
 					"openssl-1.1.1w"
-					# FIXME: https://discourse.nixos.org/t/nixpkgs-config-permittedinsecurepackages-cannot-be-set-in-multiple-files-at-the-same-time/56128
-					"olm-3.2.16"
+					# No Packet Tracer 9 yet.
+					"ciscoPacketTracer8-8.2.2"
+
 			];
 		};
 	};

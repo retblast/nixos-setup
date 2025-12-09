@@ -12,7 +12,7 @@
 		# TODO: Organize better
 
 			# AI
-			llama-cpp-vulkan
+			llama-cpp-vulkan stable.ollama-vulkan usable-whisperx.whisperx
 			
 			# Virt
 			virt-manager

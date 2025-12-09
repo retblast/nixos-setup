@@ -50,7 +50,7 @@ let kernelsOverlay = (
 							# mgLRU statistics support
 							LRU_GEN_STATS = yes;
 							# Compile the kernel with optimizations for my Intel laptop.
-							MALDERLAKE = yes;
+							X86_NATIVE_CPU = yes;
 							# Extra zram stuff
 							ZRAM_MEMORY_TRACKING = yes;
 							ZRAM_TRACK_ENTRY_ACTIME = yes;
@@ -84,7 +84,7 @@ let kernelsOverlay = (
 							# mgLRU statistics support
 							LRU_GEN_STATS = yes;
 							# Compile the kernel with optimizations for my Intel laptop.
-							# MNATIVE_INTEL = yes;
+							X86_NATIVE_CPU = yes;
 							# Extra zram stuff
 							ZRAM_MEMORY_TRACKING = yes;
 							ZRAM_TRACK_ENTRY_ACTIME = yes;

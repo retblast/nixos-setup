@@ -66,7 +66,7 @@
 					gnome-power-manager
 					# This is needed for file-roller to open .debs
 					binutils
-
+					file-roller
 					ghostty
 
 					# Normal LO
@@ -86,7 +86,7 @@
 					# alpaca
 
 					# Chat apps
-					fractal dino
+					fractal
 					
 					# Downloaders
 					fragments
@@ -95,7 +95,7 @@
 					foliate
 
 					# Digital media players/readers/streamers/frontends
-					gapless gthumb# celluloid
+					gapless gthumb celluloid
 
 					# Images
 					pinta gnome-obfuscate eyedropper # upscaler

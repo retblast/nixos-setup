@@ -200,7 +200,7 @@
 			"org/gnome/desktop/interface" = {
 				# icon-theme = "MoreWaita";
 				font-name = "system-ui 11";
-				document-font-name = "serif 11";
+				document-font-name = "system-ui 11";
 				monospace-font-name = "monospace 11";
 				font-hinting = "slight";
 				font-rendering = "manual";

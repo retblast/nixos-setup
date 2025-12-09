@@ -89,6 +89,8 @@
 		};
 	};
 
+	# Because I don't use BTRFS anymore and XFS doesn't do this automatically
+	services.fstrim.enable = true;
 	# Other mounts
 	# fileSystems = {
 	# 	"/mnt/retblast-hdd" = {

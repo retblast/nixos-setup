@@ -98,6 +98,7 @@
 			KP6 = "add speed 0.25";
 			KP5 = "set speed 1";
 			KP4 = "add speed -0.25";
+			r = "sub-reload";
 		};
 		scripts  = with pkgs.mpvScripts; [
 			mpris

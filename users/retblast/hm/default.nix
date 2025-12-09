@@ -65,6 +65,7 @@
 		enable = true;
 	};
 	services.easyeffects.enable = true;
+	services.easyeffects.package = pkgs.usable-easyeffects.easyeffects;
 
 	# QT look on gnome
 	qt = {

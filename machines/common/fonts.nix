@@ -26,7 +26,7 @@
 			roboto-slab
 			roboto-mono
 			jetbrains-mono-variable
-			input-fonts
+			#input-fonts
 			source-sans
 			source-serif
 			source-code-pro
@@ -80,6 +80,30 @@
 					</prefer>
 				</alias>
 
+				<alias>
+					<family>ui-sans-serif</family>
+					<prefer>
+						<family>Inter</family>
+						<family>Cantarell</family>
+					</prefer>
+				</alias>
+
+				<alias>
+					<family>ui-serif</family>
+					<prefer>
+						<family>Roboto Slab</family>
+						<family>Cantarell</family>
+					</prefer>
+				</alias>
+
+				<alias>
+					<family>ui-monospace</family>
+					<prefer>
+						<family>Fira Code</family>
+						<family>Cantarell</family>
+					</prefer>
+				</alias>
+
 				<match target="font">
 					<test name="family" compare="eq" ignore-blanks="true">
 						<string>CommitMono</string>
@@ -96,14 +120,15 @@
 
 				</fontconfig>
 			'';
+			# TODO: Ask that these also set the ui-{whatever} font aliases.
 			defaultFonts = {
 				sansSerif = [
 						"Inter"
 						# "IBM Plex Sans"
 						"Cantarell"
 					];
-				serif = [ "IBM Plex Serif" ];
-				monospace = [ "Input Mono Condensed" ];
+				serif = [ "Roboto Slab" ];
+				monospace = [ "Fira Code" ];
 				emoji = [ "Blobmoji" ];
 			};
 		};
