@@ -40,7 +40,8 @@
 		# BTRFS autoscrubbing
 		btrfs = {
 			autoScrub = {
-				enable = true;
+				# I don't use BTRFS anymore
+				enable = false;
 				interval = "thursday";
 				fileSystems = [
 					"/"
@@ -79,6 +80,9 @@
 		kernelParams = [
 			"nowatchdog"
 		];
+		kernelModules = {
+			ntsync = true;
+		};
 	};
 
 	systemd = {

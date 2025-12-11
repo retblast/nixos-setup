@@ -26,7 +26,7 @@
 			roboto-slab
 			roboto-mono
 			jetbrains-mono-variable
-			#input-fonts
+			input-fonts
 			source-sans
 			source-serif
 			source-code-pro
@@ -99,7 +99,7 @@
 				<alias>
 					<family>ui-monospace</family>
 					<prefer>
-						<family>Fira Code</family>
+						<family>Input Mono Condensed</family>
 						<family>Cantarell</family>
 					</prefer>
 				</alias>
@@ -128,7 +128,7 @@
 						"Cantarell"
 					];
 				serif = [ "Roboto Slab" ];
-				monospace = [ "Fira Code" ];
+				monospace = [ "Input Mono Condensed" ];
 				emoji = [ "Blobmoji" ];
 			};
 		};

@@ -138,6 +138,7 @@ let fontsOverlay = (
 		Bitter-Pro = prev.callPackage ./localDerivations/Bitter-Pro.nix {};
 		Playfair-Display = prev.callPackage ./localDerivations/Playfair-Display.nix {};
 		ANRT-Baskervville = prev.callPackage ./localDerivations/ANRT-Baskervville.nix {};
+		# TODO: Dealing with this is annoying. One day, fix the fish alias to get the hash of this thing.
 		input-fonts = prev.input-fonts.overrideAttrs (old: {
 			pname = "${prev.input-fonts.pname}";
 			version = "${prev.input-fonts.version}";
@@ -145,7 +146,7 @@ let fontsOverlay = (
 				prev.fetchzip {
 					name = "${prev.input-fonts.pname}-${prev.input-fonts.version}";
 					url = "https://input.djr.com/build/?fontSelection=whole&a=0&g=ss&i=serif&l=serif&zero=slash&asterisk=0&braces=straight&preset=default&line-height=1.2&accept=I+do&email=&.zip";
-					hash = "sha256-FAvPYRUWfMaf6WxdtlsFkwNCVJcm6h6792x7QCxQIIw=";
+					hash = "sha256-9j+8ENwKHwQJopu5xqIKIgs6JZhZKnus/4DTlIAZpjg=";
 					stripRoot = false;
 				};
 		});

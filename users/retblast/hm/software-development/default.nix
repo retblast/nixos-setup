@@ -1,5 +1,8 @@
 { taihouConfig, pkgs, username, ... }:{
   # Here goes everything related to software development
+	imports = [
+		./zed.nix
+	];
 	
   services = {
     lorri = {

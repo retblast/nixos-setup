@@ -116,6 +116,7 @@
 				sidebar-details = true;
 				sidebar-description = true;
 				sidebar-meter-type = "ProgressBar";
+				processes-show-swap = true;
 			};
 
 			"org/gnome/shell/extensions/azwallpaper" = {
