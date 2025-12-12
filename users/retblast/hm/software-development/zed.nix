@@ -1,4 +1,9 @@
-{ ... }: {
+{ pkgs, ... }: {
+  # Packages necessary for Zed to not complain about things
+  # Does make using NixOS annoying tbf
+  home.packages = with pkgs; [
+    package-version-server
+  ];
   programs.zed-editor = {
 			enable = true;
 			extensions = [ "nix" "toml" "rust" ];

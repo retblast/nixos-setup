@@ -1,5 +1,5 @@
 { pkgs, ...}:{
-	
+
 	users.users.retblast.packages = with pkgs; [
 		# https://github.com/NixOS/nixpkgs/issues/242322#issuecomment-2264995861
 		# Text editors, IDEs
@@ -7,15 +7,15 @@
 
 		# Linux containers just in case
 		toolbox distrobox
-		
+
 		# Computer Graphics
-		blender 
-		
+		blender
+
 		# Compilers, configurers
 		patchelf
 
 		# Nix tooling
-		nixd 
+		nixd nixfmt
 
 		# Debuggers
 		gdb valgrind
