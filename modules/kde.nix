@@ -1,118 +1,134 @@
-{config, lib, pkgs, ...}:
-	let cfg = config.localModule;
-	in
-	{
-		options.localModule = {
-			plasma.enable = lib.mkEnableOption "the KDE Plasma desktop environment";
-			plasma.minimal.enable = lib.mkEnableOption "a minimal KDE Plasma installation";
-		};
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  cfg = config.localModule;
+in
+{
+  options.localModule = {
+    plasma.enable = lib.mkEnableOption "the KDE Plasma desktop environment";
+    plasma.minimal.enable = lib.mkEnableOption "a minimal KDE Plasma installation";
+  };
 
-		config = lib.mkIf cfg.plasma.enable {
-			services = {
-				desktopManager.plasma6.enable = true;
-				colord.enable = true;
-				displayManager.sddm = {
-					enable = true;
-					wayland.enable = true;
-				};
-			};
-			
-			# I notice it and its annoying
-			fonts.fontconfig.subpixel = {
-				rgba = "rgb";
-				lcdfilter = "default";
-			};
-			programs = {
-				kdeconnect.enable = true;
-					partition-manager.enable = true;
-					kde-pim = {
-						merkuro = true;
-						kontact = true;
-						kmail = true;
-					};
-					# https://github.com/NixOS/nixpkgs/issues/348919
-					# k3b.enable = true;
-			};
+  config = lib.mkIf cfg.plasma.enable {
+    services = {
+      desktopManager.plasma6.enable = true;
+      colord.enable = true;
+      displayManager.sddm = {
+        enable = true;
+        wayland.enable = true;
+      };
+    };
 
-			environment = {
-				systemPackages = with pkgs; [
-					#  Extra KDE stuff
-					kdePackages.filelight
-					kdePackages.qtsvg
-					kdePackages.kleopatra
-					bibata-cursors
-					kdePackages.kdevelop
-					kdePackages.ksystemlog
-					kdePackages.kcharselect
-					kdePackages.skanpage
-					kdePackages.k3b
-					kdePackages.kamoso
-					kdePackages.sweeper
-					kdePackages.akregator
-					kdePackages.kmplot
-					kdePackages.kitinerary
-				] ++ lib.optionals (! cfg.plasma.minimal.enable) [
-					# Sound
-					kid3-kde
+    # I notice it and its annoying
+    fonts.fontconfig.subpixel = {
+      rgba = "rgb";
+      lcdfilter = "default";
+    };
+    programs = {
+      kdeconnect.enable = true;
+      partition-manager.enable = true;
+      kde-pim = {
+        merkuro = true;
+        kontact = true;
+        kmail = true;
+      };
+      # https://github.com/NixOS/nixpkgs/issues/348919
+      # k3b.enable = true;
+    };
 
-					# Video players/MPV Frontends
-					haruna vlc
+    environment = {
+      systemPackages =
+        with pkgs;
+        [
+          #  Extra KDE stuff
+          kdePackages.filelight
+          kdePackages.qtsvg
+          kdePackages.kleopatra
+          bibata-cursors
+          kdePackages.kdevelop
+          kdePackages.ksystemlog
+          kdePackages.kcharselect
+          kdePackages.skanpage
+          kdePackages.k3b
+          kdePackages.kamoso
+          kdePackages.sweeper
+          kdePackages.akregator
+          kdePackages.kmplot
+          kdePackages.kitinerary
+        ]
+        ++ lib.optionals (!cfg.plasma.minimal.enable) [
+          # Sound
+          kid3-kde
 
-					# Audio consumption
-					# FTBFS https://github.com/NixOS/nixpkgs/issues/399801
-					# fooyin
-					kdePackages.kasts
+          # Video players/MPV Frontends
+          haruna
+          vlc
 
-					# Digital books
-					kdePackages.arianna
+          # Audio consumption
+          # FTBFS https://github.com/NixOS/nixpkgs/issues/399801
+          # fooyin
+          kdePackages.kasts
 
-					# Chat Apps
-					kdePackages.neochat zapzap
-			
-					# Downloaders
-					kdePackages.kget kdePackages.ktorrent
+          # Digital books
+          kdePackages.arianna
 
-					# QT LO
-					libreoffice-qt-fresh
+          # Chat Apps
+          kdePackages.neochat
+          zapzap
 
-					# AI
-					kdePackages.alpaka
+          # Downloaders
+          kdePackages.kget
+          kdePackages.ktorrent
 
-					# Video Production
-					kdePackages.kdenlive
+          # QT LO
+          libreoffice-qt-fresh
 
-					# Extras
-					kdePackages.yakuake
+          # AI
+          kdePackages.alpaka
 
-					# Images
-					krita kdePackages.kolourpaint digikam kdePackages.kontrast
+          # Video Production
+          kdePackages.kdenlive
 
-					# Development
-					kdePackages.kompare kdePackages.kcachegrind # kdePackages.umbrello
+          # Extras
+          kdePackages.yakuake
 
-					# Learning
-					kdePackages.kiten
+          # Images
+          krita
+          kdePackages.kolourpaint
+          digikam
+          kdePackages.kontrast
 
-					# Miscellanous
-				];
-				sessionVariables = {
-					# System wide stem darkening
-					# Testing: Inconsistent in plasma/QT
-					# FREETYPE_PROPERTIES = "cff:no-stem-darkening=0 autofitter:no-stem-darkening=0";
-					
-					# https://zamundaaa.github.io/wayland/2025/10/23/more-kms-offloading.html
-					KWIN_USE_OVERLAYS = "1";
-				};
-			};
-			# system.replaceDependencies.replacements = [
-			# 	# https://bugs.kde.org/show_bug.cgi?id=479891#c114
-			# 	{
-			# 		oldDependency = pkgs.kdePackages.qqc2-desktop-style;
-			# 		newDependency = pkgs.kdePackages.qqc2-desktop-style.overrideAttrs (old: {
-			# 			# Doesn't have a patches attribute
-			# 			patches = [ ./patches/qqc2-bug-report-print.patch ];
-			# 		});
-			# 	}
-			# ];
-		};
-	}
+          # Development
+          kdePackages.kompare
+          kdePackages.kcachegrind # kdePackages.umbrello
+
+          # Learning
+          kdePackages.kiten
+
+          # Miscellanous
+        ];
+      sessionVariables = {
+        # System wide stem darkening
+        # Testing: Inconsistent in plasma/QT
+        # FREETYPE_PROPERTIES = "cff:no-stem-darkening=0 autofitter:no-stem-darkening=0";
+
+        # https://zamundaaa.github.io/wayland/2025/10/23/more-kms-offloading.html
+        KWIN_USE_OVERLAYS = "1";
+      };
+    };
+    # system.replaceDependencies.replacements = [
+    # 	# https://bugs.kde.org/show_bug.cgi?id=479891#c114
+    # 	{
+    # 		oldDependency = pkgs.kdePackages.qqc2-desktop-style;
+    # 		newDependency = pkgs.kdePackages.qqc2-desktop-style.overrideAttrs (old: {
+    # 			# Doesn't have a patches attribute
+    # 			patches = [ ./patches/qqc2-bug-report-print.patch ];
+    # 		});
+    # 	}
+    # ];
+  };
+}

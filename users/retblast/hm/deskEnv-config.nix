@@ -108,6 +108,13 @@
         default-zoom-level = "small";
       };
 
+      "org/gnome/epiphany" = {
+        incognito-search-engine = "Google";
+        default-search-engine = "Google";
+        show-developer-actions = true;
+        always-show-full-url = true;
+      };
+
       "org/gnome/shell/extensions/vitals" = {
         menu-centered = true;
         show-gpu = true;
