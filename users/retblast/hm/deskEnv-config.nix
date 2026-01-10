@@ -104,6 +104,10 @@
       # 	window-position = "bottom";
       # };
 
+      "org/gtk/settings/file-chooser" = {
+        show-hidden = true;
+        sort-directories-first = true;
+      };
       "org/gnome/nautilus/list-view" = {
         default-zoom-level = "small";
       };
@@ -128,7 +132,7 @@
           "__network-rx_max__"
           "__network-tx_max__"
           "__temperature_avg__"
-          "_system_load_1m_"
+          #  "_system_load_1m_"
         ];
       };
       "org/gnome/shell/extensions/caffeine" = {
@@ -231,7 +235,7 @@
       "org/gnome/desktop/interface" = {
         # icon-theme = "MoreWaita";
         font-name = "system-ui 11";
-        document-font-name = "system-ui 11";
+        document-font-name = "sans 11";
         monospace-font-name = "monospace 11";
         font-hinting = "slight";
         font-rendering = "manual";

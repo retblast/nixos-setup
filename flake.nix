@@ -2,7 +2,7 @@
   description = "retblast's NixOS setup";
 
   inputs = {
-    # nixpkgs.url = "nixpkgs/7df7ff7";
+    # nixpkgs.url = "nixpkgs/5912c17";
     # nixOS unstable, which is what I actually run
     nixpkgs.url = "nixpkgs/nixos-unstable";
     # Should be the current stable
@@ -51,9 +51,7 @@
       ...
     }@inputs:
     let
-      system = "x86_64-linux";
       pkgs = import nixpkgs {
-        inherit system;
         # TODO: Delete this if overlays work fine under each system.
         # TODO: Consider making general overlays for multiple machines
         overlays = [
@@ -61,7 +59,7 @@
           inputs.nix-vscode-extensions.overlays.default
         ]
         ++ import ./overlay { inherit inputs; };
-        hostPlatform = system;
+        system = "x86_64-linux";
         config = {
           allowUnfree = true;
           allowUnfreePredicate = _: true;
@@ -83,7 +81,6 @@
     rec {
       nixosConfigurations = {
         Taihou = nixpkgs.lib.nixosSystem {
-          system = system;
           pkgs = pkgs;
           modules = [
             nix-index-database.nixosModules.nix-index
@@ -116,7 +113,6 @@
 
         # nix build .#nixosConfigurations.TaihouLite.config.system.build.isoImage
         TaihouLite = nixpkgs.lib.nixosSystem {
-          system = system;
           pkgs = pkgs;
           modules = [
             nix-index-database.nixosModules.nix-index
@@ -131,7 +127,6 @@
         };
 
         Hearts = nixpkgs.lib.nixosSystem {
-          system = "x86_64-linux";
           modules = [
             ./machines/Hearts
             ./modules/default.nix

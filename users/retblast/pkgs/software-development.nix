@@ -1,33 +1,39 @@
-{ pkgs, ...}:{
+{ pkgs, ... }:
+{
 
-	users.users.retblast.packages = with pkgs; [
-		# https://github.com/NixOS/nixpkgs/issues/242322#issuecomment-2264995861
-		# Text editors, IDEs
-		my-vscode
+  users.users.retblast.packages = with pkgs; [
+    # Android
+    android-tools
+    # https://github.com/NixOS/nixpkgs/issues/242322#issuecomment-2264995861
+    # Text editors, IDEs
+    my-vscode
 
-		# Linux containers just in case
-		toolbox distrobox
+    # Linux containers just in case
+    toolbox
+    distrobox
 
-		# Computer Graphics
-		blender
+    # Computer Graphics
+    blender
 
-		# Compilers, configurers
-		patchelf
+    # Compilers, configurers
+    patchelf
 
-		# Nix tooling
-		nixd nixfmt
+    # Nix tooling
+    nixd
+    nixfmt
 
-		# Debuggers
-		gdb valgrind
+    # Debuggers
+    gdb
+    valgrind
 
-		# Documentation tools
-		# FTBFS https://github.com/NixOS/nixpkgs/pull/455354
-		# zeal
+    # Documentation tools
+    # FTBFS https://github.com/NixOS/nixpkgs/pull/455354
+    # zeal
 
-		# Java libraries
-		commonsIo
+    # Java libraries
+    commonsIo
 
-		# Gamedev
-		#unityhub # https://nixpk.gs/pr-tracker.html?pr=368851
+    # Gamedev
+    #unityhub # https://nixpk.gs/pr-tracker.html?pr=368851
   ];
 }

@@ -17,6 +17,18 @@
     ../../users/testuser
   ];
 
+  #nix.settings.system-features = [ "gccarch-alderlake" ];
+  # Doesn't seem to work
+  #nixpkgs = {
+  #  hostPlatform = {
+  #    gcc = {
+  #      arch = "alderlake";
+  #      tune = "alderlake";
+  #    };
+  #    system = "x86_64-linux";
+  #  };
+  #};
+
   networking.hostName = "Taihou";
   users.users.what = {
     enable = true;
@@ -125,8 +137,8 @@
   };
 
   # Desktop Environment
-  localModule.plasma.enable = true;
-  localModule.plasma.minimal.enable = false;
+  localModule.gnome.enable = true;
+  localModule.gnome.minimal.enable = false;
 
   localModule.intel_lpmd.enable = false;
   localModule.performance.memory = {

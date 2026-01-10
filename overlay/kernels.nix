@@ -28,6 +28,10 @@ let kernelsOverlay = (
 							# Hibernation compressor set to LZ4
 							HIBERNATION_COMP_LZ4 = yes;
 							HIBERNATION_DEF_COMP = freeform "lz4";
+							
+							# Less HZ
+							HZ_1000 = prev.lib.mkForce no;
+							HZ_300 = yes;
 						};
 				};
 				ignoreConfigErrors = true;
@@ -62,6 +66,9 @@ let kernelsOverlay = (
 							# Hibernation compressor set to LZ4
 							HIBERNATION_COMP_LZ4 = yes;
 							HIBERNATION_DEF_COMP = freeform "lz4";
+							# Less HZ
+							HZ_1000 = prev.lib.mkForce no;
+							HZ_300 = yes;
 						};
 				};
 				ignoreConfigErrors = true;
@@ -96,6 +103,9 @@ let kernelsOverlay = (
 							# Hibernation compressor set to LZ4
 							HIBERNATION_COMP_LZ4 = yes;
 							HIBERNATION_DEF_COMP = freeform "lz4";
+							# Less HZ
+							HZ_1000 = prev.lib.mkForce no;
+							HZ_300 = yes;
 						};
 				};
 				ignoreConfigErrors = true;

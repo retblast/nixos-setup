@@ -21,7 +21,8 @@
 				enable = true;
 			};
 			drivers = with pkgs; [
-				cnijfilter2
+				# TODO: https://github.com/NixOS/nixpkgs/pull/476341
+				# cnijfilter2
 			];
 		};
 		udev.extraRules = ''
