@@ -5,7 +5,9 @@
     # nixpkgs.url = "nixpkgs/5912c17";
     # nixOS unstable, which is what I actually run
     nixpkgs.url = "nixpkgs/nixos-unstable";
+    # nixpkgs.url = "github:NixOS/nixpkgs/pull/485055/head";
     # Should be the current stable
+    nixpkgs-usable-libopusenc.url = "github:NixOS/nixpkgs/pull/493745/head";
     # I use this for things I need the stable version for
     # Basically, easy "forwardporting"
     # Currently for:

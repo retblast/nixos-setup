@@ -31,7 +31,7 @@
     # zeal
 
     # Java libraries
-    commonsIo
+    commons-io
 
     # Gamedev
     #unityhub # https://nixpk.gs/pr-tracker.html?pr=368851

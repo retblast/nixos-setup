@@ -95,6 +95,9 @@ let appsOverlay = (
 		google-chrome = prev.google-chrome.override {
 			# Testing: No vulkan
 			commandLineArgs = "--enable-features=TouchpadOverscrollHistoryNavigation,AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,ParallelDownloading,UseMultiPlaneFormatForHardwareVideo,WaylandLinuxDrmSyncobj,WaylandPerSurfaceScale,WaylandTextInputV3,WaylandUiScale --disable-font-subpixel-positioning=true --enable-zero-copy=true";
+			# TODO: Find out how to enable this only when running KDE
+
+			plasmaSupport = true;
 			# commandLineArgs = "--enable-features=Vulkan,DefaultANGLEVulkan,VulkanFromANGLE,TouchpadOverscrollHistoryNavigation,AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,ParallelDownloading,UseMultiPlaneFormatForHardwareVideo,WaylandLinuxDrmSyncobj,WaylandPerSurfaceScale,WaylandTextInputV3,WaylandUiScale --disable-font-subpixel-positioning=true --enable-zero-copy=true --use-vulkan=true --enable-hardware-overlays=true --enable-unsafe-webgpu";
 		};
 		obs-studio-with-plugins = prev.wrapOBS {
@@ -106,8 +109,8 @@ let appsOverlay = (
 		octaveFull = prev.octaveFull.withPackages (prev: with prev; [
 			symbolic
 		]);
-		winetricks = prev.winetricks.overrideAttrs (old: {
-			patches = [ ./patches/winetricks-fix.patch ];
-		});
+		#winetricks = prev.winetricks.overrideAttrs (old: {
+		#	patches = [ ./patches/winetricks-fix.patch ];
+		#});
 });
 in appsOverlay

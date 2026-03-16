@@ -16,6 +16,10 @@
     system = "x86_64-linux";
   };
 
+  # Running on KDE, so disable it
+  # TODO: Enable this only when not running KDE
+  # TODO: Reconsider not disabling this when apps can look proper
+  # Like Dolphin, for example.
   system.replaceDependencies.replacements = [
     # Disable stem darkening on QT
     {

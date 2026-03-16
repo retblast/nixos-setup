@@ -5,7 +5,11 @@
   ...
 }:
 {
-
+  environment.sessionVariables = {
+    # System wide stem darkening
+    # Testing: Inconsistent in plasma/QT
+    # FREETYPE_PROPERTIES = "cff:no-stem-darkening=0 autofitter:no-stem-darkening=0";
+  };
   fonts = {
     #TODO: find out a way to not install freefont_ttf (gnu free fonts)
     # (because of the braille font being butt ugly)
@@ -51,9 +55,10 @@
       terminus_font_ttf
       terminus_font
 
-      inter-otf
+      inter
       # Using commit-mono-retblast due to QT and Electron not respecting freetype font feature settings
       # commit-mono
+
       commit-mono-retblast
       nerd-fonts.geist-mono
       geist-font
@@ -132,7 +137,7 @@
           "Cantarell"
         ];
         serif = [ "Roboto Slab" ];
-        monospace = [ "Jetbrains Mono" ];
+        monospace = [ "Fira Code" ];
         emoji = [ "Blobmoji" ];
       };
     };

@@ -26,11 +26,11 @@
 									];
 								};
 							};
-							TaihouDisk = {
+							RootDisk = {
 								size = "100%";
 								content = {
 									type = "luks";
-									name = "TaihouDisk";
+									name = "RootDisk";
 									initrdUnlock = true;
 									settings = {
 										allowDiscards = true;

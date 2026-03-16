@@ -5,7 +5,8 @@
     # General multimedia tools
     mediainfo
     ffmpeg-fuller
-    handbrake-retblast
+    # https://github.com/NixOS/nixpkgs/pull/485356
+    # handbrake-retblast
 
     # Screen/Video recorders
     obs-studio-with-plugins
@@ -20,7 +21,7 @@
     fdk-aac-encoder
     lame
     flac
-    opusTools
+    opus-tools
     opustags
     flacon
     # TODO: https://github.com/NixOS/nixpkgs/issues/476039

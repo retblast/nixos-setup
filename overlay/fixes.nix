@@ -1,6 +1,7 @@
 let
-  fixesOverlay = (
-    final: prev: {
+  fixesOverlay =
+    { inputs, ... }:
+    (final: prev: {
       # Remove the desktop application icon entries
       # Seriously, what the fuck
       lsp-plugins = prev.lsp-plugins.overrideAttrs (old: {
@@ -22,6 +23,7 @@ let
           });
         }
       );
+      libopusenc = inputs.nixpkgs-usable-libopusenc.legacyPackages.x86_64-linux.libopusenc;
       #TODO: Make a PR for this
       # Maybe it can be fixed in a different way
       gputils = prev.gputils.overrideAttrs (old: {
@@ -45,7 +47,6 @@ let
           ./patches/0002-Fix-missing-const-qualifier.patch
         ];
       });
-    }
-  );
+    });
 in
 fixesOverlay

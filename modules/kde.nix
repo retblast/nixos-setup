@@ -17,17 +17,20 @@ in
     services = {
       desktopManager.plasma6.enable = true;
       colord.enable = true;
-      displayManager.sddm = {
-        enable = true;
-        wayland.enable = true;
+      displayManager = {
+        sddm = {
+          enable = false;
+          wayland.enable = true;
+        };
+        plasma-login-manager.enable = true;
       };
     };
 
     # I notice it and its annoying
-    fonts.fontconfig.subpixel = {
-      rgba = "rgb";
-      lcdfilter = "default";
-    };
+    #fonts.fontconfig.subpixel = {
+    #  rgba = "none";
+    #  lcdfilter = "default";
+    #};
     programs = {
       kdeconnect.enable = true;
       partition-manager.enable = true;
@@ -91,7 +94,9 @@ in
           kdePackages.alpaka
 
           # Video Production
-          kdePackages.kdenlive
+          # https://github.com/NixOS/nixpkgs/pull/485356
+          # https://github.com/NixOS/nixpkgs/issues/483540
+          #kdePackages.kdenlive
 
           # Extras
           kdePackages.yakuake
@@ -112,9 +117,6 @@ in
           # Miscellanous
         ];
       sessionVariables = {
-        # System wide stem darkening
-        # Testing: Inconsistent in plasma/QT
-        # FREETYPE_PROPERTIES = "cff:no-stem-darkening=0 autofitter:no-stem-darkening=0";
 
         # https://zamundaaa.github.io/wayland/2025/10/23/more-kms-offloading.html
         KWIN_USE_OVERLAYS = "1";

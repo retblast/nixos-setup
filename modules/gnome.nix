@@ -91,6 +91,9 @@ in
         ]
         ++ lib.optionals (!cfg.gnome.minimal.enable) [
 
+          # Note Taking
+          rnote
+
           # Fedi
           tuba
 

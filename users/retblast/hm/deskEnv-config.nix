@@ -40,6 +40,25 @@
       # Vitals
       { package = pkgs.gnomeExtensions.vitals; }
 
+      #
+      # Astra Monitor
+      # { package = pkgs.gnomeExtensions.astra-monitor; }
+
+      # Accented Panel
+      { package = pkgs.gnomeExtensions.accented-panel; }
+
+      # Accented Icons
+      { package = pkgs.gnomeExtensions.accent-directories; }
+
+      # Auto Accent Color
+      { package = pkgs.gnomeExtensions.auto-accent-colour; }
+
+      # Tinted Shell
+      { package = pkgs.gnomeExtensions.tinted-shell; }
+
+      # Dash to Dock
+      { package = pkgs.gnomeExtensions.dash-to-dock; }
+
       # Dock from dash
       # Disabled until these 2 issues are fixed!
       # https://github.com/fthx/dock-from-dash/issues/102
@@ -54,14 +73,11 @@
   #programs.plasma = {
   #	enable = taihouConfig.services.desktopManager.plasma.enable;
   #};
-  xresources.properties =
-    if taihouConfig.services.desktopManager.plasma6.enable then
-      {
-        "Xft.rgba" = "rgb";
-        "Xft.lcdfilter" = "lcddefault";
-      }
-    else
-      { };
+  xresources.properties = {
+    "Xft.rgba" = "0";
+    "Xft.lcdfilter" = "lcddefault";
+    "Xft.autohint" = "1";
+  };
 
   home.packages =
     if taihouConfig.services.desktopManager.gnome.enable then
@@ -69,6 +85,12 @@
       [
         # Workaround for gtk.theme.package
         adw-gtk3
+        # Astra Monitor
+        gtop
+        nethogs
+        wirelesstools
+        # auto-accent-color
+        gjs
       ]
     else
       [ ];
@@ -87,10 +109,11 @@
     };
   };
 
-  # qt = {
-  #	platformTheme.name = "qtct";
-  #	style.name = "kv";
-  #};
+  qt = {
+    enable = taihouConfig.services.desktopManager.gnome.enable;
+    platformTheme.name = "adwaita";
+    style.name = "breeze";
+  };
 
   # TODO: does this break anything in KDE?
   # Probably not
@@ -103,6 +126,17 @@
       # 	transparent-background = false;
       # 	window-position = "bottom";
       # };
+      #
+      "org/gnome/shell/extensions/dash-to-dock" = {
+        background-opacity = lib.hm.gvariant.mkDouble 1.0;
+        require-pressure-to-show = true;
+        show-delay = lib.hm.gvariant.mkDouble 0.10000000000000002;
+        hide-delay = lib.hm.gvariant.mkDouble 0.050000000000000017;
+        dash-max-icon-size = 64;
+        show-show-apps-button = true;
+        click-action = lib.hm.gvariant.mkString "focus-minimize-or-appspread";
+        show-icons-emblems = false;
+      };
 
       "org/gtk/settings/file-chooser" = {
         show-hidden = true;
@@ -118,6 +152,13 @@
         show-developer-actions = true;
         always-show-full-url = true;
       };
+
+      # Astra Monitor settings
+      # Complex to configure, maybe just configure it at runtime or switch to something lighter/simpler.
+      # Super, duper neat though
+
+      # "org/gnome/shell/extensions/astra-monitor" = {
+      # };
 
       "org/gnome/shell/extensions/vitals" = {
         menu-centered = true;
@@ -135,6 +176,7 @@
           #  "_system_load_1m_"
         ];
       };
+
       "org/gnome/shell/extensions/caffeine" = {
         trigger-apps-mode = "on-active-workspace";
       };
@@ -168,7 +210,6 @@
       "org/gnome/TextEditor" = {
         show-line-numbers = true;
         tab-width = lib.hm.gvariant.mkUint32 2;
-        show-grid = true;
         highlight-current-line = true;
         show-map = true;
         restore-session = false;
@@ -186,7 +227,8 @@
       "org/gnome/shell" = {
         favorite-apps = lib.hm.gvariant.mkArray lib.hm.gvariant.type.string [
           "google-chrome.desktop"
-          "org.gnome.Console.desktop"
+          "firefox.desktop"
+          "org.gnome.Ptyxis.desktop"
           "org.gnome.Nautilus.desktop"
           "dev.zed.Zed.desktop"
           "com.usebottles.bottles.desktop"
@@ -237,7 +279,7 @@
         font-name = "system-ui 11";
         document-font-name = "sans 11";
         monospace-font-name = "monospace 11";
-        font-hinting = "slight";
+        font-hinting = "true";
         font-rendering = "manual";
       };
     };

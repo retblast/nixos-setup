@@ -27,212 +27,206 @@
 # https://github.com/intel/intel-lpmd/issues/84 is fixed
 # Accepts           <EnterGFXLoadThres>50</EnterGFXLoadThres> for gpu stuff
 
-let workaround = writers.writeText "config-file.xml" ''
-  <?xml version="1.0"?>
+let
+  workaround = writers.writeText "config-file.xml" ''
+    <?xml version="1.0"?>
 
     <!--
-    Specifies the configuration data
-    for Intel Energy Optimizer (LPMD) daemon
+        Specifies the configuration data
+        for Intel Energy Optimizer (LPMD) daemon.
+
+        Target platform : Alder Lake / Raptor Lake (Family 6, Model 154)
+
+        EPP scale (kernel patch, scaling factor 17):
+          Power             = 221 (17x13)
+          Balance Power     = 170 (17x10)  <- WLT_IDLE
+          Balance Perf      = 119 (17x7)   <- WLT_BATTERY_LIFE / WLT_BATTERY_LIFE_GFX_BUSY
+          Performance       =  17 (17x1)
+
+        lp_mode_cpus hardcoded: ADL E-core module auto-detection is unreliable,
+        picks one 4-core module instead of the full E-core pool (upstream issue #59).
     -->
 
     <Configuration>
-      <!--
-        CPU format example: 1,2,4..6,8-10
-      -->
-      <lp_mode_cpus>8-15</lp_mode_cpus>
 
-      <!--
-        Mode values
-        0: Cgroup v2
-        1: Cgroup v2 isolate
-        2: CPU idle injection
-      -->
-      <Mode>0</Mode>
+        <lp_mode_cpus>8-15</lp_mode_cpus>
 
-      <!--
-        Default behavior when Performance power setting is used
-        -1: force off. (Never enter Low Power Mode)
-        1: force on. (Always stay in Low Power Mode)
-        0: auto. (opportunistic Low Power Mode enter/exit)
-      -->
-      <PerformanceDef>-1</PerformanceDef>
+        <!--
+            Mode 0: Cgroup v2.
+            ADL cores share the same die — hard isolation (Mode 1) offers
+            no additional power gating benefit unlike MTL/LNL.
+        -->
+        <Mode>0</Mode>
 
-      <!--
-        Default behavior when Balanced power setting is used
-        -1: force off. (Never enter Low Power Mode)
-        1: force on. (Always stay in Low Power Mode)
-        0: auto. (opportunistic Low Power Mode enter/exit)
-      -->
-      <BalancedDef>0</BalancedDef>
+        <!--
+            Performance: never enter LPM.
+            Balanced: opportunistic — WLT drives transitions.
+            Powersaver: always in LPM.
+        -->
+        <PerformanceDef>-1</PerformanceDef>
+        <BalancedDef>0</BalancedDef>
+        <PowersaverDef>1</PowersaverDef>
 
-      <!--
-        Default behavior when Power saver setting is used
-        -1: force off. (Never enter Low Power Mode)
-        1: force on. (Always stay in Low Power Mode)
-        0: auto. (opportunistic Low Power Mode enter/exit)
-      -->
-      <PowersaverDef>0</PowersaverDef>
+        <!-- HFI disabled — WLT is the primary signal source -->
+        <HfiLpmEnable>0</HfiLpmEnable>
+        <HfiSuvEnable>0</HfiSuvEnable>
 
-      <!--
-        Use HFI LPM hints
-        0 : No
-        1 : Yes
-      -->
-      <HfiLpmEnable>0</HfiLpmEnable>
+        <!-- WLT: all three sources enabled for best workload classification -->
+        <WLTHintEnable>1</WLTHintEnable>
+        <WLTHintPollEnable>1</WLTHintPollEnable>
+        <WLTProxyEnable>1</WLTProxyEnable>
 
-      <!--
-        Use HFI SUV hints
-        0 : No
-        1 : Yes
-      -->
-      <HfiSuvEnable>0</HfiSuvEnable>
-      
-      <!--
-        Use WLT hints
-        0 : No
-        1 : Yes
-      -->
-      <WLTHintEnable>1</WLTHintEnable>
-      
-      <!--
-        Use WLT hint Poll enable
-        0 : No
-        1 : Yes
-      -->
-      <WLTHintPollEnable>1</WLTHintPollEnable>
+        <!-- Utilization monitor disabled — WLT is the sole driver -->
+        <util_entry_threshold></util_entry_threshold>
+        <util_exit_threshold></util_exit_threshold>
 
-      <!--
-        Use WLT software proxy hints
-        0 : No
-        1 : Yes
-      -->
-    <WLTProxyEnable>1</WLTProxyEnable>
+        <EntryDelayMS>0</EntryDelayMS>
+        <ExitDelayMS>0</ExitDelayMS>
 
-      <!--
-        System utilization threshold to enter LP mode
-        from 0 - 100
-        clear both util_entry_threshold and util_exit_threshold to disable util monitor
-      -->
-      <util_entry_threshold>20</util_entry_threshold>
+        <!--
+            Hysteresis: prevents rapid oscillation near threshold boundaries.
+            Exit longer than entry — exiting LPM has more overhead,
+            system should be confident load is sustained before restoring all cores.
+        -->
+        <EntryHystMS>2000</EntryHystMS>
+        <ExitHystMS>3000</ExitHystMS>
 
-      <!--
-        System utilization threshold to exit LP mode
-        from 0 - 100
-        clear both util_entry_threshold and util_exit_threshold to disable util monitor
-      -->
-      <util_exit_threshold>75</util_exit_threshold>
+        <!-- ITMT toggled on LPM transitions for better scheduler decisions -->
+        <IgnoreITMT>0</IgnoreITMT>
 
-      <!--
-        Entry delay. Minimum delay in non Low Power mode to
-        enter LPM mode.
-      -->
-      <EntryDelayMS>0</EntryDelayMS>
+        <States>
+            <CPUFamily>6</CPUFamily>
+            <CPUModel>154</CPUModel>
+            <CPUConfig>*</CPUConfig>
 
-      <!--
-        Exit delay. Minimum delay in Low Power mode to
-        exit LPM mode.
-      -->
-      <ExitDelayMS>0</ExitDelayMS>
+            <!--
+                STATE 1 — WLT_BATTERY_LIFE
+                Light active use. User is present, light workload in progress.
+                Thresholds sit 10 percentage points above WLT_IDLE on every
+                dimension to create clean separation and prevent oscillation.
 
-      <!--
-        Lowest hysteresis average in-LP-mode time in msec to enter LP mode
-        0: to disable hysteresis support
-      -->
-      <EntryHystMS>0</EntryHystMS>
+                EPP 119 = 17x7 = balance_performance on patched kernel.
+                IRQ migration enabled: still beneficial at this load level.
+                GFX threshold 55%: tolerates moderate GPU activity
+                (compositing, video, browser acceleration).
+            -->
+            <State>
+                <ID>1</ID>
+                <Name>WLT_BATTERY_LIFE</Name>
+                <WLTType>1</WLTType>
+                <EPP>119</EPP>
+                <EPB>7</EPB>
+                <ActiveCPUs>lp</ActiveCPUs>
+                <EnterGFXLoadThres>55</EnterGFXLoadThres>
+                <EntrySystemLoadThres>30</EntrySystemLoadThres>
+                <EnterCPULoadThres>40</EnterCPULoadThres>
+                <MinPollInterval>400</MinPollInterval>
+                <PollIntervalIncrement>300</PollIntervalIncrement>
+                <MaxPollInterval>1500</MaxPollInterval>
+                <ITMTState>-1</ITMTState>
+                <IRQMigrate>1</IRQMigrate>
+            </State>
 
-      <!--
-        Lowest hysteresis average out-of-LP-mode time in msec to exit LP mode
-        0: to disable hysteresis support
-      -->
-      <ExitHystMS>0</ExitHystMS>
+            <!--
+                STATE 2 — WLT_BATTERY_LIFE_GFX_BUSY
+                Borrowed from Intel's Lunar Lake UTIL_IDLE_GFX_BUSY concept.
+                For GPU-heavy but CPU-light workloads: video playback, light gaming,
+                GPU compute, hardware-accelerated browser content.
 
-      <!--
-        Ignore ITMT setting during LP-mode enter/exit
-        0: disable ITMT upon LP-mode enter and re-enable ITMT upon LP-mode exit
-        1: do not touch ITMT setting during LP-mode enter/exit
-      -->
-      <IgnoreITMT>0</IgnoreITMT>
+                Shares WLTType 1 with WLT_BATTERY_LIFE — lpmd differentiates
+                them purely via the GFX load threshold gate.
+                All cores active: GPU driver threads, DRM scheduler, and command
+                submission need access to the full core pool.
+                EPP 119 = 17x7: same as BATTERY_LIFE — GPU workloads need CPU
+                headroom for driver work, not raw frequency.
+                GFX threshold 85%: only enters when GPU is genuinely saturated,
+                not triggered by compositor spikes or browser scrolling.
+                No CPU load threshold — GPU load is the primary gate here.
+                Polling tighter than BATTERY_LIFE: GPU workloads change quickly.
+            -->
+            <State>
+                <ID>2</ID>
+                <Name>WLT_BATTERY_LIFE_GFX_BUSY</Name>
+                <WLTType>1</WLTType>
+                <EPP>119</EPP>
+                <EPB>7</EPB>
+                <ActiveCPUs>all</ActiveCPUs>
+                <EnterGFXLoadThres>85</EnterGFXLoadThres>
+                <EntrySystemLoadThres>30</EntrySystemLoadThres>
+                <MinPollInterval>300</MinPollInterval>
+                <PollIntervalIncrement>200</PollIntervalIncrement>
+                <MaxPollInterval>1000</MaxPollInterval>
+                <ITMTState>-1</ITMTState>
+                <IRQMigrate>-1</IRQMigrate>
+            </State>
 
-    <States>
-      <CPUFamily> 6 </CPUFamily>
-      <CPUModel> 154 </CPUModel>
-      <CPUConfig> * </CPUConfig>
-      <State>
-          <ID> 1 </ID> <!-- no significance. number can be anything -->
-          <Name> WLT_IDLE </Name>
-          <WLTType> 0 </WLTType> <!-- WLTType mapped to Name -->
-          <EPP> 170 </EPP>
-          <EPB> 13 </EPB>
-          <EnterGFXLoadThres>25</EnterGFXLoadThres>
-          <EntrySystemLoadThres>5</EntrySystemLoadThres>
-          <EnterCPULoadThres>25</EnterCPULoadThres>
-          <MinPollInterval> 1000 </MinPollInterval>
-          <PollIntervalIncrement> 500 </PollIntervalIncrement>
-          <MaxPollInterval> 2000 </MaxPollInterval>
-          <ActiveCPUs>lp</ActiveCPUs>
-          <ITMTState> -1 </ITMTState>
-          <IRQMigrate> -1 </IRQMigrate>
-      </State>
-      <State>
-          <ID> 2 </ID>
-          <Name> WLT_BATTERY_LIFE </Name>
-          <WLTType> 1 </WLTType>
-          <EPP> 119 </EPP>
-          <EPB> 10 </EPB>
-          <EnterGFXLoadThres>35</EnterGFXLoadThres>
-          <EntrySystemLoadThres>10</EntrySystemLoadThres>
-          <EnterCPULoadThres>35</EnterCPULoadThres>
-          <MinPollInterval> 1000 </MinPollInterval>
-          <PollIntervalIncrement> 500 </PollIntervalIncrement>
-          <MaxPollInterval> 2000 </MaxPollInterval>
-          <ActiveCPUs>lp</ActiveCPUs>
-          <ITMTState> -1 </ITMTState>
-          <IRQMigrate> -1 </IRQMigrate>
-      </State>
-      <State>
-          <ID> 3 </ID>
-          <Name> WLT_SUSTAINED </Name>
-          <WLTType> 2 </WLTType>
-          <EPP> 119 </EPP>
-          <EPB> 7 </EPB>
-          <EntrySystemLoadThres>30</EntrySystemLoadThres>
-          <EnterGFXLoadThres>50</EnterGFXLoadThres>
-          <MinPollInterval> 1000 </MinPollInterval>
-          <PollIntervalIncrement> 500 </PollIntervalIncrement>
-          <MaxPollInterval> 2000 </MaxPollInterval>
-          <ActiveCPUs>all</ActiveCPUs>
-          <ITMTState> -1 </ITMTState>
-          <IRQMigrate> -1 </IRQMigrate>
-      </State>
-      <State>
-          <ID> 4 </ID>
-          <Name> WLT_BURSTY </Name>
-          <WLTType> 3 </WLTType>
-          <EPP> 34 </EPP>
-          <EPB> 2 </EPB>
-          <EnterGFXLoadThres>50</EnterGFXLoadThres>
-          <EntrySystemLoadThres>50</EntrySystemLoadThres>
-          <MinPollInterval> 1000 </MinPollInterval>
-          <PollIntervalIncrement> 500 </PollIntervalIncrement>
-          <MaxPollInterval> 2000 </MaxPollInterval>
-          <ActiveCPUs>all</ActiveCPUs>
-          <ITMTState> -1 </ITMTState>
-          <IRQMigrate> -1 </IRQMigrate>
-      </State>
-    </States>
+            <!--
+                STATE 3 — WLT_SUSTAINED
+                Meaningful sustained CPU workload. All cores active.
+                EPP 85 = 17x5: more performance headroom than battery life
+                without fully unleashing the CPU.
+                GFX threshold 65%: tolerates significant GPU activity
+                alongside sustained CPU work. Distinct from both
+                BATTERY_LIFE (55%) and BURSTY (75%).
+            -->
+            <State>
+                <ID>3</ID>
+                <Name>WLT_SUSTAINED</Name>
+                <WLTType>2</WLTType>
+                <EPP>85</EPP>
+                <EPB>5</EPB>
+                <ActiveCPUs>all</ActiveCPUs>
+                <EnterGFXLoadThres>65</EnterGFXLoadThres>
+                <EntrySystemLoadThres>30</EntrySystemLoadThres>
+                <EnterCPULoadThres>60</EnterCPULoadThres>
+                <MinPollInterval>300</MinPollInterval>
+                <PollIntervalIncrement>200</PollIntervalIncrement>
+                <MaxPollInterval>1000</MaxPollInterval>
+                <ITMTState>-1</ITMTState>
+                <IRQMigrate>-1</IRQMigrate>
+            </State>
 
-  </Configuration>
+            <!--
+                STATE 4 — WLT_BURSTY
+                Short unpredictable CPU spikes. All cores active, fastest polling.
+                EPP 34 = 17x2: near-performance, aggressive frequency response.
+                Low system threshold (40%): bursts spike individual cores without
+                necessarily moving system average dramatically.
+                GFX threshold 75%: bursty CPU work can coexist with
+                significant GPU load.
+            -->
+            <State>
+                <ID>4</ID>
+                <Name>WLT_BURSTY</Name>
+                <WLTType>3</WLTType>
+                <EPP>51</EPP>
+                <EPB>2</EPB>
+                <ActiveCPUs>all</ActiveCPUs>
+                <EnterGFXLoadThres>75</EnterGFXLoadThres>
+                <EntrySystemLoadThres>40</EntrySystemLoadThres>
+                <EnterCPULoadThres>70</EnterCPULoadThres>
+                <MinPollInterval>200</MinPollInterval>
+                <PollIntervalIncrement>100</PollIntervalIncrement>
+                <MaxPollInterval>500</MaxPollInterval>
+                <ITMTState>-1</ITMTState>
+                <IRQMigrate>-1</IRQMigrate>
+            </State>
 
-'';
-in stdenv.mkDerivation (finalAttrs: {
+        </States>
+
+    </Configuration>
+  '';
+in
+stdenv.mkDerivation (finalAttrs: {
   pname = "intel_lpmd";
-  version = "0.0.9";
+  version = "0.1.0";
 
   src = fetchFromGitHub {
-    owner = "intel";
+    # owner = "intel";
+    owner = "maciejwieczorretman";
     repo = "intel-lpmd";
-    rev = "afe44487750e58992004471b96ef7914bb07c848";
-    hash = "sha256-IygTSDz9l2xwctDwe6El+/jEKy3PFCvavCqgaPqSdbo=";
+    rev = "99d50c97e586a8fdd31fd6d4ede40e0bf8362bc7";
+    hash = "sha256-qaVptiwhv+A3HCjnsGAcLhU+lVn6DsDW8SXxG6qDlRk=";
   };
 
   nativeBuildInputs = [
@@ -255,11 +249,11 @@ in stdenv.mkDerivation (finalAttrs: {
   ];
 
   postPatch = ''
-    substituteInPlace "data/org.freedesktop.intel_lpmd.service.in" \
-    --replace-fail "/bin/false" "${lib.getExe' coreutils "false"}"
+      substituteInPlace "data/org.freedesktop.intel_lpmd.service.in" \
+      --replace-fail "/bin/false" "${lib.getExe' coreutils "false"}"
 
-  #   substituteInPlace "src/lpmd_dbus_server.c" \
-  #     --replace-fail "src/intel_lpmd_dbus_interface.xml" "${placeholder "out"}/share/dbus-1/interfaces/org.freedesktop.intel_lpmd.xml"
+    #   substituteInPlace "src/lpmd_dbus_server.c" \
+    #     --replace-fail "src/intel_lpmd_dbus_interface.xml" "${placeholder "out"}/share/dbus-1/interfaces/org.freedesktop.intel_lpmd.xml"
   '';
 
   configureFlags = [
@@ -290,7 +284,7 @@ in stdenv.mkDerivation (finalAttrs: {
 
     platforms = platforms.linux;
     license = licenses.gpl2Only;
-    maintainers = with maintainers; [ frontear ];
+    maintainers = with maintainers; [ retblast ];
 
     mainProgram = "intel_lpmd";
   };

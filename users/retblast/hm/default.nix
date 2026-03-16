@@ -17,12 +17,12 @@
     #TODO: I might have to fix this when using home manager as standalone
     inputs.nix-index-database.homeModules.nix-index
 
+    # inputs.stylix.homeModules.stylix
   ];
 
   # This checks if the non-module home-manager is being used
   # Might be undeeded, but keep it just in case
   # nix.package = lib.mkIf (!config ? home-manager.users) pkgs.nix;
-
   # Disable given that the configurations I'd set here are already set system wide.
   fonts = {
     fontconfig = {
@@ -62,6 +62,16 @@
   # nix-index conflicts with this, so let's disable it.
   programs.command-not-found.enable = false;
 
+  # Firefox settings
+  programs.firefox = {
+    enable = true;
+    configPath = "${config.xdg.configHome}/mozila/firefox";
+    policies = {
+      Preferences = {
+        "widget.use-xdg-desktop-portal.file-picker" = 1;
+      };
+    };
+  };
   # Enable cache for the nixified-ai flake.
   nix = {
     settings = {
@@ -72,7 +82,6 @@
     enable = true;
   };
   services.easyeffects.enable = true;
-  # Since I'm on KDE now.
   # services.easyeffects.package = pkgs.usable-easyeffects.easyeffects;
 
   # QT look on gnome

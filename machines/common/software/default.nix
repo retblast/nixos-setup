@@ -45,7 +45,7 @@
   };
 
   programs = {
-    firefox.enable = true;
+    # firefox.enable = true;
     mtr.enable = true;
     usbtop.enable = true;
     chromium = {
@@ -90,7 +90,7 @@
       # System management
       gparted
       # Miscellanous cli apps
-      xorg.xeyes
+      xeyes
       bc
       xdg-utils
       trash-cli
@@ -133,7 +133,6 @@
   networking = {
     networkmanager = {
       enable = true;
-      wifi.backend = "iwd";
     };
     firewall = {
       enable = true;

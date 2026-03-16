@@ -75,6 +75,7 @@
 	boot = {
 		extraModprobeConfig = ''
 			blacklist iTCO_wdt
+			blacklist intel_oc_wdt
 			options cfg80211 ieee80211_regdom="PE"
 		'';
 		kernelParams = [
