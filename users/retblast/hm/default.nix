@@ -65,12 +65,14 @@
   # Firefox settings
   programs.firefox = {
     enable = true;
-    configPath = "${config.xdg.configHome}/mozila/firefox";
+    configPath = "${config.xdg.configHome}/mozilla/firefox";
     policies = {
       Preferences = {
         "widget.use-xdg-desktop-portal.file-picker" = 1;
       };
     };
+    package =
+      if taihouConfig.services.desktopManager.gnome.enable then pkgs.firefox-gnome else pkgs.firefox;
   };
   # Enable cache for the nixified-ai flake.
   nix = {

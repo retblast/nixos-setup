@@ -2,6 +2,20 @@ let
   fixesOverlay =
     { inputs, ... }:
     (final: prev: {
+      # TODO: Report the adw-gtk3
+      # TLDR: using adw-gtk3 on firefox makes it so that firefox
+      # inherits some font settings from the theme and that
+      # bleeds over to the rendered webpages
+      firefox-gnome = prev.firefox.overrideAttrs (old: {
+        makeWrapperArgs = old.makeWrapperArgs ++ [
+          "--set"
+          "GTK_THEME"
+          "Adwaita"
+        ];
+        #postInstall = (old.postInstall or "") + ''
+        #  wrapProgram $out/bin/firefox --set GTK_THEME Adwaita
+        #'';
+      });
       # Remove the desktop application icon entries
       # Seriously, what the fuck
       lsp-plugins = prev.lsp-plugins.overrideAttrs (old: {

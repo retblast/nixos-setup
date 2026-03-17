@@ -279,7 +279,7 @@
         font-name = "system-ui 11";
         document-font-name = "sans 11";
         monospace-font-name = "monospace 11";
-        font-hinting = "true";
+        font-hinting = "slight";
         font-rendering = "manual";
       };
     };

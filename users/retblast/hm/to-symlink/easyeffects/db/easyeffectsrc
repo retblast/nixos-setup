@@ -4,7 +4,6 @@ inputDevice=alsa_input.pci-0000_00_1f.3.analog-stereo
 [StreamOutputs]
 outputDevice=alsa_output.pci-0000_00_1f.3.analog-stereo
 plugins=filter#0,bass_enhancer#0,multiband_compressor#0,stereo_tools#0,limiter#0
-visiblePage=pluginsPage
 visiblePlugin=limiter#0
 
 [Window]

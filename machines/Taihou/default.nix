@@ -30,11 +30,6 @@
   #};
 
   networking.hostName = "Taihou";
-  users.users.what = {
-    enable = true;
-    isNormalUser = true;
-  };
-
   systemd = {
     services = {
       bt-mouse-fix = {
