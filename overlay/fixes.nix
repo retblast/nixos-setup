@@ -35,9 +35,19 @@ let
               import fontTools.ttLib as ttLib"
             '';
           });
+          # TODO: https://github.com/NixOS/nixpkgs/pull/501624
+          #hyperpyyaml = scopePrev.hyperpyyaml.overrideAttrs (old: {
+          #  patches = [ ./patches/unpin-ruamel-yaml.patch ];
+          #  pythonRelaxDeps = [
+          #    "ruamel-yaml"
+          #  ];
+          #  meta.broken = false;
+          #});
+          #ruamel-yaml = scopePrev.ruamel-yaml.overrideAttrs (old: {
+          #  patches = [ ./patches/loader-max-depth.patch ];
+          #});
         }
       );
-      libopusenc = inputs.nixpkgs-usable-libopusenc.legacyPackages.x86_64-linux.libopusenc;
       #TODO: Make a PR for this
       # Maybe it can be fixed in a different way
       gputils = prev.gputils.overrideAttrs (old: {

@@ -76,7 +76,7 @@
   xresources.properties = {
     "Xft.rgba" = "0";
     "Xft.lcdfilter" = "lcddefault";
-    "Xft.autohint" = "1";
+    "Xft.autohint" = if taihouConfig.fonts.fontconfig.hinting.autohint then "1" else "0";
   };
 
   home.packages =
@@ -102,6 +102,9 @@
     theme = {
       name = "adw-gtk3";
       # package = pkgs.adw-gtk3;
+    };
+    gtk4.extraConfig = {
+      # gtk-hint-font-metrics = false;
     };
     iconTheme = {
       name = "MoreWaita";
@@ -279,7 +282,7 @@
         font-name = "system-ui 11";
         document-font-name = "sans 11";
         monospace-font-name = "monospace 11";
-        font-hinting = "slight";
+        font-hinting = "${taihouConfig.fonts.fontconfig.hinting.style}";
         font-rendering = "manual";
       };
     };

@@ -70,7 +70,7 @@
 
       adl-smp-affinity-list = {
         # Do not enable when using to intel lpmd
-        enable = false;
+        enable = !config.localModule.intel_lpmd.enable;
         description = "Set the smp_affinity_list to the E-cores";
         after = [
           "multi-user.target"
@@ -127,13 +127,14 @@
     };
     tmpfiles = {
       rules = [
+        # Might not be very useful
         # PL1 = 45W (rated TDP for i5-12500H), PL2 = 65W (meaningful burst headroom)
         # MSR path
-        "w /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_0_power_limit_uw  - - - - 45000000"
-        "w /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_1_power_limit_uw  - - - - 65000000"
+        # "w /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_0_power_limit_uw  - - - - 45000000"
+        # "w /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_1_power_limit_uw  - - - - 65000000"
         # MMIO path — must match, otherwise firmware wins
-        "w /sys/class/powercap/intel-rapl-mmio/intel-rapl-mmio:0/constraint_0_power_limit_uw - - - - 45000000"
-        "w /sys/class/powercap/intel-rapl-mmio/intel-rapl-mmio:0/constraint_1_power_limit_uw - - - - 65000000"
+        # "w /sys/class/powercap/intel-rapl-mmio/intel-rapl-mmio:0/constraint_0_power_limit_uw - - - - 45000000"
+        # "w /sys/class/powercap/intel-rapl-mmio/intel-rapl-mmio:0/constraint_1_power_limit_uw - - - - 65000000"
       ];
     };
   };
@@ -143,7 +144,7 @@
   localModule.gnome.minimal.enable = false;
 
   localModule.intel_lpmd.enable = true;
-  localModule.intel_lpmd.debug = false;
+  localModule.intel_lpmd.debug = true;
   localModule.intel_lpmd.settings = ''
     <?xml version="1.0"?>
 
@@ -367,26 +368,27 @@
   '';
   localModule.performance.memory = {
     zswap = {
-      enable = false;
+      enable = true;
       size = 23726;
       hibernation = {
-        enable = true;
+        enable = false;
         device = "/dev/mapper/${config.disko.devices.disk.internalNVME.content.partitions.RootDisk.name}";
         resumeOffset = 10828120;
       };
     };
     zram = {
-      enable = true;
+      enable = false;
       size = 200;
     };
   };
 
   services = {
-    udev.extraRules = ''
-      # More reasonable power limits
-      SUBSYSTEM=="power_supply", ATTR{online}=="0", RUN+="${pkgs.reasonable-power-limits-adlh-fish}/bin/reasonable-power-limits-adlh battery"
-      SUBSYSTEM=="power_supply", ATTR{online}=="1", RUN+="${pkgs.reasonable-power-limits-adlh-fish}/bin/reasonable-power-limits-adlh ac"
-    '';
+    # Might not be very useful
+    # udev.extraRules = ''
+    #  # More reasonable power limits
+    #  SUBSYSTEM=="power_supply", ATTR{online}=="0", RUN+="${pkgs.reasonable-power-limits-adlh-fish}/bin/reasonable-power-limits-adlh battery"
+    #  SUBSYSTEM=="power_supply", ATTR{online}=="1", RUN+="${pkgs.reasonable-power-limits-adlh-fish}/bin/reasonable-power-limits-adlh ac"
+    # '';
     mysql = {
       # Enabled because of Uni
       # /run/mysqld/mysqld.sock is where the socket is

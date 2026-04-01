@@ -35,7 +35,7 @@
       roboto-slab
       roboto-mono
       jetbrains-mono-variable
-      input-fonts
+      # input-fonts
       source-sans
       source-serif
       source-code-pro
@@ -67,7 +67,10 @@
       # SF-Arabic
       # SF-Compact
       # New-York
-
+      # TODO: document the fonts.toml thing
+      # Maybe it is already, anyway
+      # the variable font is an attr of monaspace
+      monaspace.variable
     ];
 
     fontDir.enable = true;
@@ -108,7 +111,7 @@
         				<alias>
         					<family>ui-monospace</family>
         					<prefer>
-        						<family>${builtins.concatStringsSep "" config.fonts.fontconfig.defaultFonts.monospace}</family>
+        						<family>${builtins.elemAt config.fonts.fontconfig.defaultFonts.monospace 0}</family>
         						<family>Cantarell</family>
         					</prefer>
         				</alias>
@@ -137,7 +140,7 @@
           "Cantarell"
         ];
         serif = [ "Roboto Slab" ];
-        monospace = [ "Fira Code" ];
+        monospace = [ "Monaspace Neon Var" ];
         emoji = [ "Blobmoji" ];
       };
     };

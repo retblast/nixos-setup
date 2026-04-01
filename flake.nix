@@ -2,18 +2,13 @@
   description = "retblast's NixOS setup";
 
   inputs = {
-    # nixpkgs.url = "nixpkgs/5912c17";
+    # nixpkgs.url = "nixpkgs/46db2e09e1d3f113a13c0d7b81e2f221c63b8ce9";
     # nixOS unstable, which is what I actually run
     nixpkgs.url = "nixpkgs/nixos-unstable";
     # nixpkgs.url = "github:NixOS/nixpkgs/pull/485055/head";
-    # Should be the current stable
-    nixpkgs-usable-libopusenc.url = "github:NixOS/nixpkgs/pull/493745/head";
     # I use this for things I need the stable version for
     # Basically, easy "forwardporting"
-    # Currently for:
-    # TODO: ollama 0.12.11 (https://github.com/NixOS/nixpkgs/tree/c97c47f2bac4fa59e2cbdeba289686ae615f8ed4)
-    #
-    nixpkgs-stable.url = "nixpkgs/c97c47f2bac4fa59e2cbdeba289686ae615f8ed4";
+    nixpkgs-stable.url = "nixpkgs/nixos-stable";
     # As of writing, 6th december 2025, nixpkgs has pyannote-audio 4.0.1, which doesn't work with whisperX
     # TODO: https://github.com/m-bain/whisperX/issues/1241
     nixpkgs-usable-whisperx.url = "nixpkgs/baa35fb3cd45d75c9e4e4466a191e6c99c3b2d31";

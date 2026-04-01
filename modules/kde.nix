@@ -64,6 +64,10 @@ in
           kdePackages.kitinerary
         ]
         ++ lib.optionals (!cfg.plasma.minimal.enable) [
+
+          # Useful
+          drawy
+
           # Sound
           kid3-kde
 

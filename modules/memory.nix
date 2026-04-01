@@ -1,6 +1,12 @@
-{config, lib, pkgs, ...}:
-let cfg = config.localModule.performance.memory;
-in 
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  cfg = config.localModule.performance.memory;
+in
 {
   options.localModule.performance.memory = {
     zswap = {
@@ -37,32 +43,35 @@ in
   config = lib.mkIf (cfg.zswap.enable || cfg.zram.enable) {
     boot = {
       # resumeDevice = lib.mkIf (cfg.zswap.hibernation.enable) cfg.zswap.hibernation.device;
-      kernelParams = [ 
+      kernelParams = [
         # Zswap settings
         "zswap.compressor=zstd"
         "zswap.zpool=zsmalloc"
         "zswap.max_pool_percent=35"
         "zswap.accept_threshold_percent=90"
-      ] ++ lib.optionals (! cfg.zram.enable) [ "zswap.enabled=Y" ]
-        ++ lib.optionals (cfg.zswap.encryption) ["nohibernate"]
-        ++ lib.optionals (cfg.zswap.hibernation.enable) [ 
-            # Parameters needed to use hibernation
-            "resume=${cfg.zswap.hibernation.device}"
-            "resume_offset=${toString cfg.zswap.hibernation.resumeOffset}"
-            # "hibernator.compressor=lz4"
-          ];
+      ]
+      ++ lib.optionals (!cfg.zram.enable) [ "zswap.enabled=Y" ]
+      ++ lib.optionals (cfg.zswap.encryption) [ "nohibernate" ]
+      ++ lib.optionals (cfg.zswap.hibernation.enable) [
+        # Parameters needed to use hibernation
+        "resume=${cfg.zswap.hibernation.device}"
+        "resume_offset=${toString cfg.zswap.hibernation.resumeOffset}"
+        # "hibernator.compressor=lz4"
+      ];
     };
-	  swapDevices = lib.optionals (cfg.zswap.enable) [{
-      device = "/swap/swapfile";
-      # TODO: make this adaptive!
-      size = cfg.zswap.size;
-      discardPolicy = "both";
-      randomEncryption = {
-        enable = lib.mkIf (cfg.zswap.encryption) true; 
-        allowDiscards = true;
-        keySize = 256;
-      };
-    }];
+    swapDevices = lib.optionals (cfg.zswap.enable) [
+      {
+        device = if config.fileSystems."/".fsType == "btrfs" then "/swap/swapfile" else "/swapfile";
+        # TODO: make this adaptive!
+        size = cfg.zswap.size;
+        discardPolicy = "both";
+        randomEncryption = {
+          enable = lib.mkIf (cfg.zswap.encryption) true;
+          allowDiscards = true;
+          keySize = 256;
+        };
+      }
+    ];
     zramSwap = {
       enable = cfg.zram.enable;
       memoryPercent = cfg.zram.size;

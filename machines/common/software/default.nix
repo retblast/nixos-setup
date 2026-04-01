@@ -45,6 +45,13 @@
   };
 
   programs = {
+    nix-ld = {
+      enable = true;
+      libraries = with pkgs; [
+        # Testing it out, for whisperx using uvx
+        stdenv.cc.cc
+      ];
+    };
     # firefox.enable = true;
     mtr.enable = true;
     usbtop.enable = true;
