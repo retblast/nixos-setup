@@ -2,4 +2,5 @@
 attack=2
 gainBoost=false
 lookahead=4.000000000000021
+oversampling=6
 release=8

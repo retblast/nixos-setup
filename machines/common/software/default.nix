@@ -206,7 +206,7 @@
 
   documentation = {
     man = {
-      generateCaches = true;
+      cache.enable = true;
       mandoc = {
         enable = false;
       };
@@ -214,9 +214,7 @@
         enable = true;
       };
     };
-    dev = {
-      enable = true;
-    };
+    enable = true;
   };
 
   # I am... here

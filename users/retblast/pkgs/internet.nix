@@ -19,7 +19,7 @@
     megacmd
 
     # VPN
-    protonvpn-gui
+    proton-vpn
 
     # Virtual classes
     zoom-us

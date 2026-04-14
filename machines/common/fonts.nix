@@ -140,7 +140,7 @@
           "Cantarell"
         ];
         serif = [ "Roboto Slab" ];
-        monospace = [ "Monaspace Neon Var" ];
+        monospace = [ "JetBrains Mono" ];
         emoji = [ "Blobmoji" ];
       };
     };

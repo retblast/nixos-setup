@@ -39,13 +39,13 @@ let
 in
 effectiveStdenv.mkDerivation (finalAttrs: {
   pname = "koboldcpp";
-  version = "1.110";
+  version = "1.111.1";
 
   src = fetchFromGitHub {
     owner = "LostRuins";
     repo = "koboldcpp";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-wizg/XkNjWUeF0heK1sQQhfKRlIYBKwJmQ8fIaZ2zdE=";
+    hash = "sha256-9TWglH3q4nMdKz3k9KIVOIe80qttq26Rmrkh2osaaB4=";
   };
 
   enableParallelBuilding = true;
@@ -101,7 +101,9 @@ effectiveStdenv.mkDerivation (finalAttrs: {
 
     install -Dm755 koboldcpp.py "$out/bin/koboldcpp.unwrapped"
     cp *.so "$out/bin"
-    cp embd_res/*.embd "$out/bin"
+    # Fails to load otherwise
+    # cp embd_res/*.embd "$out/bin"
+    cp -r embd_res "$out/bin/"
     cp -r kcpp_adapters "$out/bin/"
     ${lib.optionalString metalSupport ''
       cp *.metal "$out/bin"

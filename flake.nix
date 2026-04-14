@@ -8,7 +8,7 @@
     # nixpkgs.url = "github:NixOS/nixpkgs/pull/485055/head";
     # I use this for things I need the stable version for
     # Basically, easy "forwardporting"
-    nixpkgs-stable.url = "nixpkgs/nixos-stable";
+    nixpkgs-stable.url = "nixpkgs/nixos-25.11";
     # As of writing, 6th december 2025, nixpkgs has pyannote-audio 4.0.1, which doesn't work with whisperX
     # TODO: https://github.com/m-bain/whisperX/issues/1241
     nixpkgs-usable-whisperx.url = "nixpkgs/baa35fb3cd45d75c9e4e4466a191e6c99c3b2d31";

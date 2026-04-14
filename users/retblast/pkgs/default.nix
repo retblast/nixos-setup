@@ -17,6 +17,7 @@
     ollama-vulkan
     usable-whisperx.whisperx
     koboldcpp
+    stable-diffusion-cpp-vulkan
 
     # Virt
     virt-manager

@@ -27,6 +27,16 @@ let
       });
       python3Packages = prev.python3Packages.overrideScope (
         scopeFinal: scopePrev: {
+          # TODO: https://github.com/NixOS/nixpkgs/pull/504351/commits/5e2e65eaab16ac1ddad8e4decf4b378baf93f9d6
+          kde-material-you-colors = scopePrev.kde-material-you-colors.overrideAttrs (old: rec {
+            version = "2.2.0";
+            src = prev.fetchFromGitHub {
+              owner = old.src.owner;
+              repo = old.src.repo;
+              tag = "v${version}";
+              hash = "sha256-sN7u3jePevJnTHhQL6eAYKU2AD2QNW7VYuEHLN5RsK8=";
+            };
+          });
           opentype-feature-freezer-fixed = scopePrev.opentype-feature-freezer.overrideAttrs (old: {
             postPatch = ''
               	substituteInPlace src/opentype_feature_freezer/__init__.py \

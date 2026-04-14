@@ -2,7 +2,7 @@
 band0AttackThreshold=-15
 band0AttackTime=150
 band0Knee=-12
-band0Makeup=2.500000238418579
+band0Makeup=3.5
 band0Ratio=5
 band0ReleaseTime=300
 band1AttackThreshold=-25
@@ -26,3 +26,5 @@ band3Makeup=3.799999713897705
 band3Ratio=3.75
 band3ReleaseTime=125
 band3SplitFrequency=5000
+inputGain=-2.5
+outputGain=2.5
