@@ -1,0 +1,31 @@
+--- a/src/lpmd_config.c
++++ b/src/lpmd_config.c
+@@ -22,6 +22,9 @@
+ #include <libxml/parser.h>
+ #include <libxml/tree.h>
+ 
++#define FALLBACK_CONFDIR "/etc/intel_lpmd"
++#define CONFDIR (access(FALLBACK_CONFDIR, F_OK) == 0 ? FALLBACK_CONFDIR : TDCONFDIR)
++
+ #define CONFIG_FILE_NAME "intel_lpmd_config.xml"
+ #define MAX_FILE_NAME_PATH 128
+ -	snprintf(file_name, MAX_FILE_NAME_PATH, "%s/intel_lpmd_config_F%d_M%d_T%d.xml",
+ -		TDCONFDIR, lpmd_config->cpu_family, lpmd_config->cpu_model, lpmd_config->tdp);
+ +	snprintf(file_name, MAX_FILE_NAME_PATH, "%s/intel_lpmd_config_F%d_M%d_T%d.xml",
+ +		CONFDIR, lpmd_config->cpu_family, lpmd_config->cpu_model, lpmd_config->tdp);
+  
+  	lpmd_log_msg ("Looking for config file %s\n", file_name);
+  	if (!stat (file_name, &s))
+  		goto process_xml;
+  
+ -	snprintf(file_name, MAX_FILE_NAME_PATH, "%s/intel_lpmd_config_F%d_M%d.xml",
+ -		TDCONFDIR, lpmd_config->cpu_family, lpmd_config->cpu_model);
+ +	snprintf(file_name, MAX_FILE_NAME_PATH, "%s/intel_lpmd_config_F%d_M%d.xml",
+ +		CONFDIR, lpmd_config->cpu_family, lpmd_config->cpu_model);
+  
+  	lpmd_log_msg ("Looking for config file %s\n", file_name);
+  	if (!stat (file_name, &s))
+  		goto process_xml;
+  
+ -	snprintf (file_name, MAX_FILE_NAME_PATH, "%s/%s", TDCONFDIR, CONFIG_FILE_NAME);
+ +	snprintf (file_name, MAX_FILE_NAME_PATH, "%s/%s", CONFDIR, CONFIG_FILE_NAME);
