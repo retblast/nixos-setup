@@ -135,7 +135,7 @@
         require-pressure-to-show = true;
         show-delay = lib.hm.gvariant.mkDouble 0.10000000000000002;
         hide-delay = lib.hm.gvariant.mkDouble 0.050000000000000017;
-        dash-max-icon-size = 64;
+        dash-max-icon-size = 48;
         show-show-apps-button = true;
         click-action = lib.hm.gvariant.mkString "focus-minimize-or-appspread";
         show-icons-emblems = false;

@@ -35,7 +35,7 @@
       roboto-slab
       roboto-mono
       jetbrains-mono-variable
-      # input-fonts
+      #input-fonts
       source-sans
       source-serif
       source-code-pro

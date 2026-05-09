@@ -8,7 +8,7 @@
     # COMDAT
     #ciscoPacketTracer8
     putty
-    wireshark
+    #wireshark
     arduino-ide
     # BASDAT2
     # TODO PR: 476332

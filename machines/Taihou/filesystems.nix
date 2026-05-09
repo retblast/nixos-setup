@@ -32,10 +32,11 @@
 									type = "luks";
 									name = "RootDisk";
 									initrdUnlock = true;
-									settings = {
-										allowDiscards = true;
-										bypassWorkqueues = true;
-									};
+										settings = {
+											allowDiscards = true;
+											bypassWorkqueues = true;
+										};
+
 									# extraOpenArgs = [ "--allow-discards" "--perf-no_read_workqueue" "--perf-no_write_workqueue" ];
 									# if you want to use the key for interactive login be sure there is no trailing newline
 									# for example use `echo -n "password" > /tmp/secret.key`
@@ -43,33 +44,32 @@
 									# settings.keyFile = "/tmp/secret.key";
 									# additionalKeyFiles = [ "/tmp/additionalSecret.key" ];
 									content = {
-										type = "filesystem";
-										format = "xfs";
-										# extraArgs = [ "-f" ];
-										# mountOptions = [ "compress-force=zstd:1" ];
+										type = "btrfs";
+										extraArgs = [ "-f" ];
+										mountOptions = [ "compress=zstd:1" ];
 										mountpoint = "/";
-										#subvolumes = {
-										#	"@" = {
-										#	mountpoint = "/";
-										#	mountOptions = [ "compress=zstd:1" ];
-										#	};
-										#	"@home" = {
-										#	mountpoint = "/home";
-										#	mountOptions = [ "compress=zstd:1" ];
-										#	};
-										#	"@nix" = {
-										#	mountpoint = "/nix";
-										#	mountOptions = [ "compress=zstd:1" ];
-										#	};
-										#	"@var_log" = {
-										#	mountpoint = "/var/log";
-										#	mountOptions = [ "compress=zstd:1" ];
-										#	};
-										#	"@swap" = {
-										#	mountpoint = "/swap";
-										#	mountOptions = [ "compress=zstd:1" ];
-										#	};
-										#};
+										subvolumes = {
+											"@" = {
+											mountpoint = "/";
+											mountOptions = [ "compress=zstd:1" ];
+											};
+											"@home" = {
+											mountpoint = "/home";
+											mountOptions = [ "compress=zstd:1" ];
+											};
+											"@nix" = {
+											mountpoint = "/nix";
+											mountOptions = [ "compress=zstd:1" ];
+											};
+											"@var_log" = {
+											mountpoint = "/var/log";
+											mountOptions = [ "compress=zstd:1" ];
+											};
+											"@swap" = {
+											mountpoint = "/swap";
+											mountOptions = [ "compress=zstd:1" ];
+											};
+										};
 									};
 								};
 							};

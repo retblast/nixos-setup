@@ -5,7 +5,7 @@
     wineWow64Packages.stagingFull
     dxvk
     winetricks
-    bottles
+    #bottles
 
     # Games & Fun
     protontricks

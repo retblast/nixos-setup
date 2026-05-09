@@ -140,8 +140,8 @@
   };
 
   # Desktop Environment
-  localModule.gnome.enable = true;
-  localModule.gnome.minimal.enable = false;
+  localModule.plasma.enable = true;
+  localModule.plasma.minimal.enable = false;
 
   localModule.intel_lpmd.enable = true;
   localModule.intel_lpmd.debug = false;
