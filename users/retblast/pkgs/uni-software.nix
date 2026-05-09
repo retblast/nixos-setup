@@ -2,15 +2,12 @@
 {
 
   users.users.retblast.packages = with pkgs; [
-    # ARQORG
-    dosbox-staging
-    gputils
-    # COMDAT
-    #ciscoPacketTracer8
+    # RC
+    cisco-packet-tracer_9
     putty
-    #wireshark
-    arduino-ide
-    # BASDAT2
+    # wireshark
+
+    # BDA
     # TODO PR: 476332
     mysql-workbench
     dia

@@ -48,7 +48,7 @@ in
         with pkgs;
         [
           # UI customization
-          python3Packages.kde-material-you-colors
+          kde-material-you-colors
           klassy
 
           #  Extra KDE stuff

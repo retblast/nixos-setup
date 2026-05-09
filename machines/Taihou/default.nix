@@ -149,19 +149,11 @@
     <?xml version="1.0"?>
 
     <!--
-        Utilization-based configuration for ADL (Family 6, Model 154).
-        WLT hints fully disabled. State selection is purely utilization-driven:
-        EntrySystemLoadThres + EnterCPULoadThres gate CPU-load states;
-        EnterGFXLoadThres gates the GFX-busy fallback (no WLTType).
-
-        State matching: EnterCPULoadThres checked first, then
-        EntrySystemLoadThres. States evaluated top-to-bottom; first
-        match wins. GFX-busy state placed last as catch-all for
-        GPU-heavy / CPU-light workloads.
-
-        EPP values use kernel patch scaling factor of 17.
-        lp_mode_cpus hardcoded: ADL auto-detection picks one E-core
-        module (4 cores) instead of the full pool. See upstream issue #59.
+    Utilization-based configuration for ADL (Family 6, Model 154).
+    WLT hints fully disabled. State selection is purely utilization-driven.
+    EPP values use kernel patch scaling factor of 17.
+    lp_mode_cpus hardcoded: ADL auto-detection picks one E-core
+    module (4 cores) instead of the full pool. See upstream issue #59.
     -->
 
     <Configuration>
@@ -176,16 +168,10 @@
         <HfiLpmEnable>0</HfiLpmEnable>
         <HfiSuvEnable>0</HfiSuvEnable>
 
-        <!-- WLT fully disabled -->
         <WLTHintEnable>0</WLTHintEnable>
         <WLTHintPollEnable>0</WLTHintPollEnable>
         <WLTProxyEnable>0</WLTProxyEnable>
 
-        <!--
-            Global utilization gate.
-            Entry: system under 15% before any state is considered.
-            Exit: force-exit when busiest LP core exceeds 90%.
-        -->
         <util_entry_threshold>15</util_entry_threshold>
         <util_exit_threshold>90</util_exit_threshold>
 
@@ -202,14 +188,6 @@
             <CPUModel>154</CPUModel>
             <CPUConfig>*</CPUConfig>
 
-            <!--
-                        STATE 1 — UTIL_IDLE
-                        Genuinely idle: screensaver, locked screen, background
-                        daemons only. LP cores, maximum power saving.
-                        EPP 255: let hardware govern frequency fully.
-                        Tight thresholds — GNOME idle alone sits ~27% CPU,
-                        so this only triggers when compositor is truly quiet.
-            -->
             <State>
                 <ID>1</ID>
                 <Name>UTIL_IDLE</Name>
@@ -225,15 +203,6 @@
                 <IRQMigrate>1</IRQMigrate>
             </State>
 
-            <!--
-                STATE 2 — UTIL_BATTERY_LIFE
-                Light desktop use: browsing, terminal, light editing.
-                LP cores only. This is the intended floor for active
-                but undemanding sessions — matches original WLT_BATTERY_LIFE.
-                EPP 119 = 17x7 = balance_performance on patched kernel.
-                CPU threshold 35: comfortably above GNOME/Wayland idle
-                baseline (~27%) so this state is stably chosen at rest.
-            -->
             <State>
                 <ID>2</ID>
                 <Name>UTIL_BATTERY_LIFE</Name>
@@ -244,43 +213,37 @@
                 <ActiveCPUs>lp</ActiveCPUs>
                 <MinPollInterval>400</MinPollInterval>
                 <PollIntervalIncrement>300</PollIntervalIncrement>
-                <MaxPollInterval>1500</MaxPollInterval>
+                <MaxPollInterval>2000</MaxPollInterval>
                 <ITMTState>-1</ITMTState>
                 <IRQMigrate>1</IRQMigrate>
             </State>
 
             <!--
-                STATE 3 — UTIL_MODERATE
-                All cores active. Moderate sustained CPU load.
-                GFX ceiling 65%: tolerates significant GPU alongside CPU work.
-                EPP 119 = 17x7 = balance_performance.
+            UTIL_MODERATE restored as intermediate ladder rung.
+            Transient spikes land here rather than jumping straight
+            to HIGH (EPP 34). EPP stays at 119 — same as BATTERY_LIFE,
+            but all cores are active and IRQ migration is off.
             -->
             <State>
                 <ID>3</ID>
                 <Name>UTIL_MODERATE</Name>
-                <EnterCPULoadThres>50</EnterCPULoadThres>
-                <EntrySystemLoadThres>25</EntrySystemLoadThres>
-                <EPP>119</EPP>
-                <EPB>7</EPB>
+                <EnterCPULoadThres>55</EnterCPULoadThres>
+                <EntrySystemLoadThres>35</EntrySystemLoadThres>
+                <EPP>85</EPP>
+                <EPB>5</EPB>
                 <ActiveCPUs>all</ActiveCPUs>
-                <MinPollInterval>300</MinPollInterval>
-                <PollIntervalIncrement>200</PollIntervalIncrement>
-                <MaxPollInterval>1000</MaxPollInterval>
+                <MinPollInterval>600</MinPollInterval>
+                <PollIntervalIncrement>300</PollIntervalIncrement>
+                <MaxPollInterval>1500</MaxPollInterval>
                 <ITMTState>-1</ITMTState>
                 <IRQMigrate>-1</IRQMigrate>
             </State>
 
-            <!--
-                STATE 4 — UTIL_BURSTY
-                All cores, fastest polling, near-performance EPP.
-                GFX ceiling 75%: high tolerance for GPU alongside bursts.
-                EPP 34 = 17x2.
-            -->
             <State>
                 <ID>4</ID>
                 <Name>UTIL_HIGH</Name>
                 <EnterCPULoadThres>75</EnterCPULoadThres>
-                <EntrySystemLoadThres>45</EntrySystemLoadThres>
+                <EntrySystemLoadThres>50</EntrySystemLoadThres>
                 <EPP>34</EPP>
                 <EPB>2</EPB>
                 <ActiveCPUs>all</ActiveCPUs>
@@ -290,6 +253,7 @@
                 <ITMTState>-1</ITMTState>
                 <IRQMigrate>-1</IRQMigrate>
             </State>
+
         </States>
 
     </Configuration>
