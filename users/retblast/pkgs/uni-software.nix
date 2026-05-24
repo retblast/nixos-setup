@@ -5,7 +5,7 @@
     # RC
     cisco-packet-tracer_9
     putty
-    # wireshark
+    wireshark
 
     # BDA
     # TODO PR: 476332

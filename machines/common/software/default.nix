@@ -67,7 +67,6 @@
     };
     systemPackages = with pkgs; [
       # System monitoring, managing & benchmarking tools
-      intel-gpu-tools
       libva-utils
       mesa-demos
       vulkan-tools

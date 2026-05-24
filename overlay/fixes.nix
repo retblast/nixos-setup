@@ -2,6 +2,9 @@ let
   fixesOverlay =
     { inputs, ... }:
     (final: prev: {
+      # TODO: apply this as overlay somehow on flake.nix
+      kwin-effects-better-blur-dx =
+        inputs.kwin-effects-better-blur-dx.packages.${prev.stdenv.hostPlatform.system}.default;
       # TODO: Report the adw-gtk3
       # TLDR: using adw-gtk3 on firefox makes it so that firefox
       # inherits some font settings from the theme and that
@@ -16,6 +19,9 @@ let
         #  wrapProgram $out/bin/firefox --set GTK_THEME Adwaita
         #'';
       });
+      firefox-kde = prev.firefox.override {
+        nativeMessagingHosts = prev.kdePackages.plasma-browser-integration;
+      };
       # Remove the desktop application icon entries
       # Seriously, what the fuck
       lsp-plugins = prev.lsp-plugins.overrideAttrs (old: {
@@ -25,8 +31,22 @@ let
           				rm -rf $out/etc
           			'';
       });
+      python313Packages = prev.python313Packages.overrideScope (
+        scopeFinal: scopePrev: {
+          jedi-language-server = scopePrev.jedi-language-server.overrideAttrs (old: {
+            pythonRelaxDeps = [
+              "jedi"
+            ];
+          });
+        }
+      );
       python3Packages = prev.python3Packages.overrideScope (
         scopeFinal: scopePrev: {
+          jedi-language-server = scopePrev.jedi-language-server.overrideAttrs (old: {
+            pythonRelaxDeps = [
+              "jedi"
+            ];
+          });
           opentype-feature-freezer-fixed = scopePrev.opentype-feature-freezer.overrideAttrs (old: {
             postPatch = ''
               	substituteInPlace src/opentype_feature_freezer/__init__.py \

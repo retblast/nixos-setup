@@ -3,6 +3,12 @@
 }:
 with prev.lib.kernel;
 {
+  # for scx
+  BPF_JIT_ALWAYS_ON = prev.lib.mkForce yes;
+  PROVE_LOCKING = yes;
+  DEBUG_ATOMIC_SLEEP = yes;
+  DEBUG_LOCKDEP = yes;
+
   # Zswap stuff
   ZSWAP_SHRINKER_DEFAULT_ON = yes;
   ZSMALLOC_STAT = yes;

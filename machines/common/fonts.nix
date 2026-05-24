@@ -35,7 +35,7 @@
       roboto-slab
       roboto-mono
       jetbrains-mono-variable
-      #input-fonts
+      input-fonts
       source-sans
       source-serif
       source-code-pro
@@ -78,9 +78,9 @@
       cache32Bit = true;
       useEmbeddedBitmaps = false;
       hinting = {
-        enable = true;
-        style = "slight";
-        autohint = true;
+        enable = false;
+        style = "none";
+        autohint = false;
       };
       localConf = ''
         				<fontconfig>
@@ -140,7 +140,7 @@
           "Cantarell"
         ];
         serif = [ "Roboto Slab" ];
-        monospace = [ "JetBrains Mono" ];
+        monospace = [ "Input Mono Condensed" ];
         emoji = [ "Blobmoji" ];
       };
     };

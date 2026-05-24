@@ -39,13 +39,13 @@ let
 in
 effectiveStdenv.mkDerivation (finalAttrs: {
   pname = "koboldcpp";
-  version = "1.111.1";
+  version = "1.112.2";
 
   src = fetchFromGitHub {
     owner = "LostRuins";
     repo = "koboldcpp";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-9TWglH3q4nMdKz3k9KIVOIe80qttq26Rmrkh2osaaB4=";
+    hash = "sha256-OjARVGfZ1O4y8gZCNjhu56FXB+X3/ZjqNxkSUywQNOY=";
   };
 
   enableParallelBuilding = true;
@@ -61,6 +61,12 @@ effectiveStdenv.mkDerivation (finalAttrs: {
       --replace-fail \
         'CUBLASLD_FLAGS = -lcuda ' \
         'CUBLASLD_FLAGS = '
+    nixLog "patching $PWD/Makefile to replace -march=native with explicit arch"
+        substituteInPlace "$PWD/Makefile" \
+        --replace-fail \
+            '-march=native' \
+            '-march=alderlake'
+
   '';
 
   pythonInputs = builtins.attrValues { inherit (python3Packages) tkinter customtkinter packaging; };

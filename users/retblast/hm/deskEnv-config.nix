@@ -135,7 +135,7 @@
         require-pressure-to-show = true;
         show-delay = lib.hm.gvariant.mkDouble 0.10000000000000002;
         hide-delay = lib.hm.gvariant.mkDouble 0.050000000000000017;
-        dash-max-icon-size = 48;
+        dash-max-icon-size = 64;
         show-show-apps-button = true;
         click-action = lib.hm.gvariant.mkString "focus-minimize-or-appspread";
         show-icons-emblems = false;
@@ -279,11 +279,12 @@
       };
       "org/gnome/desktop/interface" = {
         # icon-theme = "MoreWaita";
-        font-name = "system-ui 11";
-        document-font-name = "sans 11";
-        monospace-font-name = "monospace 11";
+        font-name = "system-ui 12";
+        document-font-name = "sans 12";
+        monospace-font-name = "monospace 12";
         font-hinting = "${taihouConfig.fonts.fontconfig.hinting.style}";
         font-rendering = "manual";
+        gtk-enable-primary-paste = true;
       };
     };
   };

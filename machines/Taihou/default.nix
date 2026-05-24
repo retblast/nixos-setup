@@ -29,6 +29,12 @@
   #  };
   #};
 
+  # When set to auto, this uses the same amount of logical threads
+  # It's also the same for cores when set to 0, so processes
+  # and thus cpu & memory usage can skyrocket
+  # Limit this to 4, seems reasonable enough.
+  nix.settings.max-jobs = 4;
+
   networking.hostName = "Taihou";
   systemd = {
     services = {
@@ -70,7 +76,7 @@
 
       adl-smp-affinity-list = {
         # Do not enable when using to intel lpmd
-        enable = !config.localModule.intel_lpmd.enable;
+        enable = !config.localModule.intel_lpmd.enable && !config.services.scx.enable;
         description = "Set the smp_affinity_list to the E-cores";
         after = [
           "multi-user.target"
@@ -127,23 +133,15 @@
     };
     tmpfiles = {
       rules = [
-        # Might not be very useful
-        # PL1 = 45W (rated TDP for i5-12500H), PL2 = 65W (meaningful burst headroom)
-        # MSR path
-        # "w /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_0_power_limit_uw  - - - - 45000000"
-        # "w /sys/class/powercap/intel-rapl/intel-rapl:0/constraint_1_power_limit_uw  - - - - 65000000"
-        # MMIO path — must match, otherwise firmware wins
-        # "w /sys/class/powercap/intel-rapl-mmio/intel-rapl-mmio:0/constraint_0_power_limit_uw - - - - 45000000"
-        # "w /sys/class/powercap/intel-rapl-mmio/intel-rapl-mmio:0/constraint_1_power_limit_uw - - - - 65000000"
       ];
     };
   };
 
   # Desktop Environment
-  localModule.plasma.enable = true;
-  localModule.plasma.minimal.enable = false;
+  localModule.gnome.enable = true;
+  localModule.gnome.minimal.enable = false;
 
-  localModule.intel_lpmd.enable = true;
+  localModule.intel_lpmd.enable = false;
   localModule.intel_lpmd.debug = false;
   localModule.intel_lpmd.settings = ''
     <?xml version="1.0"?>
@@ -159,7 +157,7 @@
     <Configuration>
 
         <lp_mode_cpus>8-15</lp_mode_cpus>
-        <Mode>0</Mode>
+        <Mode>1</Mode>
 
         <PerformanceDef>-1</PerformanceDef>
         <BalancedDef>0</BalancedDef>
@@ -175,11 +173,11 @@
         <util_entry_threshold>15</util_entry_threshold>
         <util_exit_threshold>90</util_exit_threshold>
 
-        <EntryDelayMS>0</EntryDelayMS>
-        <ExitDelayMS>0</ExitDelayMS>
+        <EntryDelayMS>2500</EntryDelayMS>
+        <ExitDelayMS>2500</ExitDelayMS>
 
-        <EntryHystMS>2000</EntryHystMS>
-        <ExitHystMS>3000</ExitHystMS>
+        <EntryHystMS>2500</EntryHystMS>
+        <ExitHystMS>5000</ExitHystMS>
 
         <IgnoreITMT>0</IgnoreITMT>
 
@@ -193,8 +191,8 @@
                 <Name>UTIL_IDLE</Name>
                 <EnterCPULoadThres>15</EnterCPULoadThres>
                 <EntrySystemLoadThres>6</EntrySystemLoadThres>
-                <EPP>170</EPP>
-                <EPB>10</EPB>
+                <EPP>119</EPP>
+                <EPB>9</EPB>
                 <ActiveCPUs>lp</ActiveCPUs>
                 <MinPollInterval>500</MinPollInterval>
                 <PollIntervalIncrement>400</PollIntervalIncrement>
@@ -206,37 +204,16 @@
             <State>
                 <ID>2</ID>
                 <Name>UTIL_BATTERY_LIFE</Name>
-                <EnterCPULoadThres>25</EnterCPULoadThres>
+                <EnterCPULoadThres>20</EnterCPULoadThres>
                 <EntrySystemLoadThres>15</EntrySystemLoadThres>
-                <EPP>119</EPP>
+                <EPP>85</EPP>
                 <EPB>7</EPB>
                 <ActiveCPUs>lp</ActiveCPUs>
                 <MinPollInterval>400</MinPollInterval>
                 <PollIntervalIncrement>300</PollIntervalIncrement>
-                <MaxPollInterval>2000</MaxPollInterval>
+                <MaxPollInterval>3000</MaxPollInterval>
                 <ITMTState>-1</ITMTState>
                 <IRQMigrate>1</IRQMigrate>
-            </State>
-
-            <!--
-            UTIL_MODERATE restored as intermediate ladder rung.
-            Transient spikes land here rather than jumping straight
-            to HIGH (EPP 34). EPP stays at 119 — same as BATTERY_LIFE,
-            but all cores are active and IRQ migration is off.
-            -->
-            <State>
-                <ID>3</ID>
-                <Name>UTIL_MODERATE</Name>
-                <EnterCPULoadThres>55</EnterCPULoadThres>
-                <EntrySystemLoadThres>35</EntrySystemLoadThres>
-                <EPP>85</EPP>
-                <EPB>5</EPB>
-                <ActiveCPUs>all</ActiveCPUs>
-                <MinPollInterval>600</MinPollInterval>
-                <PollIntervalIncrement>300</PollIntervalIncrement>
-                <MaxPollInterval>1500</MaxPollInterval>
-                <ITMTState>-1</ITMTState>
-                <IRQMigrate>-1</IRQMigrate>
             </State>
 
             <State>
@@ -275,6 +252,7 @@
   };
 
   services = {
+
     # Might not be very useful
     # udev.extraRules = ''
     #  # More reasonable power limits

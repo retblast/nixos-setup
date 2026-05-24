@@ -30,7 +30,12 @@
     daemonIOSchedClass = "idle";
     daemonCPUSchedPolicy = "idle";
   };
+
   services = {
+    scx = {
+      enable = true;
+      scheduler = "scx_lavd";
+    };
     # SMART daemon
     smartd = {
       enable = true;

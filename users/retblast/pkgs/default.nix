@@ -13,11 +13,9 @@
     # TODO: Organize better
 
     # AI
-    llama-cpp-vulkan
-    ollama-vulkan
     usable-whisperx.whisperx
     koboldcpp
-    stable-diffusion-cpp-vulkan
+    stable-diffusion-cpp-vulkan # just for sd-cli's quantization ability
 
     # Virt
     virt-manager

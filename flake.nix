@@ -30,6 +30,10 @@
       url = "github:nix-community/disko/latest";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    kwin-effects-better-blur-dx = {
+      url = "github:xarblu/kwin-effects-better-blur-dx";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # Let's not try this
     # plasma-manager = {
     # 	url = "github:nix-community/plasma-manager";
@@ -44,6 +48,7 @@
       nixpkgs,
       home-manager,
       nix-index-database,
+      nix-vscode-extensions,
       disko,
       ...
     }@inputs:
@@ -53,7 +58,7 @@
         # TODO: Consider making general overlays for multiple machines
         overlays = [
           # TODO: Someday get how the n-v-e overlay works/is constructed
-          inputs.nix-vscode-extensions.overlays.default
+          nix-vscode-extensions.overlays.default
         ]
         ++ import ./overlay { inherit inputs; };
         system = "x86_64-linux";

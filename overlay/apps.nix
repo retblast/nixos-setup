@@ -28,7 +28,7 @@ let
           prev.vscode-marketplace.github.vscode-pull-request-github
           prev.vscode-marketplace.jnoortheen.nix-ide
           prev.vscode-marketplace.mkhl.direnv
-          prev.vscode-marketplace.ms-python.python
+          # prev.vscode-marketplace.ms-python.python
           prev.vscode-marketplace.ms-toolsai.jupyter
           prev.vscode-marketplace.ms-toolsai.jupyter-keymap
           prev.vscode-marketplace.ms-toolsai.jupyter-renderers
@@ -95,7 +95,7 @@ let
 
       google-chrome = prev.google-chrome.override {
         # Testing: No vulkan
-        commandLineArgs = "--enable-features=TouchpadOverscrollHistoryNavigation,AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,ParallelDownloading,UseMultiPlaneFormatForHardwareVideo,WaylandLinuxDrmSyncobj,WaylandPerSurfaceScale,WaylandTextInputV3,WaylandUiScale --disable-font-subpixel-positioning=true --enable-zero-copy=true";
+        commandLineArgs = "--enable-features=TouchpadOverscrollHistoryNavigation,AcceleratedVideoEncoder,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,ParallelDownloading,UseMultiPlaneFormatForHardwareVideo,WaylandLinuxDrmSyncobj,WaylandPerSurfaceScale,WaylandTextInputV3,WaylandUiScale,VerticalTabs --disable-font-subpixel-positioning=true --enable-zero-copy=true";
         # TODO: Find out how to enable this only when running KDE
 
         plasmaSupport = true;

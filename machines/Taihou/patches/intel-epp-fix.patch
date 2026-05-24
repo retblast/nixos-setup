@@ -16,14 +16,14 @@ index 9c4cc01fd..6991306c4 100644
 +	 *  255/15 = 17, 7 * 17 = 119
 +	 * 
 +	 *  So, set:
-+	 *  Power: 221
-+	 *  Balance power: 170
-+	 *  Balance performance: 119
-+	 *  Performance 17
++	 *  Power: 170
++	 *  Balance power: 119
++	 *  Balance performance: 85
++	 *  Performance 34
 +	 */
 +	
-+	X86_MATCH_VFM(INTEL_ALDERLAKE_L, HWP_SET_EPP_VALUES(221,
-+		      170, 119, 17)),
++	X86_MATCH_VFM(INTEL_ALDERLAKE_L, HWP_SET_EPP_VALUES(170,
++		      119, 85, 34)),
  	X86_MATCH_VFM(INTEL_SAPPHIRERAPIDS_X, HWP_SET_DEF_BALANCE_PERF_EPP(32)),
  	X86_MATCH_VFM(INTEL_EMERALDRAPIDS_X, HWP_SET_DEF_BALANCE_PERF_EPP(32)),
  	X86_MATCH_VFM(INTEL_GRANITERAPIDS_X, HWP_SET_DEF_BALANCE_PERF_EPP(32)),

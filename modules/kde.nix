@@ -50,6 +50,7 @@ in
           # UI customization
           kde-material-you-colors
           klassy
+          kwin-effects-better-blur-dx
 
           #  Extra KDE stuff
           kdePackages.filelight
@@ -66,6 +67,8 @@ in
           kdePackages.akregator
           kdePackages.kmplot
           kdePackages.kitinerary
+          kdePackages.kalk
+          qalculate-qt # Not KDE, but a nice QT calculator
         ]
         ++ lib.optionals (!cfg.plasma.minimal.enable) [
 

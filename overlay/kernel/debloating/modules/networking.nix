@@ -82,6 +82,9 @@ with prev.lib.kernel;
   NET_VENDOR_WANGXUN = prev.lib.mkForce no;
   NET_VENDOR_WIZNET = prev.lib.mkForce no;
   NET_VENDOR_XILINX = prev.lib.mkForce no;
+  NET_VENDOR_DLINK = prev.lib.mkForce no;
+  NET_VENDOR_SMSC = prev.lib.mkForce no;
+  NET_DSA = prev.lib.mkForce no;
 
   FDDI = prev.lib.mkForce no;
   HIPPI = prev.lib.mkForce no;
