@@ -17,6 +17,13 @@
     ../../users/testuser
   ];
 
+  hardware.opentabletdriver = {
+    enable = true;
+  };
+
+  # override to scx_bpfland
+  # services.scx.scheduler = lib.mkForce "scx_bpfland";
+
   #nix.settings.system-features = [ "gccarch-alderlake" ];
   # Doesn't seem to work
   #nixpkgs = {
@@ -76,7 +83,7 @@
 
       adl-smp-affinity-list = {
         # Do not enable when using to intel lpmd
-        enable = !config.localModule.intel_lpmd.enable && !config.services.scx.enable;
+        enable = !config.localModule.intel_lpmd.enable;
         description = "Set the smp_affinity_list to the E-cores";
         after = [
           "multi-user.target"
@@ -237,7 +244,7 @@
   '';
   localModule.performance.memory = {
     zswap = {
-      enable = true;
+      enable = false;
       size = 23726;
       hibernation = {
         enable = false;
@@ -246,19 +253,12 @@
       };
     };
     zram = {
-      enable = false;
+      enable = true;
       size = 200;
     };
   };
 
   services = {
-
-    # Might not be very useful
-    # udev.extraRules = ''
-    #  # More reasonable power limits
-    #  SUBSYSTEM=="power_supply", ATTR{online}=="0", RUN+="${pkgs.reasonable-power-limits-adlh-fish}/bin/reasonable-power-limits-adlh battery"
-    #  SUBSYSTEM=="power_supply", ATTR{online}=="1", RUN+="${pkgs.reasonable-power-limits-adlh-fish}/bin/reasonable-power-limits-adlh ac"
-    # '';
     mysql = {
       # Enabled because of Uni
       # /run/mysqld/mysqld.sock is where the socket is
@@ -267,6 +267,13 @@
       # $ show variables like 'socket';
       enable = true;
       package = pkgs.mariadb;
+      settings = {
+        mysqld = {
+          bind-address = "127.0.0.1";
+          port = 3306;
+          skip-networking = false;
+        };
+      };
       ensureUsers = [
         {
           name = "retblast";

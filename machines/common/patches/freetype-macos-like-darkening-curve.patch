@@ -1,0 +1,27 @@
+diff --git a/include/freetype/config/ftoption.h b/include/freetype/config/ftoption.h
+index aa604b9..a6267a7 100644
+--- a/include/freetype/config/ftoption.h
++++ b/include/freetype/config/ftoption.h
+@@ -906,16 +906,16 @@ FT_BEGIN_HEADER
+    * Do **not** undefine these macros!
+    */
+ #define CFF_CONFIG_OPTION_DARKENING_PARAMETER_X1   500
+-#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y1   400
++#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y1   450
+ 
+ #define CFF_CONFIG_OPTION_DARKENING_PARAMETER_X2  1000
+-#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y2   275
++#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y2   375
+ 
+-#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_X3  1667
+-#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y3   275
++#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_X3  3000
++#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y3   300
+ 
+-#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_X4  2333
+-#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y4     0
++#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_X4 10000
++#define CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y4   200
+ 
+ 
+   /**************************************************************************

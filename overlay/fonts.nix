@@ -146,7 +146,7 @@ let
         src = prev.fetchzip {
           name = "${prev.input-fonts.pname}-${prev.input-fonts.version}";
           url = "https://input.djr.com/build/?fontSelection=whole&a=0&g=ss&i=serif&l=serif&zero=slash&asterisk=0&braces=straight&preset=default&line-height=1.2&accept=I+do&email=&.zip";
-          hash = "sha256-+HAjWo/nwBS49dHYRKjZdO8P6PICCfqyEcrnNr2IvMc=";
+          hash = "sha256-uerfdcVGFxGyZ5XpVkUUdJrFVKuEjnpqoKtPR1b0IwU=";
           stripRoot = false;
         };
       });
@@ -176,7 +176,10 @@ let
         			end
         		'';
 
-      commit-mono-retblast = prev.callPackage ./localDerivations/commit-mono-retblast.nix { };
+      commit-mono-retblast = prev.callPackage ./localDerivations/commit-mono-retblast.nix {
+        python3 = prev.python3Packages.python;
+        fonttools = prev.python3Packages.fonttools;
+      };
 
       # prev.commit-mono.overrideAttrs(old: {
       #   postInstall = ''

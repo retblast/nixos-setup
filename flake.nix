@@ -8,13 +8,13 @@
     # nixpkgs.url = "github:NixOS/nixpkgs/pull/485055/head";
     # I use this for things I need the stable version for
     # Basically, easy "forwardporting"
-    nixpkgs-stable.url = "nixpkgs/nixos-25.11";
+    nixpkgs-stable.url = "nixpkgs/nixos-26.05";
     # As of writing, 6th december 2025, nixpkgs has pyannote-audio 4.0.1, which doesn't work with whisperX
     # TODO: https://github.com/m-bain/whisperX/issues/1241
-    nixpkgs-usable-whisperx.url = "nixpkgs/baa35fb3cd45d75c9e4e4466a191e6c99c3b2d31";
+    # nixpkgs-usable-whisperx.url = "nixpkgs/baa35fb3cd45d75c9e4e4466a191e6c99c3b2d31";
     # TODO: https://github.com/NixOS/nixpkgs/issues/467263
     # In general, the QT update was a mess, I'll try again with normal EE when this gets fixed.
-    nixpkgs-usable-easyeffects.url = "nixpkgs/21a328d166594e938deb8d5c668ff3527ca3d9a0";
+    # nixpkgs-usable-easyeffects.url = "nixpkgs/21a328d166594e938deb8d5c668ff3527ca3d9a0";
     # nixpkgs.url = "nixpkgs/9da7f1c";
     # nixpkgs.url = "github:NixOS/nixpkgs/pull/426048/head";
     home-manager = {
@@ -75,6 +75,8 @@
             "ciscoPacketTracer8-8.2.2"
             # Because of Neochat
             "olm-3.2.16"
+            # Bitwarden
+            "electron-39.8.10"
 
           ];
         };

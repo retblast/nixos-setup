@@ -33,6 +33,9 @@
 
       # Use the LITTLE cores more
       "irqaffinity=0,12-15"
+
+      # Intel Pstate
+      # "intel_pstate=passive"
     ];
     extraModprobeConfig = ''
       			# Godforsaken MT7921

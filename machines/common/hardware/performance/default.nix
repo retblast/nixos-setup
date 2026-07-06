@@ -35,6 +35,7 @@
     scx = {
       enable = true;
       scheduler = "scx_lavd";
+      extraArgs = [ "--autopower" ];
     };
     # SMART daemon
     smartd = {

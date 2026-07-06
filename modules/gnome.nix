@@ -60,6 +60,8 @@ in
       systemPackages =
         with pkgs;
         [
+          # Code editor
+          editide
           # Thumbnailers
           # TODO: Write about this
           gnome-epub-thumbnailer
@@ -90,6 +92,9 @@ in
           libreoffice-fresh
         ]
         ++ lib.optionals (!cfg.gnome.minimal.enable) [
+
+          # Writing
+          typesetter
 
           # Note Taking
           rnote

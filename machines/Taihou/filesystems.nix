@@ -52,23 +52,23 @@
                       mountOptions = [ "compress=zstd:1" ];
                       mountpoint = "/";
                       subvolumes = {
-                        "@" = {
+                        "root" = {
                           mountpoint = "/";
                           mountOptions = [ "compress=zstd:1" ];
                         };
-                        "@home" = {
+                        "home" = {
                           mountpoint = "/home";
                           mountOptions = [ "compress=zstd:1" ];
                         };
-                        "@nix" = {
+                        "nix" = {
                           mountpoint = "/nix";
                           mountOptions = [ "compress=zstd:1" ];
                         };
-                        "@var_log" = {
+                        "var_log" = {
                           mountpoint = "/var/log";
                           mountOptions = [ "compress=zstd:1" ];
                         };
-                        "@swap" = {
+                        "swap" = {
                           mountpoint = "/swap";
                           mountOptions = [ "compress=zstd:1" ];
                         };

@@ -1,0 +1,651 @@
+--- a/src/kde_material_you_colors/schemeconfigs.py
++++ b/src/kde_material_you_colors/schemeconfigs.py
+@@ -5,12 +5,361 @@
+     scale_saturation,
+     blend2contrast,
+     sort_colors_luminance,
++    color_luminance,
+     hex2alpha,
+     hex2rgb,
+ )
+ from kde_material_you_colors.utils import string_utils
+ 
+ 
++def _contrast_ratio(color_a, color_b):
++    lum_a = float(color_luminance(color_a)[1])
++    lum_b = float(color_luminance(color_b)[1])
++    lighter = max(lum_a, lum_b)
++    darker = min(lum_a, lum_b)
++    return (lighter + 0.05) / (darker + 0.05)
++
++
++def _readable_foreground(preferred, background, fallback, min_ratio=4.5, label=None):
++    return _best_readable_foreground(
++        preferred,
++        background,
++        (fallback,),
++        min_ratio=min_ratio,
++        label=label,
++    )
++
++
++def _best_readable_foreground(
++    preferred, background, candidates=(), min_ratio=4.5, label=None
++):
++    candidate_colors = (preferred,) + tuple(candidates) + ("#ffffff", "#000000")
++    scored = [(color, _contrast_ratio(color, background)) for color in candidate_colors]
++    preferred_ratio = scored[0][1]
++    fallback = candidates[0] if candidates else preferred
++    fallback_ratio = _contrast_ratio(fallback, background)
++    white_ratio = _contrast_ratio("#ffffff", background)
++    black_ratio = _contrast_ratio("#000000", background)
++
++    if preferred_ratio >= min_ratio:
++        chosen = preferred
++        reason = "preferred"
++    else:
++        chosen, _ = max(scored[1:], key=lambda item: item[1])
++        reason = "candidate"
++        if chosen in ("#ffffff", "#000000"):
++            reason = "black/white"
++
++    if label is not None:
++        logging.warning(
++            "[kde-material-you-colors contrast guard] "
++            "%s bg=%s preferred=%s %.2f:1 fallback=%s %.2f:1 "
++            "white=%.2f:1 black=%.2f:1 min=%.2f chosen=%s (%s)",
++            label,
++            background,
++            preferred,
++            preferred_ratio,
++            fallback,
++            fallback_ratio,
++            white_ratio,
++            black_ratio,
++            min_ratio,
++            chosen,
++            reason,
++        )
++
++    return chosen
++
++
++def _kde_color_set(
++    background_normal,
++    background_alternate,
++    foreground_normal,
++    foreground_inactive,
++    foreground_active,
++    decoration,
++    extras,
++    mode,
++    container_links=False,
++):
++    extra_role = "container" if container_links else "color"
++    return {
++        "BackgroundAlternate": background_alternate,
++        "BackgroundNormal": background_normal,
++        "DecorationFocus": decoration,
++        "DecorationHover": decoration,
++        "ForegroundActive": foreground_active,
++        "ForegroundInactive": foreground_inactive,
++        "ForegroundLink": extras["link"][mode][extra_role],
++        "ForegroundNegative": extras["negative"][mode][extra_role],
++        "ForegroundNeutral": extras["neutral"][mode][extra_role],
++        "ForegroundNormal": foreground_normal,
++        "ForegroundPositive": extras["positive"][mode][extra_role],
++        "ForegroundVisited": extras["visited"][mode][extra_role],
++    }
++
++
++def _format_kde_color_set(name, roles, inactive=False):
++    header = f"[Colors:{name}]"
++    if inactive:
++        header += "[Inactive]"
++
++    keys = (
++        "BackgroundAlternate",
++        "BackgroundNormal",
++        "DecorationFocus",
++        "DecorationHover",
++        "ForegroundActive",
++        "ForegroundInactive",
++        "ForegroundLink",
++        "ForegroundNegative",
++        "ForegroundNeutral",
++        "ForegroundNormal",
++        "ForegroundPositive",
++        "ForegroundVisited",
++    )
++    body = "\n".join(f"{key}={roles[key]}" for key in keys)
++    return f"{header}\n{body}"
++
++
++def _build_kde_roles(material, extras, mode):
++    is_dark = mode == "dark"
++    view_bg = material["surfaceDim"] if is_dark else material["surfaceBright"]
++    text_bg = material["surfaceContainer"]
++    selection_bg = material["secondaryContainer"]
++
++    # KDE/Breeze mixes color sets in real widgets. For example, Dolphin and
++    # menu bars can draw a View/Selection foreground on a Window/Header
++    # background. Resolve the important UI colors as semantic pairs first,
++    # then write every KDE color set from those guarded values.
++    normal_text = _best_readable_foreground(
++        material["onSurfaceVariant"],
++        text_bg,
++        (material["onSurface"],),
++        label=f"{mode} semantic normal text",
++    )
++    strong_text = _best_readable_foreground(
++        material["onSurface"],
++        text_bg,
++        (normal_text,),
++        label=f"{mode} semantic strong text",
++    )
++    muted_text = _best_readable_foreground(
++        material["outline"],
++        text_bg,
++        (normal_text, strong_text),
++        min_ratio=3.0,
++        label=f"{mode} semantic inactive text",
++    )
++    selection_text = _best_readable_foreground(
++        material["onSecondaryContainer"],
++        selection_bg,
++        (material["onSurface"], strong_text),
++        label=f"{mode} semantic selection text",
++    )
++    view_text = _best_readable_foreground(
++        material["onSurface"],
++        view_bg,
++        (strong_text, normal_text),
++        label=f"{mode} semantic view text",
++    )
++    view_muted_text = _best_readable_foreground(
++        material["outline"],
++        view_bg,
++        (view_text, muted_text),
++        min_ratio=3.0,
++        label=f"{mode} semantic view inactive text",
++    )
++
++    sets = {
++        "Button": _kde_color_set(
++            material["surfaceContainerHigh"],
++            material["surfaceVariant"],
++            strong_text,
++            muted_text,
++            selection_text,
++            selection_bg,
++            extras,
++            mode,
++        ),
++        "Complementary": _kde_color_set(
++            text_bg,
++            material["surface"],
++            normal_text,
++            muted_text,
++            selection_text,
++            selection_bg,
++            extras,
++            mode,
++        ),
++        "Header": _kde_color_set(
++            text_bg,
++            text_bg,
++            normal_text,
++            muted_text,
++            selection_text,
++            selection_bg,
++            extras,
++            mode,
++        ),
++        "Selection": _kde_color_set(
++            selection_bg,
++            selection_bg,
++            selection_text,
++            selection_text,
++            selection_text,
++            selection_bg,
++            extras,
++            mode,
++            container_links=True,
++        ),
++        "Tooltip": _kde_color_set(
++            text_bg,
++            material["surfaceVariant"],
++            strong_text,
++            muted_text,
++            selection_text,
++            selection_bg,
++            extras,
++            mode,
++        ),
++        "View": _kde_color_set(
++            view_bg,
++            text_bg,
++            view_text,
++            view_muted_text,
++            selection_text,
++            selection_bg,
++            extras,
++            mode,
++        ),
++        "Window": _kde_color_set(
++            text_bg,
++            material["surfaceVariant"],
++            normal_text,
++            muted_text,
++            selection_text,
++            selection_bg,
++            extras,
++            mode,
++        ),
++    }
++
++    wm_active_bg = material["surfaceContainerHighest"]
++    wm_inactive_bg = selection_bg
++    wm_active_text = _best_readable_foreground(
++        material["onSurface"],
++        wm_active_bg,
++        (strong_text, normal_text),
++        label=f"{mode} WM activeForeground",
++    )
++    wm_inactive_text = _best_readable_foreground(
++        material["onSecondaryContainer"],
++        wm_inactive_bg,
++        (material["onSurface"], strong_text),
++        label=f"{mode} WM inactiveForeground",
++    )
++
++    roles = {
++        "sets": sets,
++        "wm_active_bg": wm_active_bg,
++        "wm_active_text": wm_active_text,
++        "wm_inactive_bg": wm_inactive_bg,
++        "wm_inactive_text": wm_inactive_text,
++    }
++    _validate_kde_role_pairs(roles, mode)
++    return roles
++
++
++def _validate_kde_role_pairs(roles, mode):
++    sets = roles["sets"]
++    checks = [
++        (
++            "View text on View background",
++            sets["View"]["ForegroundNormal"],
++            sets["View"]["BackgroundNormal"],
++            4.5,
++        ),
++        (
++            "View text on Window background",
++            sets["View"]["ForegroundNormal"],
++            sets["Window"]["BackgroundNormal"],
++            4.5,
++        ),
++        (
++            "Window text on Window background",
++            sets["Window"]["ForegroundNormal"],
++            sets["Window"]["BackgroundNormal"],
++            4.5,
++        ),
++        (
++            "Header text on Header background",
++            sets["Header"]["ForegroundNormal"],
++            sets["Header"]["BackgroundNormal"],
++            4.5,
++        ),
++        (
++            "Selection text on Selection background",
++            sets["Selection"]["ForegroundNormal"],
++            sets["Selection"]["BackgroundNormal"],
++            4.5,
++        ),
++        (
++            "Menu pressed text on View focus decoration",
++            sets["View"]["ForegroundActive"],
++            sets["View"]["DecorationFocus"],
++            4.5,
++        ),
++        (
++            "Tooltip active text on Tooltip focus decoration",
++            sets["Tooltip"]["ForegroundActive"],
++            sets["Tooltip"]["DecorationFocus"],
++            4.5,
++        ),
++        (
++            "Inactive window title",
++            roles["wm_inactive_text"],
++            roles["wm_inactive_bg"],
++            4.5,
++        ),
++    ]
++
++    for label, foreground, background, min_ratio in checks:
++        ratio = _contrast_ratio(foreground, background)
++        status = "ok" if ratio >= min_ratio else "FAIL"
++        logging.warning(
++            "[kde-material-you-colors KDE role matrix] "
++            "%s %s %s fg=%s bg=%s %.2f:1 min=%.2f",
++            mode,
++            label,
++            status,
++            foreground,
++            background,
++            ratio,
++            min_ratio,
++        )
++
++
++def _format_kde_sets(sets):
++    # Emit inactive groups explicitly. Otherwise KDE falls back through active
++    # roles plus inactive effects, which is where mixed light/dark contrast
++    # failures tend to appear.
++    order = (
++        "Button",
++        "Complementary",
++        "Header",
++        "Selection",
++        "Tooltip",
++        "View",
++        "Window",
++    )
++    sections = []
++    for name in order:
++        sections.append(_format_kde_color_set(name, sets[name]))
++        sections.append(_format_kde_color_set(name, sets[name], inactive=True))
++    return "\n\n".join(sections)
++
++
+ class ThemeConfig:
+     def __init__(
+         self,
+@@ -47,6 +396,10 @@
+         self._extras = colors["custom"]
+ 
+         extras = self.get_extras()
++        light_kde = _build_kde_roles(colors_light, extras, "light")
++        dark_kde = _build_kde_roles(colors_dark, extras, "dark")
++        light_kde_sets = _format_kde_sets(light_kde["sets"])
++        dark_kde_sets = _format_kde_sets(dark_kde["sets"])
+ 
+         best_colors_count = len(colors_best)
+         # bg , ansi 30
+@@ -248,119 +601,7 @@
+ IntensityAmount=0
+ IntensityEffect=0
+ 
+-[Colors:Button]
+-BackgroundAlternate={colors_light['surfaceVariant']}
+-BackgroundNormal={colors_light['surfaceContainerHigh']}
+-DecorationFocus={colors_light['primary']}
+-DecorationHover={colors_light['primary']}
+-ForegroundActive={colors_light['onSurface']}
+-ForegroundInactive={colors_light['outline']}
+-ForegroundLink={extras['link']['light']['color']}
+-ForegroundNegative={extras['negative']['light']['color']}
+-ForegroundNeutral={extras['neutral']['light']['color']}
+-ForegroundNormal={colors_light['onSurface']}
+-ForegroundPositive={extras['positive']['light']['color']}
+-ForegroundVisited={extras['visited']['light']['color']}
+-
+-[Colors:Complementary]
+-BackgroundAlternate={colors_light['surface']}
+-BackgroundNormal={colors_light['surfaceContainer']}
+-DecorationFocus={colors_light['primary']}
+-DecorationHover={colors_light['primary']}
+-ForegroundActive={colors_light['inverseSurface']}
+-ForegroundInactive={colors_light['outline']}
+-ForegroundLink={extras['link']['light']['color']}
+-ForegroundNegative={extras['negative']['light']['color']}
+-ForegroundNeutral={extras['neutral']['light']['color']}
+-ForegroundNormal={colors_light['onSurfaceVariant']}
+-ForegroundPositive={extras['positive']['light']['color']}
+-ForegroundVisited={extras['visited']['light']['color']}
+-
+-[Colors:Header]
+-BackgroundAlternate={colors_light['surfaceContainer']}
+-BackgroundNormal={colors_light['surfaceContainer']}
+-DecorationFocus={colors_light['primary']}
+-DecorationHover={colors_light['primary']}
+-ForegroundActive={colors_light['inverseSurface']}
+-ForegroundInactive={colors_light['outline']}
+-ForegroundLink={extras['link']['light']['color']}
+-ForegroundNegative={extras['negative']['light']['color']}
+-ForegroundNeutral={extras['neutral']['light']['color']}
+-ForegroundNormal={colors_light['onSurfaceVariant']}
+-ForegroundPositive={extras['positive']['light']['color']}
+-ForegroundVisited={extras['visited']['light']['color']}
+-
+-[Colors:Header][Inactive]
+-BackgroundAlternate={colors_light['surfaceContainer']}
+-BackgroundNormal={colors_light['surfaceContainer']}
+-DecorationFocus={colors_light['primary']}
+-DecorationHover={colors_light['primary']}
+-ForegroundActive={colors_light['inverseSurface']}
+-ForegroundInactive={colors_light['outline']}
+-ForegroundLink={extras['link']['light']['color']}
+-ForegroundNegative={extras['negative']['light']['color']}
+-ForegroundNeutral={extras['neutral']['light']['color']}
+-ForegroundNormal={colors_light['onSurfaceVariant']}
+-ForegroundPositive={extras['positive']['light']['color']}
+-ForegroundVisited={extras['visited']['light']['color']}
+-
+-[Colors:Selection]
+-BackgroundAlternate={colors_light['primary']}
+-BackgroundNormal={colors_light['primary']}
+-DecorationFocus={colors_light['primary']}
+-DecorationHover={colors_light['secondary']}
+-ForegroundActive={colors_light['onPrimary']}
+-ForegroundInactive={colors_light['onPrimary']}
+-ForegroundLink={extras['link']['light']['container']}
+-ForegroundNegative={extras['negative']['light']['container']}
+-ForegroundNeutral={extras['neutral']['light']['container']}
+-ForegroundNormal={colors_light['onPrimary']}
+-ForegroundPositive={extras['positive']['light']['container']}
+-ForegroundVisited={extras['visited']['light']['container']}
+-
+-[Colors:Tooltip]
+-BackgroundAlternate={colors_light['surfaceVariant']}
+-BackgroundNormal={colors_light['surfaceContainer']}
+-DecorationFocus={colors_light['primary']}
+-DecorationHover={colors_light['primary']}
+-ForegroundActive={colors_light['onSurface']}
+-ForegroundInactive={colors_light['outline']}
+-ForegroundLink={extras['link']['light']['color']}
+-ForegroundNegative={extras['negative']['light']['color']}
+-ForegroundNeutral={extras['neutral']['light']['color']}
+-ForegroundNormal={colors_light['onSurface']}
+-ForegroundPositive={extras['positive']['light']['color']}
+-ForegroundVisited={extras['visited']['light']['color']}
+-
+-[Colors:View]
+-BackgroundAlternate={colors_light['surfaceContainer']}
+-BackgroundNormal={colors_light['surfaceBright']}
+-DecorationFocus={colors_light['primary']}
+-#-----------------------------------------------
+-DecorationHover={colors_light['secondaryFixed']}
+-ForegroundActive={colors_light['inverseSurface']}
+-ForegroundInactive={colors_light['outline']}
+-ForegroundLink={extras['link']['light']['color']}
+-ForegroundNegative={extras['negative']['light']['color']}
+-ForegroundNeutral={extras['neutral']['light']['color']}
+-ForegroundNormal={colors_light['onSurface']}
+-ForegroundPositive={extras['positive']['light']['color']}
+-ForegroundVisited={extras['visited']['light']['color']}
+-
+-[Colors:Window]
+-BackgroundAlternate={colors_light['surfaceVariant']}
+-BackgroundNormal={colors_light['surfaceContainer']}
+-DecorationFocus={colors_light['primary']}
+-DecorationHover={colors_light['primary']}
+-ForegroundActive={extras['link']['light']['color']}
+-ForegroundInactive={colors_light['outline']}
+-ForegroundLink={extras['link']['light']['color']}
+-ForegroundNegative={extras['negative']['light']['color']}
+-ForegroundNeutral={extras['neutral']['light']['color']}
+-#--- Window titles, context icons
+-ForegroundNormal={colors_light['onSurfaceVariant']}
+-ForegroundPositive={extras['positive']['light']['color']}
+-ForegroundVisited={extras['visited']['light']['color']}
++{light_kde_sets}
+ 
+ [General]
+ ColorScheme=MaterialYouLight
+@@ -372,12 +613,12 @@
+ frameContrast={frame_contrast if frame_contrast is not None else 0.2}
+ 
+ [WM]
+-activeBackground={hex2alpha(colors_light["surfaceContainerHighest"],toolbar_opacity)}
++activeBackground={hex2alpha(light_kde["wm_active_bg"],toolbar_opacity)}
+ activeBlend=227,229,231
+-activeForeground={colors_light['onSurface']}
+-inactiveBackground={hex2alpha(colors_light['secondaryContainer'],toolbar_opacity)}
++activeForeground={light_kde["wm_active_text"]}
++inactiveBackground={hex2alpha(light_kde["wm_inactive_bg"],toolbar_opacity)}
+ inactiveBlend=239,240,241
+-inactiveForeground={colors_light['onSurfaceVariant']}
++inactiveForeground={light_kde["wm_inactive_text"]}
+         """
+ 
+         self._dark_scheme = f"""[ColorEffects:Disabled]
+@@ -400,119 +641,7 @@
+ IntensityAmount=0
+ IntensityEffect=0
+ 
+-[Colors:Button]
+-BackgroundAlternate={colors_dark['surfaceVariant']}
+-BackgroundNormal={colors_dark['surfaceContainerHigh']}
+-DecorationFocus={colors_dark['primary']}
+-DecorationHover={colors_dark['primary']}
+-ForegroundActive={colors_dark['onSurface']}
+-ForegroundInactive={colors_dark['outline']}
+-ForegroundLink={extras['link']['dark']['color']}
+-ForegroundNegative={extras['negative']['dark']['color']}
+-ForegroundNeutral={extras['neutral']['dark']['color']}
+-ForegroundNormal={colors_dark['onSurface']}
+-ForegroundPositive={extras['positive']['dark']['color']}
+-ForegroundVisited={extras['visited']['dark']['color']}
+-
+-[Colors:Complementary]
+-BackgroundAlternate={colors_dark['surface']}
+-BackgroundNormal={colors_dark['surfaceContainer']}
+-DecorationFocus={colors_dark['primary']}
+-DecorationHover={colors_dark['primary']}
+-ForegroundActive={colors_dark['inverseSurface']}
+-ForegroundInactive={colors_dark['outline']}
+-ForegroundLink={extras['link']['dark']['color']}
+-ForegroundNegative={extras['negative']['dark']['color']}
+-ForegroundNeutral={extras['neutral']['dark']['color']}
+-ForegroundNormal={colors_dark['onSurfaceVariant']}
+-ForegroundPositive={extras['positive']['dark']['color']}
+-ForegroundVisited={extras['visited']['dark']['color']}
+-
+-[Colors:Header]
+-BackgroundAlternate={colors_dark['surfaceContainer']}
+-BackgroundNormal={colors_dark['surfaceContainer']}
+-DecorationFocus={colors_dark['primary']}
+-DecorationHover={colors_dark['primary']}
+-ForegroundActive={colors_dark['inverseSurface']}
+-ForegroundInactive={colors_dark['outline']}
+-ForegroundLink={extras['link']['dark']['color']}
+-ForegroundNegative={extras['negative']['dark']['color']}
+-ForegroundNeutral={extras['neutral']['dark']['color']}
+-ForegroundNormal={colors_dark['onSurfaceVariant']}
+-ForegroundPositive={extras['positive']['dark']['color']}
+-ForegroundVisited={extras['visited']['dark']['color']}
+-
+-[Colors:Header][Inactive]
+-BackgroundAlternate={colors_dark['surfaceContainer']}
+-BackgroundNormal={colors_dark['surfaceContainer']}
+-DecorationFocus={colors_dark['primary']}
+-DecorationHover={colors_dark['primary']}
+-ForegroundActive={colors_dark['inverseSurface']}
+-ForegroundInactive={colors_dark['outline']}
+-ForegroundLink={extras['link']['dark']['color']}
+-ForegroundNegative={extras['negative']['dark']['color']}
+-ForegroundNeutral={extras['neutral']['dark']['color']}
+-ForegroundNormal={colors_dark['onSurfaceVariant']}
+-ForegroundPositive={extras['positive']['dark']['color']}
+-ForegroundVisited={extras['visited']['dark']['color']}
+-
+-[Colors:Selection]
+-BackgroundAlternate={colors_dark['primary']}
+-BackgroundNormal={colors_dark['primary']}
+-DecorationFocus={colors_dark['primary']}
+-DecorationHover={colors_dark['secondary']}
+-ForegroundActive={colors_dark['onPrimary']}
+-ForegroundInactive={colors_dark['onPrimary']}
+-ForegroundLink={extras['link']['dark']['container']}
+-ForegroundNegative={extras['negative']['dark']['container']}
+-ForegroundNeutral={extras['neutral']['dark']['container']}
+-ForegroundNormal={colors_dark['onPrimary']}
+-ForegroundPositive={extras['positive']['dark']['container']}
+-ForegroundVisited={extras['visited']['dark']['container']}
+-
+-[Colors:Tooltip]
+-BackgroundAlternate={colors_dark['surfaceVariant']}
+-BackgroundNormal={colors_dark['surfaceContainer']}
+-DecorationFocus={colors_dark['primary']}
+-DecorationHover={colors_dark['primary']}
+-ForegroundActive={colors_dark['onSurface']}
+-ForegroundInactive={colors_dark['outline']}
+-ForegroundLink={extras['link']['dark']['color']}
+-ForegroundNegative={extras['negative']['dark']['color']}
+-ForegroundNeutral={extras['neutral']['dark']['color']}
+-ForegroundNormal={colors_dark['onSurface']}
+-ForegroundPositive={extras['positive']['dark']['color']}
+-ForegroundVisited={extras['visited']['dark']['color']}
+-
+-[Colors:View]
+-BackgroundAlternate={colors_dark['surfaceContainer']}
+-BackgroundNormal={colors_dark['surfaceDim']}
+-DecorationFocus={colors_dark['primary']}
+-#-----------------------------------------------
+-DecorationHover={colors_dark['inversePrimary']}
+-ForegroundActive={colors_dark['inverseSurface']}
+-ForegroundInactive={colors_dark['outline']}
+-ForegroundLink={extras['link']['dark']['color']}
+-ForegroundNegative={extras['negative']['dark']['color']}
+-ForegroundNeutral={extras['neutral']['dark']['color']}
+-ForegroundNormal={colors_dark['onSurface']}
+-ForegroundPositive={extras['positive']['dark']['color']}
+-ForegroundVisited={extras['visited']['dark']['color']}
+-
+-[Colors:Window]
+-BackgroundAlternate={colors_dark['surfaceVariant']}
+-BackgroundNormal={colors_dark['surfaceContainer']}
+-DecorationFocus={colors_dark['primary']}
+-DecorationHover={colors_dark['primary']}
+-ForegroundActive={extras['link']['dark']['color']}
+-ForegroundInactive={colors_dark['outline']}
+-ForegroundLink={extras['link']['dark']['color']}
+-ForegroundNegative={extras['negative']['dark']['color']}
+-ForegroundNeutral={extras['neutral']['dark']['color']}
+-#--- Window titles, context icons
+-ForegroundNormal={colors_dark['onSurfaceVariant']}
+-ForegroundPositive={extras['positive']['dark']['color']}
+-ForegroundVisited={extras['visited']['dark']['color']}
++{dark_kde_sets}
+ 
+ [General]
+ ColorScheme=MaterialYouDark
+@@ -524,12 +653,12 @@
+ frameContrast={frame_contrast if frame_contrast is not None else 0.2}
+ 
+ [WM]
+-activeBackground={hex2alpha(colors_dark['surfaceContainerHighest'],toolbar_opacity_dark)}
++activeBackground={hex2alpha(dark_kde["wm_active_bg"],toolbar_opacity_dark)}
+ activeBlend=252,252,252
+-activeForeground={colors_dark['onSurface']}
+-inactiveBackground={hex2alpha(colors_dark['secondaryContainer'],toolbar_opacity_dark)}
++activeForeground={dark_kde["wm_active_text"]}
++inactiveBackground={hex2alpha(dark_kde["wm_inactive_bg"],toolbar_opacity_dark)}
+ inactiveBlend=161,169,177
+-inactiveForeground={colors_dark['onSecondaryContainer']}
++inactiveForeground={dark_kde["wm_inactive_text"]}
+         """
+ 
+         self._wal_light_scheme = {

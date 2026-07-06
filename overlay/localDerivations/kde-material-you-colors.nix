@@ -26,9 +26,9 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   buildInputs = [
-    kdePackages.kdeplasma-addons
-    kdePackages.plasma-desktop
-    python-kde-material-you-colors
+    kdePackages.qtbase
+    kdePackages.libplasma
+    kdePackages.plasma5support
   ];
 
   strictDeps = true;

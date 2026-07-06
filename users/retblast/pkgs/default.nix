@@ -13,7 +13,7 @@
     # TODO: Organize better
 
     # AI
-    usable-whisperx.whisperx
+    whisperx
     koboldcpp
     stable-diffusion-cpp-vulkan # just for sd-cli's quantization ability
 

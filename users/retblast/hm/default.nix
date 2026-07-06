@@ -38,7 +38,7 @@
   programs.home-manager.enable = true;
   # Home-manager version
   # Update notes talk about it
-  home.stateVersion = "25.05";
+  home.stateVersion = "26.05";
 
   # man pages
   programs.man = {

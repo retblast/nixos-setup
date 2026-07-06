@@ -8,7 +8,7 @@
   environment.sessionVariables = {
     # System wide stem darkening
     # Testing: Inconsistent in plasma/QT
-    # FREETYPE_PROPERTIES = "cff:no-stem-darkening=0 autofitter:no-stem-darkening=0";
+    FREETYPE_PROPERTIES = "cff:no-stem-darkening=0 truetype:no-stem-darkening=0 autofitter:no-stem-darkening=0";
   };
   fonts = {
     #TODO: find out a way to not install freefont_ttf (gnu free fonts)
@@ -140,7 +140,7 @@
           "Cantarell"
         ];
         serif = [ "Roboto Slab" ];
-        monospace = [ "Input Mono Condensed" ];
+        monospace = [ "Input Mono" ];
         emoji = [ "Blobmoji" ];
       };
     };

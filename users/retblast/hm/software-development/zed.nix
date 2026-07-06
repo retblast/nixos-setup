@@ -10,10 +10,12 @@
   # Does make using NixOS annoying tbf
   home.packages = with pkgs; [
     package-version-server
+    typst
   ];
   programs.zed-editor = {
     enable = true;
     extensions = [
+      "typst"
       "nix"
       "toml"
       "rust"

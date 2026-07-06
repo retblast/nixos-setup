@@ -1,0 +1,442 @@
+diff --git a/include/freetype/freetype.h b/include/freetype/freetype.h
+index 68a9e0c..758a744 100644
+--- a/include/freetype/freetype.h
++++ b/include/freetype/freetype.h
+@@ -4316,7 +4316,8 @@ FT_BEGIN_HEADER
+    *
+    *   * @FT_PARAM_TAG_STEM_DARKENING (stem darkening, corresponding to the
+    *     property `no-stem-darkening` provided by the 'autofit', 'cff',
+-   *     'type1', and 't1cid' modules; see @no-stem-darkening).
++   *     'type1', 't1cid', and 'truetype' modules; see
++   *     @no-stem-darkening).
+    *
+    *   * @FT_PARAM_TAG_RANDOM_SEED (seed value for the CFF, Type~1, and CID
+    *     'random' operator, corresponding to the `random-seed` property
+diff --git a/include/freetype/ftdriver.h b/include/freetype/ftdriver.h
+index 39635f8..d380f3c 100644
+--- a/include/freetype/ftdriver.h
++++ b/include/freetype/ftdriver.h
+@@ -214,9 +214,9 @@ FT_BEGIN_HEADER
+    *   itself, it is possible to control its behaviour with @FT_Property_Set
+    *   and @FT_Property_Get.
+    *
+-   *   The TrueType driver's module name is 'truetype'; a single property
+-   *   @interpreter-version is available, as documented in the @properties
+-   *   section.
++   *   The TrueType driver's module name is 'truetype'.  Available
++   *   properties are @interpreter-version, @no-stem-darkening, and
++   *   @darkening-parameters, as documented in the @properties section.
+    *
+    *   To help understand the differences between interpreter versions, we
+    *   introduce a list of definitions, kindly provided by Greg Hitchcock.
+@@ -424,9 +424,9 @@ FT_BEGIN_HEADER
+    *
+    * @description:
+    *   All glyphs that pass through the auto-hinter will be emboldened unless
+-   *   this property is set to TRUE.  The same is true for the CFF, Type~1,
+-   *   and CID font modules if the 'Adobe' engine is selected (which is the
+-   *   default).
++   *   this property is set to TRUE.  The same is true for the TrueType font
++   *   module, and for the CFF, Type~1, and CID font modules if the 'Adobe'
++   *   engine is selected (which is the default for CFF, Type~1, and CID).
+    *
+    *   Stem darkening emboldens glyphs at smaller sizes to make them more
+    *   readable on common low-DPI screens when using linear alpha blending
+@@ -454,6 +454,8 @@ FT_BEGIN_HEADER
+    *   down), the higher the loss of emboldening versus the CFF driver.
+    *
+    *   Note that stem darkening is never applied if @FT_LOAD_NO_SCALE is set.
++   *   The TrueType driver estimates standard stem widths because TrueType
++   *   outlines don't provide CFF-style standard stem values.
+    *
+    * @note:
+    *   This property can be used with @FT_Property_Get also.
+@@ -482,6 +484,8 @@ FT_BEGIN_HEADER
+    *
+    *   2.9 (for 'type1' and 't1cid' modules)
+    *
++   *   2.14 (for 'truetype' module)
++   *
+    */
+ 
+ 
+@@ -492,8 +496,9 @@ FT_BEGIN_HEADER
+    *
+    * @description:
+    *   By default, the Adobe hinting engine, as used by the CFF, Type~1, and
+-   *   CID font drivers, darkens stems as follows (if the `no-stem-darkening`
+-   *   property isn't set):
++   *   CID font drivers, and the TrueType driver's outline darkening path,
++   *   darken stems as follows (if the `no-stem-darkening` property isn't
++   *   set):
+    *
+    *   ```
+    *     stem width <= 0.5px:   darkening amount = 0.4px
+@@ -504,10 +509,10 @@ FT_BEGIN_HEADER
+    *
+    *   and piecewise linear in-between.  At configuration time, these four
+    *   control points can be set with the macro
+-   *   `CFF_CONFIG_OPTION_DARKENING_PARAMETERS`; the CFF, Type~1, and CID
+-   *   drivers share these values.  At runtime, the control points can be
+-   *   changed using the `darkening-parameters` property (see the example
+-   *   below that demonstrates this for the Type~1 driver).
++   *   `CFF_CONFIG_OPTION_DARKENING_PARAMETERS`; the CFF, Type~1, CID, and
++   *   TrueType drivers share these values.  At runtime, the control points
++   *   can be changed using the `darkening-parameters` property (see the
++   *   example below that demonstrates this for the Type~1 driver).
+    *
+    *   The x~values give the stem width, and the y~values the darkening
+    *   amount.  The unit is 1000th of pixels.  All coordinate values must be
+@@ -517,7 +522,8 @@ FT_BEGIN_HEADER
+    *   be shallower than -1 (e.g., -.4).
+    *
+    *   The auto-hinter provides this property, too, as an experimental
+-   *   feature.  See @no-stem-darkening for more.
++   *   feature.  The TrueType driver uses the same curve with estimated
++   *   standard stem widths.  See @no-stem-darkening for more.
+    *
+    * @note:
+    *   This property can be used with @FT_Property_Get also.
+@@ -553,6 +559,8 @@ FT_BEGIN_HEADER
+    *
+    *   2.9 (for 'type1' and 't1cid' modules)
+    *
++   *   2.14 (for 'truetype' module)
++   *
+    */
+ 
+ 
+diff --git a/src/truetype/ttdriver.c b/src/truetype/ttdriver.c
+index f5a944f..9f1e7a7 100644
+--- a/src/truetype/ttdriver.c
++++ b/src/truetype/ttdriver.c
+@@ -71,7 +71,96 @@
+ #endif
+ 
+ 
+-    if ( !ft_strcmp( property_name, "interpreter-version" ) )
++    if ( !ft_strcmp( property_name, "darkening-parameters" ) )
++    {
++      FT_Int*  darken_params;
++      FT_Int   x1, y1, x2, y2, x3, y3, x4, y4;
++
++#ifdef FT_CONFIG_OPTION_ENVIRONMENT_PROPERTIES
++      FT_Int   dp[8];
++
++
++      if ( value_is_string )
++      {
++        const char*  s = (const char*)value;
++        char*        ep;
++        int          i;
++
++
++        /* eight comma-separated numbers */
++        for ( i = 0; i < 7; i++ )
++        {
++          dp[i] = (FT_Int)ft_strtol( s, &ep, 10 );
++          if ( *ep != ',' || s == ep )
++            return FT_THROW( Invalid_Argument );
++
++          s = ep + 1;
++        }
++
++        dp[7] = (FT_Int)ft_strtol( s, &ep, 10 );
++        if ( !( *ep == '\0' || *ep == ' ' ) || s == ep )
++          return FT_THROW( Invalid_Argument );
++
++        darken_params = dp;
++      }
++      else
++#endif
++        darken_params = (FT_Int*)value;
++
++      x1 = darken_params[0];
++      y1 = darken_params[1];
++      x2 = darken_params[2];
++      y2 = darken_params[3];
++      x3 = darken_params[4];
++      y3 = darken_params[5];
++      x4 = darken_params[6];
++      y4 = darken_params[7];
++
++      if ( x1 < 0   || x2 < 0   || x3 < 0   || x4 < 0   ||
++           y1 < 0   || y2 < 0   || y3 < 0   || y4 < 0   ||
++           x1 > x2  || x2 > x3  || x3 > x4              ||
++           y1 > 500 || y2 > 500 || y3 > 500 || y4 > 500 )
++        return FT_THROW( Invalid_Argument );
++
++      driver->darken_params[0] = x1;
++      driver->darken_params[1] = y1;
++      driver->darken_params[2] = x2;
++      driver->darken_params[3] = y2;
++      driver->darken_params[4] = x3;
++      driver->darken_params[5] = y3;
++      driver->darken_params[6] = x4;
++      driver->darken_params[7] = y4;
++
++      return error;
++    }
++
++    else if ( !ft_strcmp( property_name, "no-stem-darkening" ) )
++    {
++#ifdef FT_CONFIG_OPTION_ENVIRONMENT_PROPERTIES
++      if ( value_is_string )
++      {
++        const char*  s   = (const char*)value;
++        long         nsd = ft_strtol( s, NULL, 10 );
++
++
++        if ( !nsd )
++          driver->no_stem_darkening = FALSE;
++        else
++          driver->no_stem_darkening = TRUE;
++      }
++      else
++#endif
++      {
++        FT_Bool*  no_stem_darkening = (FT_Bool*)value;
++
++
++        driver->no_stem_darkening = *no_stem_darkening;
++      }
++
++      return error;
++    }
++
++    else if ( !ft_strcmp( property_name, "interpreter-version" ) )
+     {
+       FT_UInt  interpreter_version;
+ 
+@@ -130,7 +219,36 @@
+     FT_UInt  interpreter_version = driver->interpreter_version;
+ 
+ 
+-    if ( !ft_strcmp( property_name, "interpreter-version" ) )
++    if ( !ft_strcmp( property_name, "darkening-parameters" ) )
++    {
++      FT_Int*  darken_params = driver->darken_params;
++      FT_Int*  val           = (FT_Int*)value;
++
++
++      val[0] = darken_params[0];
++      val[1] = darken_params[1];
++      val[2] = darken_params[2];
++      val[3] = darken_params[3];
++      val[4] = darken_params[4];
++      val[5] = darken_params[5];
++      val[6] = darken_params[6];
++      val[7] = darken_params[7];
++
++      return error;
++    }
++
++    else if ( !ft_strcmp( property_name, "no-stem-darkening" ) )
++    {
++      FT_Bool   no_stem_darkening = driver->no_stem_darkening;
++      FT_Bool*  val               = (FT_Bool*)value;
++
++
++      *val = no_stem_darkening;
++
++      return error;
++    }
++
++    else if ( !ft_strcmp( property_name, "interpreter-version" ) )
+     {
+       FT_UInt*  val = (FT_UInt*)value;
+ 
+diff --git a/src/truetype/ttgload.c b/src/truetype/ttgload.c
+index f9a54c4..5c1afaf 100644
+--- a/src/truetype/ttgload.c
++++ b/src/truetype/ttgload.c
+@@ -2346,6 +2346,122 @@
+   }
+ 
+ 
++  static FT_Int
++  tt_compute_darkening_amount( TT_Face  face,
++                               TT_Size  size,
++                               FT_Bool  vertical )
++  {
++    TT_Driver  driver = (TT_Driver)FT_FACE_DRIVER( face );
++    FT_Int*    params = driver->darken_params;
++
++    FT_Long   units_per_em = face->root.units_per_EM;
++    FT_Long   std_stem;
++    FT_Pos    stem_width;
++    FT_Long   scaled_stem;
++    FT_Int    x1, y1, x2, y2, x3, y3, x4, y4;
++    FT_Int    amount;
++
++
++    if ( units_per_em <= 0 )
++      units_per_em = 1000;
++
++    /*
++     * TrueType has no standard stem-width dictionary entries comparable to
++     * Type 2's StdVW and StdHW.  Use the same fallback values as the CFF
++     * Adobe engine: 75/1000em for vertical stems and 110/1000em for
++     * horizontal stems.
++     */
++    std_stem = FT_MulDiv( units_per_em, vertical ? 110 : 75, 1000 );
++    stem_width = FT_MulFix( std_stem,
++                            vertical ? size->root.metrics.y_scale
++                                     : size->root.metrics.x_scale );
++    if ( stem_width <= 0 )
++      return 0;
++
++    scaled_stem = FT_MulDiv( stem_width, 1000, 64 );
++
++    x1 = params[0];
++    y1 = params[1];
++    x2 = params[2];
++    y2 = params[3];
++    x3 = params[4];
++    y3 = params[5];
++    x4 = params[6];
++    y4 = params[7];
++
++    if ( scaled_stem < x1 )
++      amount = y1;
++    else if ( scaled_stem < x2 )
++      amount = x2 == x1 ? y2
++                        : y1 + FT_MulDiv( scaled_stem - x1,
++                                           y2 - y1,
++                                           x2 - x1 );
++    else if ( scaled_stem < x3 )
++      amount = x3 == x2 ? y3
++                        : y2 + FT_MulDiv( scaled_stem - x2,
++                                           y3 - y2,
++                                           x3 - x2 );
++    else if ( scaled_stem < x4 )
++      amount = x4 == x3 ? y4
++                        : y3 + FT_MulDiv( scaled_stem - x3,
++                                           y4 - y3,
++                                           x4 - x3 );
++    else
++      amount = y4;
++
++    return amount > 0 ? (FT_Int)FT_MulDiv( amount, 64, 1000 ) : 0;
++  }
++
++
++  static FT_Error
++  tt_apply_stem_darkening( TT_Loader  loader )
++  {
++    TT_GlyphSlot  glyph  = (TT_GlyphSlot)loader->glyph;
++    TT_Face       face   = loader->face;
++    TT_Size       size   = loader->size;
++    TT_Driver     driver = (TT_Driver)FT_FACE_DRIVER( face );
++
++    FT_Char  no_stem_darkening_font =
++               glyph->face->internal->no_stem_darkening;
++
++    FT_Int  xstrength;
++    FT_Int  ystrength;
++
++
++    if ( loader->load_flags & FT_LOAD_NO_SCALE )
++      return FT_Err_Ok;
++
++    if ( glyph->outline.n_points <= 0 )
++      return FT_Err_Ok;
++
++    if ( no_stem_darkening_font > 0                         ||
++         ( no_stem_darkening_font < 0 &&
++           driver->no_stem_darkening )                      )
++      return FT_Err_Ok;
++
++    xstrength = tt_compute_darkening_amount( face, size, FALSE );
++    ystrength = tt_compute_darkening_amount( face, size, TRUE  );
++
++    /*
++     * Native TrueType hinting can snap stems so strongly to the pixel grid
++     * that post-hint outline darkening becomes visually too subtle.  Boost
++     * the amount for hinted grayscale/LCD rendering, but keep the documented
++     * half-pixel upper bound.
++     */
++    if ( IS_HINTED( loader->load_flags ) &&
++         FT_LOAD_TARGET_MODE( loader->load_flags ) != FT_RENDER_MODE_MONO )
++    {
++      xstrength = FT_MIN( xstrength * 3 / 2, 32 );
++      ystrength = FT_MIN( ystrength * 3 / 2, 32 );
++    }
++
++    if ( !xstrength && !ystrength )
++      return FT_Err_Ok;
++
++    return FT_Outline_EmboldenXY( &glyph->outline, xstrength, ystrength );
++  }
++
++
+   /**************************************************************************
+    *
+    * @Function:
+@@ -2617,6 +2733,15 @@
+ 
+ #endif /* TT_USE_BYTECODE_INTERPRETER */
+ 
++      error = tt_apply_stem_darkening( &loader );
++      if ( error )
++      {
++        FT_TRACE2(( "TT_Load_Glyph: stem darkening failed"
++                    " for glyph index %u (error code 0x%x)\n",
++                    glyph_index, error ));
++        error = FT_Err_Ok;
++      }
++
+       error = compute_glyph_metrics( &loader, glyph_index );
+     }
+ 
+diff --git a/src/truetype/ttobjs.c b/src/truetype/ttobjs.c
+index 1d03fa2..f56dd2c 100644
+--- a/src/truetype/ttobjs.c
++++ b/src/truetype/ttobjs.c
+@@ -1314,10 +1314,21 @@
+   FT_LOCAL_DEF( FT_Error )
+   tt_driver_init( FT_Module  ttdriver )     /* TT_Driver */
+   {
++    TT_Driver  driver = (TT_Driver)ttdriver;
+ 
+-#ifdef TT_USE_BYTECODE_INTERPRETER
+ 
+-    TT_Driver  driver = (TT_Driver)ttdriver;
++    driver->no_stem_darkening = TRUE;
++
++    driver->darken_params[0] = CFF_CONFIG_OPTION_DARKENING_PARAMETER_X1;
++    driver->darken_params[1] = CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y1;
++    driver->darken_params[2] = CFF_CONFIG_OPTION_DARKENING_PARAMETER_X2;
++    driver->darken_params[3] = CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y2;
++    driver->darken_params[4] = CFF_CONFIG_OPTION_DARKENING_PARAMETER_X3;
++    driver->darken_params[5] = CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y3;
++    driver->darken_params[6] = CFF_CONFIG_OPTION_DARKENING_PARAMETER_X4;
++    driver->darken_params[7] = CFF_CONFIG_OPTION_DARKENING_PARAMETER_Y4;
++
++#ifdef TT_USE_BYTECODE_INTERPRETER
+ 
+     driver->interpreter_version = TT_INTERPRETER_VERSION_35;
+ #ifdef TT_SUPPORT_SUBPIXEL_HINTING_MINIMAL
+@@ -1326,7 +1337,7 @@
+ 
+ #else /* !TT_USE_BYTECODE_INTERPRETER */
+ 
+-    FT_UNUSED( ttdriver );
++    driver->interpreter_version = 0;
+ 
+ #endif /* !TT_USE_BYTECODE_INTERPRETER */
+ 
+diff --git a/src/truetype/ttobjs.h b/src/truetype/ttobjs.h
+index 9b2f412..ac029d4 100644
+--- a/src/truetype/ttobjs.h
++++ b/src/truetype/ttobjs.h
+@@ -248,6 +248,9 @@ FT_BEGIN_HEADER
+ 
+     FT_UInt  interpreter_version;
+ 
++    FT_Bool  no_stem_darkening;
++    FT_Int   darken_params[8];
++
+   } TT_DriverRec;
+ 
+ 

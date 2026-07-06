@@ -3,7 +3,7 @@
 
   users.users.retblast.packages = with pkgs; [
     # RC
-    cisco-packet-tracer_9
+#    cisco-packet-tracer_9
     putty
     wireshark
 

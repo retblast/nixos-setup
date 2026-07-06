@@ -4,6 +4,7 @@ let
       handbrake-retblast = prev.handbrake.override {
         useFdk = true;
       };
+      editide = prev.callPackage ./localDerivations/editide.nix { };
       ffmpeg-fuller = prev.ffmpeg-full.override {
         withUnfree = true;
         # enableLto = true; # fails...
