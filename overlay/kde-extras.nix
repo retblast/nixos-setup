@@ -10,7 +10,8 @@ let
           # TODO: https://github.com/NixOS/nixpkgs/pull/504351/commits/5e2e65eaab16ac1ddad8e4decf4b378baf93f9d6
           kde-material-you-colors = scopePrev.kde-material-you-colors.overrideAttrs (old: rec {
             patches = [
-              ../overlay/patches/kde-material-you-colors-kde-role-matrix.patch
+              ../overlay/patches/kde-material-you-colors-wcag-repair-pass.patch
+              # ../overlay/patches/kde-material-you-colors-kde-role-matrix.patch
             ];
             postInstall = ''
                 substituteInPlace $out/lib/python3.13/site-packages/kde_material_you_colors/data/kde-material-you-colors.desktop \

@@ -1,0 +1,65 @@
+diff --git a/drivers/platform/x86/asus-wmi.h b/drivers/platform/x86/asus-wmi.h
+index 5cd4392..e657a47 100644
+--- a/drivers/platform/x86/asus-wmi.h
++++ b/drivers/platform/x86/asus-wmi.h
+@@ -40,6 +40,7 @@ struct quirk_entry {
+ 	bool wmi_backlight_set_devstate;
+ 	bool wmi_force_als_set;
+ 	bool wmi_ignore_fan;
++	bool kbd_backlight_force;
+ 	bool filter_i8042_e1_extended_codes;
+ 	int key_wlan_event;
+ 	enum asus_wmi_tablet_switch_mode tablet_switch_mode;
+diff --git a/drivers/platform/x86/asus-nb-wmi.c b/drivers/platform/x86/asus-nb-wmi.c
+index 8005c08..2e60a1c 100644
+--- a/drivers/platform/x86/asus-nb-wmi.c
++++ b/drivers/platform/x86/asus-nb-wmi.c
+@@ -146,6 +146,11 @@ static struct quirk_entry quirk_asus_ignore_fan = {
+ 	.wmi_ignore_fan = true,
+ };
+ 
++static struct quirk_entry quirk_asus_force_kbd_backlight = {
++	.wmi_backlight_set_devstate = true,
++	.kbd_backlight_force = true,
++};
++
+ static struct quirk_entry quirk_asus_zenbook_duo_kbd = {
+ 	.key_wlan_event = ASUS_WMI_KEY_IGNORE,
+ };
+@@ -517,6 +522,16 @@ static const struct dmi_system_id asus_quirks[] = {
+ 		},
+ 		.driver_data = &quirk_asus_tablet_mode,
+ 	},
++	{
++		.callback = dmi_matched,
++		.ident = "ASUS Vivobook X1605ZA",
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
++			DMI_MATCH(DMI_PRODUCT_NAME,
++				  "Vivobook_ASUSLaptop X1605ZA_X1605ZA"),
++		},
++		.driver_data = &quirk_asus_force_kbd_backlight,
++	},
+ 	{
+ 		.callback = dmi_matched,
+ 		.ident = "ASUS VivoBook E410MA",
+diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
+index 80144c4..f9596ed 100644
+--- a/drivers/platform/x86/asus-wmi.c
++++ b/drivers/platform/x86/asus-wmi.c
+@@ -1822,6 +1822,15 @@ static int kbd_led_read(struct asus_wmi *asus, int *level, int *env)
+ 	 */
+ 	retval = asus_wmi_get_devstate_bits(asus, ASUS_WMI_DEVID_KBD_BACKLIGHT,
+ 					    0xFFFF);
++	if (retval == -ENODEV && asus->driver->quirks->kbd_backlight_force) {
++		u32 raw;
++
++		retval = asus_wmi_get_devstate(asus,
++					       ASUS_WMI_DEVID_KBD_BACKLIGHT,
++					       &raw);
++		if (!retval)
++			retval = raw & 0xFFFF;
++	}
+ 
+ 	/* Unknown status is considered as off */
+ 	if (retval == 0x8000)

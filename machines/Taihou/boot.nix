@@ -4,9 +4,42 @@
   pkgs,
   ...
 }:
-{
+let
+  ssdtSource = ./patches/ssdt-x1605za-kbd.dsl;
 
+  acpiOverrideKeyboardBacklightFix =
+    pkgs.runCommand "x1605za-keyboard-backlight-acpi-override"
+      {
+        nativeBuildInputs = [
+          pkgs.acpica-tools
+          pkgs.cpio
+        ];
+      }
+      ''
+        		set -eu
+
+        		mkdir -p build/kernel/firmware/acpi
+        		cp ${ssdtSource} build/ssdt-x1605za-kbd.dsl
+
+        		iasl \
+        			-p build/kernel/firmware/acpi/ssdt-x1605za-kbd \
+        			-tc \
+        			build/ssdt-x1605za-kbd.dsl
+
+        		# Only the AML table belongs in the early uncompressed cpio.
+        		rm -f \
+        			build/kernel/firmware/acpi/*.hex \
+        			build/kernel/firmware/acpi/*.lst
+
+        		cd build
+        		find kernel -print0 \
+        			| sort -z \
+        			| cpio --null --quiet -o -H newc > "$out"
+        	'';
+in
+{
   boot = {
+    initrd.prepend = lib.mkAfter [ "${acpiOverrideKeyboardBacklightFix}" ];
     kernelPackages = lib.mkForce pkgs.linux-retblast-zen;
     kernelPatches = [
       {
@@ -14,6 +47,11 @@
         name = "Set the Intel EPP change to ADL, adapted from EPB. Check patch comment for details.";
         patch = ./patches/intel-epp-fix.patch;
       }
+      # {
+      #   # Keyboard backlight fix
+      #   name = "Keyboard backlight fix";
+      #   patch = ./patches/keyboard-backlight-fix.patch;
+      # }
     ];
     kernelParams = [
       # Enable deep sleep

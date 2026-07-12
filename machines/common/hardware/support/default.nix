@@ -34,7 +34,7 @@
       # Wacom tablets
       wacom.enable = true;
       # Keyboard layout
-      xkb.layout = "latam";
+      xkb.layout = "es";
     };
     printing = {
       enable = true;

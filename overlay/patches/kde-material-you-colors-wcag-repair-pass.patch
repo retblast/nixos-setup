@@ -1,0 +1,502 @@
+diff -ruN a/src/kde_material_you_colors/schemeconfigs.py b/src/kde_material_you_colors/schemeconfigs.py
+--- a/src/kde_material_you_colors/schemeconfigs.py	2026-03-26 05:17:58.000000000 +0000
++++ b/src/kde_material_you_colors/schemeconfigs.py	2026-07-08 12:27:12.227140610 +0000
+@@ -1,4 +1,7 @@
++import colorsys
+ import logging
++import math
++import re
+ from kde_material_you_colors.utils.color_utils import (
+     blendColors,
+     lighteen_color,
+@@ -7,10 +10,480 @@
+     sort_colors_luminance,
+     hex2alpha,
+     hex2rgb,
++    rgb2hex,
+ )
+ from kde_material_you_colors.utils import string_utils
+ 
+ 
++_WCAG_NORMAL_TEXT_CONTRAST = 4.5
++_WCAG_MUTED_TEXT_CONTRAST = 3.0
++_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
++_HEX_ALPHA_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{8}$")
++
++
++def _opaque_hex(color):
++    """Return a #rrggbb color for contrast math.
++
++    KDE color files can contain #aarrggbb values for translucent window-manager
++    backgrounds.  Contrast still needs an opaque estimate, so the alpha channel
++    is ignored instead of letting the checker silently skip the titlebar pair.
++    """
++    if not isinstance(color, str):
++        return None
++
++    color = color.strip()
++    if _HEX_COLOR_RE.match(color):
++        return color.lower()
++    if _HEX_ALPHA_COLOR_RE.match(color):
++        return f"#{color[-6:]}".lower()
++    return None
++
++
++def _srgb_to_linear(channel):
++    channel = channel / 255.0
++    if channel <= 0.04045:
++        return channel / 12.92
++    return ((channel + 0.055) / 1.055) ** 2.4
++
++
++def _relative_luminance(color):
++    r, g, b = hex2rgb(color)
++    return (
++        0.2126 * _srgb_to_linear(r)
++        + 0.7152 * _srgb_to_linear(g)
++        + 0.0722 * _srgb_to_linear(b)
++    )
++
++
++def _contrast_ratio(color_a, color_b):
++    color_a = _opaque_hex(color_a)
++    color_b = _opaque_hex(color_b)
++    if color_a is None or color_b is None:
++        return 0.0
++
++    lum_a = _relative_luminance(color_a)
++    lum_b = _relative_luminance(color_b)
++    lighter = max(lum_a, lum_b)
++    darker = min(lum_a, lum_b)
++    return (lighter + 0.05) / (darker + 0.05)
++
++
++def _cuberoot(value):
++    if value < 0:
++        return -((-value) ** (1.0 / 3.0))
++    return value ** (1.0 / 3.0)
++
++
++def _oklab(color):
++    """Convert sRGB to Oklab for perceptual-ish distance scoring."""
++    color = _opaque_hex(color)
++    r, g, b = hex2rgb(color)
++    r = _srgb_to_linear(r)
++    g = _srgb_to_linear(g)
++    b = _srgb_to_linear(b)
++
++    l = _cuberoot(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
++    m = _cuberoot(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
++    s = _cuberoot(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
++
++    return (
++        0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
++        1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
++        0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
++    )
++
++
++def _oklab_distance(color_a, color_b):
++    lab_a = _oklab(color_a)
++    lab_b = _oklab(color_b)
++    return math.sqrt(sum((a - b) ** 2 for a, b in zip(lab_a, lab_b)))
++
++
++def _hls_color(hex_color, lightness, saturation_scale=1.0):
++    r, g, b = hex2rgb(hex_color)
++    hue, _old_lightness, saturation = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
++    saturation = max(0.0, min(1.0, saturation * saturation_scale))
++    r, g, b = colorsys.hls_to_rgb(hue, lightness, saturation)
++    return rgb2hex(int(round(r * 255)), int(round(g * 255)), int(round(b * 255)))
++
++
++def _candidate_colors_near(preferred, extra_candidates=()):
++    """Yield candidate text colors ordered later by perceptual distance.
++
++    The search keeps hue/saturation stable first, then tries slightly calmer
++    variants, and only then falls back to black/white.  This keeps themes from
++    turning into random high-contrast confetti when only a small lightness move
++    was needed.
++    """
++    preferred = _opaque_hex(preferred)
++    seen = set()
++
++    def add(color):
++        color = _opaque_hex(color)
++        if color is None or color in seen:
++            return
++        seen.add(color)
++        yield color
++
++    yield from add(preferred)
++    for color in extra_candidates:
++        yield from add(color)
++
++    for saturation_scale in (1.0, 0.88, 0.72, 0.55):
++        for step in range(1, 100):
++            yield from add(_hls_color(preferred, step / 100, saturation_scale))
++
++    yield from add("#000000")
++    yield from add("#ffffff")
++
++
++def _ratios(color, backgrounds):
++    return [_contrast_ratio(color, background) for background in backgrounds]
++
++
++def _ratios_text(color, backgrounds):
++    return ", ".join(f"{ratio:.2f}:1" for ratio in _ratios(color, backgrounds))
++
++
++def _passes_contrast(color, backgrounds, min_ratio):
++    return all(ratio >= min_ratio for ratio in _ratios(color, backgrounds))
++
++
++def _nearest_wcag_foreground(preferred, backgrounds, extra_candidates=(), min_ratio=4.5):
++    """Return the closest foreground that passes all supplied backgrounds.
++
++    Contrast is pair-based, so the caller can provide more than one background
++    when KDE/Breeze reuses a foreground role across hover, focus, or selection
++    fills.  If no single foreground can satisfy all backgrounds, return the best
++    compromise and mark it as non-compliant so the caller can repair backgrounds.
++    """
++    preferred = _opaque_hex(preferred)
++    backgrounds = [_opaque_hex(background) for background in backgrounds]
++    backgrounds = [background for background in backgrounds if background is not None]
++    if preferred is None or not backgrounds:
++        return preferred, True
++
++    candidates = list(_candidate_colors_near(preferred, extra_candidates))
++    candidates.sort(key=lambda color: _oklab_distance(preferred, color))
++
++    for color in candidates:
++        if _passes_contrast(color, backgrounds, min_ratio):
++            return color, True
++
++    return max(
++        candidates,
++        key=lambda color: (
++            min(_ratios(color, backgrounds)),
++            -_oklab_distance(preferred, color),
++        ),
++    ), False
++
++
++def _parse_kde_scheme(scheme):
++    lines = scheme.splitlines()
++    sections = {}
++    current_section = None
++
++    for index, line in enumerate(lines):
++        stripped = line.strip()
++        if stripped.startswith("[") and stripped.endswith("]"):
++            current_section = stripped[1:-1]
++            sections.setdefault(current_section, {})
++            continue
++        if current_section is None or stripped.startswith("#") or "=" not in stripped:
++            continue
++
++        key, value = stripped.split("=", 1)
++        sections[current_section][key] = (index, value.strip())
++
++    return lines, sections
++
++
++def _scheme_value(sections, section, key):
++    try:
++        return sections[section][key][1]
++    except KeyError:
++        return None
++
++
++def _set_scheme_value(lines, sections, section, key, value):
++    try:
++        index, _old_value = sections[section][key]
++    except KeyError:
++        return False
++
++    lines[index] = f"{key}={value}"
++    sections[section][key] = (index, value)
++    return True
++
++
++def _background_values(sections, refs):
++    backgrounds = []
++    for section, key in refs:
++        value = _scheme_value(sections, section, key)
++        if _opaque_hex(value) is not None:
++            backgrounds.append(value)
++    return backgrounds
++
++
++def _foreground_candidates(sections):
++    candidates = []
++    candidate_keys = (
++        "ForegroundNormal",
++        "ForegroundActive",
++        "ForegroundInactive",
++        "ForegroundLink",
++        "ForegroundVisited",
++    )
++    candidate_sections = (
++        "Colors:View",
++        "Colors:Window",
++        "Colors:Button",
++        "Colors:Selection",
++        "Colors:Tooltip",
++        "Colors:Complementary",
++        "Colors:Header",
++        "WM",
++    )
++
++    for section in candidate_sections:
++        for key in candidate_keys:
++            value = _scheme_value(sections, section, key)
++            if _opaque_hex(value) is not None:
++                candidates.append(value)
++
++    for key in ("activeForeground", "inactiveForeground"):
++        value = _scheme_value(sections, "WM", key)
++        if _opaque_hex(value) is not None:
++            candidates.append(value)
++
++    candidates.extend(("#000000", "#ffffff"))
++    return candidates
++
++
++def _repair_foreground(lines, sections, mode, section, key, background_refs, min_ratio):
++    foreground = _scheme_value(sections, section, key)
++    backgrounds = _background_values(sections, background_refs)
++    normalized = _opaque_hex(foreground)
++    if normalized is None or not backgrounds:
++        return
++
++    if _passes_contrast(normalized, backgrounds, min_ratio):
++        logging.debug(
++            "WCAG check %s %s.%s ok: %s on [%s]",
++            mode,
++            section,
++            key,
++            normalized,
++            _ratios_text(normalized, backgrounds),
++        )
++        return
++
++    repaired, compliant = _nearest_wcag_foreground(
++        normalized,
++        backgrounds,
++        _foreground_candidates(sections),
++        min_ratio,
++    )
++    if repaired is None or repaired == normalized:
++        return
++
++    _set_scheme_value(lines, sections, section, key, repaired)
++    logging.warning(
++        "WCAG repair %s %s.%s: %s [%s] -> %s [%s]%s",
++        mode,
++        section,
++        key,
++        normalized,
++        _ratios_text(normalized, backgrounds),
++        repaired,
++        _ratios_text(repaired, backgrounds),
++        "" if compliant else " (best effort; backgrounds conflict)",
++    )
++
++
++def _repair_interactive_state_backgrounds(lines, sections, mode):
++    """Keep shared KDE/Breeze state backgrounds coherent.
++
++    Breeze can use Selection text over View/Button/Tooltip decoration fills for
++    menu-bar and pressed states.  When that shared text cannot read on a state
++    background, prefer reusing the canonical Selection background over inventing
++    a new color per section.  That keeps the palette visually tied together.
++    """
++    selection_background = _scheme_value(sections, "Colors:Selection", "BackgroundNormal")
++    selection_text = _scheme_value(sections, "Colors:Selection", "ForegroundNormal")
++    selection_background = _opaque_hex(selection_background)
++    selection_text = _opaque_hex(selection_text)
++    if selection_background is None or selection_text is None:
++        return
++
++    state_refs = (
++        ("Colors:Selection", "DecorationFocus"),
++        ("Colors:Selection", "DecorationHover"),
++        ("Colors:View", "DecorationFocus"),
++        ("Colors:View", "DecorationHover"),
++        ("Colors:Button", "DecorationFocus"),
++        ("Colors:Button", "DecorationHover"),
++        ("Colors:Tooltip", "DecorationFocus"),
++        ("Colors:Tooltip", "DecorationHover"),
++        ("Colors:Complementary", "DecorationFocus"),
++        ("Colors:Complementary", "DecorationHover"),
++        ("Colors:Header", "DecorationFocus"),
++        ("Colors:Header", "DecorationHover"),
++        ("Colors:Header][Inactive", "DecorationFocus"),
++        ("Colors:Header][Inactive", "DecorationHover"),
++        ("Colors:Window", "DecorationFocus"),
++        ("Colors:Window", "DecorationHover"),
++    )
++
++    for section, key in state_refs:
++        background = _scheme_value(sections, section, key)
++        background = _opaque_hex(background)
++        if background is None:
++            continue
++        if _contrast_ratio(selection_text, background) >= _WCAG_NORMAL_TEXT_CONTRAST:
++            continue
++        _set_scheme_value(lines, sections, section, key, selection_background)
++        logging.warning(
++            "WCAG state repair %s %s.%s: %s -> %s so Selection text %s stays readable",
++            mode,
++            section,
++            key,
++            background,
++            selection_background,
++            selection_text,
++        )
++
++
++def _repair_kde_scheme_contrast(scheme, mode):
++    """Post-process a generated KDE color scheme for WCAG contrast.
++
++    This is intentionally a repair pass over the already generated .colors text,
++    not a rewrite of the Material -> KDE mapping.  The generator keeps choosing
++    the palette; this pass only nudges foregrounds, and occasionally shared
++    state backgrounds, when known KDE/Breeze role pairs fail readability.
++    """
++    lines, sections = _parse_kde_scheme(scheme)
++
++    # First make Selection itself readable.  Many KDE/Breeze states borrow its
++    # foreground, so it is the anchor for the rest of the state checks.
++    selection_backgrounds = (
++        ("Colors:Selection", "BackgroundNormal"),
++        ("Colors:Selection", "BackgroundAlternate"),
++    )
++    for key in ("ForegroundNormal", "ForegroundActive", "ForegroundInactive"):
++        _repair_foreground(
++            lines,
++            sections,
++            mode,
++            "Colors:Selection",
++            key,
++            selection_backgrounds,
++            _WCAG_NORMAL_TEXT_CONTRAST,
++        )
++
++    _repair_interactive_state_backgrounds(lines, sections, mode)
++
++    # Re-check Selection after state backgrounds have been made coherent.
++    selection_state_backgrounds = selection_backgrounds + (
++        ("Colors:Selection", "DecorationFocus"),
++        ("Colors:Selection", "DecorationHover"),
++        ("Colors:View", "DecorationFocus"),
++        ("Colors:View", "DecorationHover"),
++        ("Colors:Button", "DecorationFocus"),
++        ("Colors:Button", "DecorationHover"),
++        ("Colors:Tooltip", "DecorationFocus"),
++        ("Colors:Tooltip", "DecorationHover"),
++    )
++    for key in ("ForegroundNormal", "ForegroundActive", "ForegroundInactive"):
++        _repair_foreground(
++            lines,
++            sections,
++            mode,
++            "Colors:Selection",
++            key,
++            selection_state_backgrounds,
++            _WCAG_NORMAL_TEXT_CONTRAST,
++        )
++
++    normal_text_checks = {
++        "Colors:View": (
++            ("Colors:View", "BackgroundNormal"),
++            ("Colors:Window", "BackgroundNormal"),
++        ),
++        "Colors:Window": (("Colors:Window", "BackgroundNormal"),),
++        "Colors:Button": (("Colors:Button", "BackgroundNormal"),),
++        "Colors:Tooltip": (("Colors:Tooltip", "BackgroundNormal"),),
++        "Colors:Complementary": (("Colors:Complementary", "BackgroundNormal"),),
++        "Colors:Header": (("Colors:Header", "BackgroundNormal"),),
++        "Colors:Header][Inactive": (("Colors:Header][Inactive", "BackgroundNormal"),),
++    }
++
++    for section, backgrounds in normal_text_checks.items():
++        _repair_foreground(
++            lines,
++            sections,
++            mode,
++            section,
++            "ForegroundNormal",
++            backgrounds,
++            _WCAG_NORMAL_TEXT_CONTRAST,
++        )
++        _repair_foreground(
++            lines,
++            sections,
++            mode,
++            section,
++            "ForegroundInactive",
++            backgrounds,
++            _WCAG_MUTED_TEXT_CONTRAST,
++        )
++
++    active_text_checks = {
++        "Colors:Button": (
++            ("Colors:Button", "DecorationFocus"),
++            ("Colors:Button", "DecorationHover"),
++        ),
++        "Colors:Tooltip": (
++            ("Colors:Tooltip", "DecorationFocus"),
++            ("Colors:Tooltip", "DecorationHover"),
++        ),
++        "Colors:Complementary": (("Colors:Complementary", "BackgroundNormal"),),
++        "Colors:Header": (("Colors:Header", "BackgroundNormal"),),
++        "Colors:Header][Inactive": (("Colors:Header][Inactive", "BackgroundNormal"),),
++        "Colors:Window": (("Colors:Window", "BackgroundNormal"),),
++    }
++
++    for section, backgrounds in active_text_checks.items():
++        _repair_foreground(
++            lines,
++            sections,
++            mode,
++            section,
++            "ForegroundActive",
++            backgrounds,
++            _WCAG_NORMAL_TEXT_CONTRAST,
++        )
++
++    wm_checks = {
++        "activeForeground": (("WM", "activeBackground"),),
++        "inactiveForeground": (("WM", "inactiveBackground"),),
++    }
++    for key, backgrounds in wm_checks.items():
++        _repair_foreground(
++            lines,
++            sections,
++            mode,
++            "WM",
++            key,
++            backgrounds,
++            _WCAG_NORMAL_TEXT_CONTRAST,
++        )
++
++    suffix = "\n" if scheme.endswith("\n") else ""
++    return "\n".join(lines) + suffix
++
++
+ class ThemeConfig:
+     def __init__(
+         self,
+@@ -532,6 +1005,9 @@
+ inactiveForeground={colors_dark['onSecondaryContainer']}
+         """
+ 
++        self._light_scheme = _repair_kde_scheme_contrast(self._light_scheme, "light")
++        self._dark_scheme = _repair_kde_scheme_contrast(self._dark_scheme, "dark")
++
+         self._wal_light_scheme = {
+             "wallpaper": wallpaper_data,
+             "checksum": "",

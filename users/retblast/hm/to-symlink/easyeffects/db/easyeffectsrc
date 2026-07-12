@@ -1,17 +1,17 @@
 [Presets]
-lastLoadedOutputPreset=Asus Vivobook X1605ZA
+lastLoadedOutputPreset=Taihou-SonicForge-Gen4-Experimental-v4
 
 [StreamInputs]
 inputDevice=alsa_input.pci-0000_00_1f.3.analog-stereo
 visiblePage=pluginsPage
 
 [StreamOutputs]
-mostUsedPresets=Asus Vivobook X1605ZA,Actual Nothing
+mostUsedPresets=ASUS-X1605ZA-Gen4-MDAT-EQ-Experiment-v1,ASUS-X1605ZA-Gen4-Clean-v1,ASUS-X1605ZA-Gen4-MDAT-Extras-Normalized-v2,ASUS-X1605ZA-Gen4-MDAT-Extras-v2,Taihou-SonicForge-Gen4-Experimental-v4
 outputDevice=alsa_output.pci-0000_00_1f.3.analog-stereo
-plugins=filter#0,bass_enhancer#0,multiband_compressor#0,stereo_tools#0,limiter#0
-usedPresets=Actual Nothing:1,Asus Vivobook X1605ZA:1
+plugins=filter#0,equalizer#0,loudness#0,bass_enhancer#0,multiband_compressor#0,crystalizer#0,autogain#0,deesser#0,stereo_tools#0,filter#1,limiter#0
+usedPresets=ASUS-X1605ZA-Gen4-Clean-v1:11,ASUS-X1605ZA-Gen4-MDAT-EQ-Experiment-v1:12,ASUS-X1605ZA-Gen4-MDAT-Extras-v2:5,ASUS-X1605ZA-Gen4-MDAT-Extras-Normalized-v2:8,Nothing:1,Taihou-ASUS-X1605ZA-Daily-Driver-v4:2,Taihou-SonicForge-Gen4-Experimental-v4:2
 visiblePage=pluginsPage
-visiblePlugin=filter#0
+visiblePlugin=limiter#0
 
 [Window]
 autostartOnLogin=true

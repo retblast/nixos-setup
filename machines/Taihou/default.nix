@@ -259,6 +259,24 @@
   };
 
   services = {
+    keyd = {
+      enable = true;
+      keyboards = {
+        default = {
+          ids = [ "*" ]; # Applies to all attached keyboards
+          extraConfig = ''
+            [main]
+            # Tapping rightalt sends greater-than. Holding it acts as a layout layer.
+            rightalt = overload(altgr, S-102nd)
+
+            [shift]
+            # Tapping rightalt while holding shift sends less-than.
+            rightalt = 102nd
+          '';
+        };
+      };
+    };
+
     mysql = {
       # Enabled because of Uni
       # /run/mysqld/mysqld.sock is where the socket is
@@ -283,7 +301,9 @@
         }
       ];
     };
-    thermald.enable = lib.mkForce false;
+
+    #TODO: Testing
+    # thermald.enable = lib.mkForce false;
 
     ollama = {
       enable = false;

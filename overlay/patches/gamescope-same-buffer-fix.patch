@@ -1,0 +1,38 @@
+diff --git a/src/steamcompmgr.cpp b/src/steamcompmgr.cpp
+index b64d459..fe6d156 100644
+--- a/src/steamcompmgr.cpp
++++ b/src/steamcompmgr.cpp
+@@ -7266,11 +7266,31 @@ void update_wayland_res(CommitDoneList_t *doneCommits, steamcompmgr_win_t *w, Re
+ 	bool already_exists = false;
+ 	for ( const auto& existing_commit : w->commit_queue )
+ 	{
+-		if (existing_commit->buf == buf)
++		if ( existing_commit->buf == buf )
+ 			already_exists = true;
+ 	}
+ 
+-	if ( already_exists && !reslistentry.feedback && reslistentry.presentation_feedbacks.empty() )
++	// Committing the same buffer again is not necessarily an empty/no-op commit.
++	// It may carry damage, explicit sync state, or presentation metadata that must
++	// be imported and attached to the commit below. Only discard truly empty
++	// same-buffer commits.
++	const bool bHasPresentationState =
++		reslistentry.feedback ||
++		!reslistentry.presentation_feedbacks.empty() ||
++		reslistentry.present_id.has_value() ||
++		reslistentry.desired_present_time != 0 ||
++		reslistentry.fifo;
++
++	const bool bHasSyncState =
++		reslistentry.pAcquirePoint ||
++		reslistentry.pReleasePoint;
++
++	const bool bCanDiscardSameBufferCommit =
++		!bHasDamage &&
++		!bHasPresentationState &&
++		!bHasSyncState;
++
++	if ( already_exists && bCanDiscardSameBufferCommit )
+ 	{
+ 		wlserver_lock();
+ 		wlr_buffer_unlock( buf );
