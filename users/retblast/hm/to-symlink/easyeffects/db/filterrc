@@ -1,8 +1,6 @@
 [soe][Filter#0]
-frequency=125
-mode=3
-quality=0.707
-slope=1
+frequency=135
+outputGain=1
 type=1
 
 [soe][Filter#1]

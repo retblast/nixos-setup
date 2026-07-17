@@ -39,13 +39,13 @@ let
 in
 effectiveStdenv.mkDerivation (finalAttrs: {
   pname = "koboldcpp";
-  version = "1.112.2";
+  version = "1.117";
 
   src = fetchFromGitHub {
     owner = "LostRuins";
     repo = "koboldcpp";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-OjARVGfZ1O4y8gZCNjhu56FXB+X3/ZjqNxkSUywQNOY=";
+    hash = "sha256-WtcqDR2RrRpPOrPAd7Dq8kAJvgIlKE8i+vAGgEVQqW4=";
   };
 
   enableParallelBuilding = true;
@@ -69,7 +69,16 @@ effectiveStdenv.mkDerivation (finalAttrs: {
 
   '';
 
-  pythonInputs = builtins.attrValues { inherit (python3Packages) tkinter customtkinter packaging; };
+  pythonInputs = builtins.attrValues {
+    inherit (python3Packages)
+      tkinter
+      customtkinter
+      packaging
+      jinja2
+      psutil
+      darkdetect
+      ;
+  };
 
   buildInputs = [
     tk
@@ -101,32 +110,48 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   ];
 
   installPhase = ''
-    runHook preInstall
+    	runHook preInstall
 
-    mkdir -p "$out/bin"
+    	mkdir -p "$out/share/koboldcpp"
 
-    install -Dm755 koboldcpp.py "$out/bin/koboldcpp.unwrapped"
-    cp *.so "$out/bin"
-    # Fails to load otherwise
-    # cp embd_res/*.embd "$out/bin"
-    cp -r embd_res "$out/bin/"
-    cp -r kcpp_adapters "$out/bin/"
-    ${lib.optionalString metalSupport ''
-      cp *.metal "$out/bin"
-    ''}
+    	install -Dm644 ./*.so "$out/share/koboldcpp/"
+    	install -Dm644 json_to_gbnf.py "$out/share/koboldcpp/"
+    	install -Dm644 koboldcpp.py "$out/share/koboldcpp/koboldcpp.py"
 
-    ${lib.optionalString (!koboldLiteSupport) ''
-      rm "$out/bin/kcpp_docs.embd"
-      rm "$out/bin/klite.embd"
-    ''}
+    	cp -r embd_res "$out/share/koboldcpp/"
+    	cp -r kcpp_adapters "$out/share/koboldcpp/"
 
-    runHook postInstall
+    	${lib.optionalString metalSupport ''
+       		cp *.metal "$out/share/koboldcpp/"
+       	''}
+
+    	${
+       lib.optionalString (!koboldLiteSupport) ''
+         		rm -f "$out/share/koboldcpp/kcpp_docs.embd"
+         		rm -f "$out/share/koboldcpp/klite.embd"
+         	''
+     }
+
+    	runHook postInstall
   '';
 
   postFixup = ''
-    wrapPythonProgramsIn "$out/bin" "''${pythonPath[*]}"
-    makeWrapper "$out/bin/koboldcpp.unwrapped" "$out/bin/koboldcpp" \
-      --prefix PATH : ${lib.makeBinPath [ tk ]} ${libraryPathWrapperArgs}
+    	wrapPythonProgramsIn "$out/share/koboldcpp" "''${pythonPath[*]}"
+
+    	makeWrapper \
+    		"${python3Packages.python.interpreter}" \
+    		"$out/bin/koboldcpp" \
+    		--add-flags "$out/share/koboldcpp/koboldcpp.py" \
+    		--prefix PATH : ${lib.makeBinPath [ tk ]} \
+    		${libraryPathWrapperArgs}
+  '';
+
+  postInstall = ''
+    	install -Dm644 LICENSE.md \
+    		"$out/share/licenses/koboldcpp/LICENSE.md"
+
+    	install -Dm644 MIT_LICENSE_GGML_SDCPP_LLAMACPP_ONLY.md \
+    		"$out/share/licenses/koboldcpp/MIT_LICENSE_GGML_SDCPP_LLAMACPP_ONLY.md"
   '';
 
   passthru.updateScript = nix-update-script { };

@@ -1,9 +1,9 @@
 [soe][Deesser#0]
-f1Freq=6500
-f2Freq=4600
-f2Level=8
-f2Q=1.2
+f1Freq=6200
+f2Freq=4300
+f2Level=6
+f2Q=1.1
 laxity=20
 mode=1
-ratio=2
-threshold=-20
+ratio=1.8
+threshold=-18.5

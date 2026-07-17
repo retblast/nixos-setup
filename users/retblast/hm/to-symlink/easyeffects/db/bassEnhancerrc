@@ -1,8 +1,8 @@
 [soe][BassEnhancer#0]
-amount=8
-blend=3.5
-floor=35
+amount=9.6
+blend=4.5
+floor=30
 floorActive=true
-harmonics=7
-outputGain=-2
-scope=215
+harmonics=7.6
+outputGain=-1.6
+scope=205

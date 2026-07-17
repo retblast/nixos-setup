@@ -3,6 +3,10 @@
 }:
 with prev.lib.kernel;
 {
+  # Tickless idle
+  NO_HZ_IDLE = yes;
+  NO_HZ_FULL = prev.lib.mkForce no;
+
   # for scx
   BPF_JIT_ALWAYS_ON = prev.lib.mkForce yes;
   PROVE_LOCKING = yes;
