@@ -1,0 +1,7 @@
+[soe][Exciter#0]
+amount=1.8
+ceil=11000
+ceilActive=true
+harmonics=4
+outputGain=-0.5
+scope=3200
