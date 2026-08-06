@@ -6,7 +6,8 @@
   modulesPath,
   ...
 }:
-{
+let username = "retblast";
+in {
   imports = [
     ./filesystems.nix
     ../common
@@ -94,7 +95,7 @@
         serviceConfig = {
           Type = "oneshot";
           # Some IRQs can't be modified, so use || true to work around this
-          ExecStart = "${pkgs.bash}/bin/bash -c 'echo 12-15 | tee /proc/irq/*/smp_affinity_list || true'";
+          ExecStart = "${pkgs.bash}/bin/bash -c 'echo 8-11 | tee /proc/irq/*/smp_affinity_list || true'";
         };
         wantedBy = [
           "multi-user.target"
@@ -339,6 +340,31 @@
     sessionVariables = {
       # https://discourse.nixos.org/t/add-ssh-key-to-agent-at-login-using-kwallet/25175/2?u=retblast
       SSH_ASKPASS_REQUIRE = "prefer";
+      
+      # from my hm setup
+      # PATHs for DAW plugins
+      DSSI_PATH = "$HOME/.nix-profile/lib/dssi:$HOME/.dssi:/etc/profiles/per-user/${username}/lib/dssi:/run/current-system/sw/lib/dssi";
+      LADSPA_PATH = "$HOME/.nix-profile/lib/ladspa:$HOME/.ladspa:/etc/profiles/per-user/${username}/lib/ladspa:/run/current-system/sw/lib/ladspa";
+      LV2_PATH = "$HOME/.nix-profile/lib/lv2:$HOME/.lv2:/etc/profiles/per-user/${username}/lib/lv2:/run/current-system/sw/lib/lv2";
+      LXVST_PATH = "$HOME/.nix-profile/lib/lxvst:$HOME/.lxvst:/etc/profiles/per-user/${username}/lib/lxvst:/run/current-system/sw/lib/lxvst:$HOME/.vst:/etc/profiles/per-user/${username}/lib/vst:/run/current-system/sw/lib/vst";
+      VST_PATH = "$HOME/.nix-profile/lib/vst:$HOME/.vst:/etc/profiles/per-user/${username}/lib/vst:/etc/profiles/per-user/${username}/lib/vst:/run/current-system/sw/lib/vst";
+      VST3_PATH = "$HOME/.nix-profile/lib/vst3:$HOME/.vst3:/etc/profiles/per-user/${username}/lib/vst3:/etc/profiles/per-user/${username}/lib/vst3:/run/current-system/sw/lib/vst3";
+      # Diff program
+      DIFFPROG = "delta";
+      # Electron on Wayland
+      NIXOS_OZONE_WL = "1";
+      # Show FPS in games/apps that use DXVK
+      DXVK_HUD = "fps";
+      # Enable some extra Kooha features.
+      KOOHA_EXPERIMENTAL = "1";
+      # Use the symengine in a python thing
+      USE_SYMENGINE = "1";
+      # Stop wine from making menu entries.
+      WINEDLLOVERRIDES = "winemenubuilder.exe=d";
+      # Disable this, it breaks many games and perhaps even software.
+      #	SDL_VIDEODRIVER = "wayland";
+      #
+      EDITOR = lib.mkForce "code";
     };
   };
 

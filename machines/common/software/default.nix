@@ -45,6 +45,14 @@
   };
 
   programs = {
+    firefox = {
+      enable = true;
+      policies = {
+        Preferences = {
+          "widget.use-xdg-desktop-portal.file-picker" = 1;
+        };
+      };
+    };
     nix-ld = {
       enable = true;
       libraries = with pkgs; [
@@ -63,9 +71,18 @@
 
   environment = {
     variables = {
-      EDITOR = "nano";
+    #TODO error: The option `environment.variables.EDITOR' has conflicting definition values
+      # EDITOR = "nano";
     };
     systemPackages = with pkgs; [
+      # Spellchecking dictionaries
+      #TODO: Write about this in the future NixOS article I wanna write.
+      hunspellDicts.en_US
+      hunspellDicts.es_PE
+      aspellDicts.en
+      aspellDicts.es
+      aspellDicts.en-science
+      aspellDicts.en-computers
       # System monitoring, managing & benchmarking tools
       libva-utils
       mesa-demos
@@ -115,12 +132,12 @@
         pkgs.gst_all_1.gst-plugins-bad
         pkgs.gst_all_1.gst-plugins-ugly
         pkgs.gst_all_1.gst-libav
-        pkgs.gst_all_1.gst-vaapi
+        # pkgs.gst_all_1.gst-vaapi
         pkgs.pkgsi686Linux.gst_all_1.gst-plugins-base
         pkgs.pkgsi686Linux.gst_all_1.gst-plugins-good
         pkgs.pkgsi686Linux.gst_all_1.gst-plugins-bad
         pkgs.pkgsi686Linux.gst_all_1.gst-plugins-ugly
-        pkgs.pkgsi686Linux.gst_all_1.gst-vaapi
+        # pkgs.pkgsi686Linux.gst_all_1.gst-vaapi
         pkgs.pkgsi686Linux.gst_all_1.gst-libav
       ];
     };
@@ -207,10 +224,10 @@
     man = {
       cache.enable = true;
       mandoc = {
-        enable = false;
+        enable = true;
       };
       man-db = {
-        enable = true;
+        enable = false;
       };
     };
     enable = true;

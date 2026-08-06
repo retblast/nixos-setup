@@ -3,6 +3,10 @@
 }:
 with prev.lib.kernel;
 {
+  # Fix for Steam's laggy overlay
+  TRANSPARENT_HUGEPAGE_TMPFS_HUGE_NEVER = prev.lib.mkForce no;
+  TRANSPARENT_HUGEPAGE_TMPFS_HUGE_ADVISE = yes;
+  
   # Tickless idle
   NO_HZ_IDLE = yes;
   NO_HZ_FULL = prev.lib.mkForce no;

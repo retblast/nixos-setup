@@ -7,6 +7,25 @@
 }:
 let
   cfg = config.localModule;
+  extensions = with pkgs.gnomeExtensions; [
+    alphabetical-app-grid
+    lock-keys
+    wallpaper-slideshow
+    caffeine
+    vitals
+    accented-panel
+    accent-directories
+    auto-accent-colour
+    tinted-shell
+    dash-to-dock
+  ];
+  extensionUuids = map (ext: ext.extensionUuid) extensions;
+  cursorIndexTheme = pkgs.writeText "cursor-index.theme" ''
+    [Icon Theme]
+    Inherits=Adwaita
+  '';
+
+
 in
 {
   options.localModule = {
@@ -38,10 +57,12 @@ in
         games.enable = false;
       };
     };
+
     fonts.fontconfig.subpixel = {
       rgba = "none";
       lcdfilter = "none";
     };
+    
     programs = {
       # TODO: ask why these 2 and gnome-power-manager aren't in any of the 3 gnome toggles.
       # TODO: https://github.com/NixOS/nixpkgs/pull/368610/commits/8c17fbe4656087e9a86a573b5a0d76e939225f21
@@ -54,6 +75,9 @@ in
       };
     };
 
+    # TODO: Package kvlibadwaita
+    # TODO: Also package the update qadwaitadecorations thing
+    qt.style = "Kvantum";
     environment = {
       gnome.excludePackages = with pkgs; [
       ];
@@ -74,7 +98,6 @@ in
           # Default PDF viewer
           papers
           # Miscellanous Gnome apps
-          gnome-icon-theme
           gnome-tweaks
           ptyxis
           gnome-boxes
@@ -142,23 +165,30 @@ in
 
           # Download manager
           varia
-        ];
+
+          # Extensions
+          gnome-shell-extensions
+        ] ++ extensions;
+        sessionVariables = {
+          XCURSOR_THEME = "Adwaita";
+          XCURSOR_SIZE = "24";
+        };
     };
+
+    systemd.user.tmpfiles.rules = [
+      "L+ %h/.icons/default/index.theme            - - - - ${cursorIndexTheme}"
+      "L+ %h/.local/share/icons/default/index.theme - - - - ${cursorIndexTheme}"
+    ];
+
+
+    programs.dconf.profiles.user.databases = [{
+      settings."org/gnome/shell".enabled-extensions = extensionUuids ++ [ "user-theme@gnome-shell-extensions.gcampax.github.com" ];
+    }];
 
     nixpkgs.overlays = [
       (self: super: {
         zoom-us = super.zoom-us.override {
           gnomeXdgDesktopPortalSupport = true;
-        };
-
-        # TODO: Update manually to version 105
-        # Update this manually upstream someday
-        gnomeExtensions = super.gnomeExtensions // {
-          dash-to-dock = super.gnomeExtensions.dash-to-dock.override {
-            version = "105";
-            metadata = "ewogICJfZ2VuZXJhdGVkIjogIkdlbmVyYXRlZCBieSBTd2VldFRvb3RoLCBkbyBub3QgZWRpdCIsCiAgImRlc2NyaXB0aW9uIjogIkEgZG9jayBmb3IgdGhlIEdub21lIFNoZWxsLiBUaGlzIGV4dGVuc2lvbiBtb3ZlcyB0aGUgZGFzaCBvdXQgb2YgdGhlIG92ZXJ2aWV3IHRyYW5zZm9ybWluZyBpdCBpbiBhIGRvY2sgZm9yIGFuIGVhc2llciBsYXVuY2hpbmcgb2YgYXBwbGljYXRpb25zIGFuZCBhIGZhc3RlciBzd2l0Y2hpbmcgYmV0d2VlbiB3aW5kb3dzIGFuZCBkZXNrdG9wcy4gU2lkZSBhbmQgYm90dG9tIHBsYWNlbWVudCBvcHRpb25zIGFyZSBhdmFpbGFibGUuIiwKICAiZ2V0dGV4dC1kb21haW4iOiAiZGFzaHRvZG9jayIsCiAgIm5hbWUiOiAiRGFzaCB0byBEb2NrIiwKICAib3JpZ2luYWwtYXV0aG9yIjogIm1pY3hneEBnbWFpbC5jb20iLAogICJzaGVsbC12ZXJzaW9uIjogWwogICAgIjQ1IiwKICAgICI0NiIsCiAgICAiNDciLAogICAgIjQ4IiwKICAgICI0OSIsCiAgICAiNTAiCiAgXSwKICAidXJsIjogImh0dHBzOi8vbWljaGVsZWcuZ2l0aHViLmlvL2Rhc2gtdG8tZG9jay8iLAogICJ1dWlkIjogImRhc2gtdG8tZG9ja0BtaWN4Z3guZ21haWwuY29tIiwKICAidmVyc2lvbiI6IDEwNQp9";
-            sha256 = "0bzsl74m6vxl1clzjipqcibn8p07n3azy4n2v47imf2bb80kbp5p";
-          };
         };
 
         start-ollama-on-demand-fish = super.writers.writeFishBin "start-ollama-on-demand" ''
@@ -175,15 +205,6 @@ in
 
           						systemctl stop --user ollama-intel-gpu.service
           					'';
-
-        wike = super.callPackage ./wike.nix { };
-
-        # TODO: until https://github.com/ollama/ollama/pull/8072 is fixed
-        # alpaca = super.alpaca.overrideAttrs (old: {
-        # 	postInstall = ''
-        # 		substituteInPlace $out/share/applications/com.jeffser.Alpaca.desktop --replace-fail Exec=alpaca Exec=${pkgs.start-ollama-on-demand-fish}/bin/start-ollama-on-demand
-        # 	'';
-        # });
       })
     ];
   };

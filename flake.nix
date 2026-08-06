@@ -17,10 +17,6 @@
     # nixpkgs-usable-easyeffects.url = "nixpkgs/21a328d166594e938deb8d5c668ff3527ca3d9a0";
     # nixpkgs.url = "nixpkgs/9da7f1c";
     # nixpkgs.url = "github:NixOS/nixpkgs/pull/426048/head";
-    home-manager = {
-      url = "github:nix-community/home-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     nix-vscode-extensions.url = "github:nix-community/nix-vscode-extensions";
     nix-index-database = {
       url = "github:Mic92/nix-index-database";
@@ -46,7 +42,6 @@
     {
       self,
       nixpkgs,
-      home-manager,
       nix-index-database,
       nix-vscode-extensions,
       disko,
@@ -91,23 +86,6 @@
             disko.nixosModules.disko
             ./modules/default.nix
             ./machines/Taihou
-            home-manager.nixosModules.home-manager
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.backupFileExtension = "homeManagerBackupFile";
-              home-manager.users.retblast = import ./users/retblast/hm;
-              # home-manager.sharedModules = [ plasma-manager.homeModules.plasma-manager ];
-              home-manager.extraSpecialArgs = {
-                # Read my laptop config
-                taihouConfig = nixosConfigurations.Taihou.config;
-                username = "retblast";
-                inherit inputs;
-                installPath = "/etc/nixos";
-              };
-              # Optionally, use home-manager.extraSpecialArgs to pass
-              # arguments to home.nix
-            }
           ];
           specialArgs = {
             inherit inputs;

@@ -14,11 +14,11 @@ let
               # ../overlay/patches/kde-material-you-colors-kde-role-matrix.patch
             ];
             postInstall = ''
-                substituteInPlace $out/lib/python3.13/site-packages/kde_material_you_colors/data/kde-material-you-colors.desktop \
+                substituteInPlace $out/lib/python3.14/site-packages/kde_material_you_colors/data/kde-material-you-colors.desktop \
                   --replace "Exec=kde-material-you-colors" \
                   "Exec=$out/bin/kde-material-you-colors"
 
-              substituteInPlace $out/lib/python3.13/site-packages/kde_material_you_colors/data/kde-material-you-colors-stop.desktop \
+              substituteInPlace $out/lib/python3.14/site-packages/kde_material_you_colors/data/kde-material-you-colors-stop.desktop \
                   --replace "Exec=kde-material-you-colors" \
                   "Exec=$out/bin/kde-material-you-colors"
             '';
