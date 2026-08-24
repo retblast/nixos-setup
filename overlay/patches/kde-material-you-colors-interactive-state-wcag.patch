@@ -1,7 +1,6 @@
-diff -ruN old/src/kde_material_you_colors/schemeconfigs.py new/src/kde_material_you_colors/schemeconfigs.py
---- old/src/kde_material_you_colors/schemeconfigs.py	2026-08-09 17:28:08.925628241 +0000
-+++ new/src/kde_material_you_colors/schemeconfigs.py	2026-08-09 17:28:08.926519425 +0000
-@@ -302,56 +302,135 @@
+--- a/src/kde_material_you_colors/schemeconfigs.py
++++ b/src/kde_material_you_colors/schemeconfigs.py
+@@ -302,56 +302,162 @@
      )
  
  
@@ -37,16 +36,15 @@ diff -ruN old/src/kde_material_you_colors/schemeconfigs.py new/src/kde_material_
 -    menu-bar and pressed states.  When that shared text cannot read on a state
 -    background, prefer reusing the canonical Selection background over inventing
 -    a new color per section.  That keeps the palette visually tied together.
-+    The generated foreground roles are normally stable across widget states, so
-+    a shared foreground must remain readable both in its normal background and
-+    in an interactive state.  Rather than changing that semantic foreground for
-+    one state and breaking another, repair the state fill to the nearest
-+    palette-compatible color.
++    Generated foreground roles are normally stable across widget states.  If a
++    Breeze interactive fill is not readable with the foregrounds that can be
++    rendered over it, repair the fill rather than changing a semantic foreground
++    for one state.
 +
-+    The View -> Window/Header entries are intentional Breeze compatibility rules:
-+    menu-bar text can be supplied by the Window/Header set while the visible
-+    hover/focus fill comes from a View decoration role.  This is exactly the
-+    cross-set combination that per-set WCAG checks cannot see.
++    Some Breeze paths intentionally cross KDE color sets: for example, menu-bar
++    text can come from Window/Header while its hover or focus decoration is read
++    from View.  These relationships cannot be validated by independent per-set
++    WCAG checks, so they are encoded explicitly here.
      """
 -    selection_background = _scheme_value(sections, "Colors:Selection", "BackgroundNormal")
 -    selection_text = _scheme_value(sections, "Colors:Selection", "ForegroundNormal")
@@ -73,6 +71,16 @@ diff -ruN old/src/kde_material_you_colors/schemeconfigs.py new/src/kde_material_
 -        ("Colors:Window", "DecorationFocus"),
 -        ("Colors:Window", "DecorationHover"),
 +    state_matrix = (
++        (("Colors:Selection", "DecorationFocus"), (
++            ("Colors:Selection", "ForegroundNormal"),
++            ("Colors:Selection", "ForegroundActive"),
++            ("Colors:Selection", "ForegroundInactive"),
++        )),
++        (("Colors:Selection", "DecorationHover"), (
++            ("Colors:Selection", "ForegroundNormal"),
++            ("Colors:Selection", "ForegroundActive"),
++            ("Colors:Selection", "ForegroundInactive"),
++        )),
 +        (("Colors:View", "DecorationFocus"), (
 +            ("Colors:View", "ForegroundNormal"),
 +            ("Colors:Window", "ForegroundNormal"),
@@ -85,33 +93,51 @@ diff -ruN old/src/kde_material_you_colors/schemeconfigs.py new/src/kde_material_
 +        )),
 +        (("Colors:Button", "DecorationFocus"), (
 +            ("Colors:Button", "ForegroundNormal"),
++            ("Colors:Button", "ForegroundActive"),
 +        )),
 +        (("Colors:Button", "DecorationHover"), (
 +            ("Colors:Button", "ForegroundNormal"),
++            ("Colors:Button", "ForegroundActive"),
 +        )),
 +        (("Colors:Tooltip", "DecorationFocus"), (
 +            ("Colors:Tooltip", "ForegroundNormal"),
++            ("Colors:Tooltip", "ForegroundActive"),
 +        )),
 +        (("Colors:Tooltip", "DecorationHover"), (
 +            ("Colors:Tooltip", "ForegroundNormal"),
++            ("Colors:Tooltip", "ForegroundActive"),
 +        )),
 +        (("Colors:Window", "DecorationFocus"), (
 +            ("Colors:Window", "ForegroundNormal"),
++            ("Colors:Window", "ForegroundActive"),
 +        )),
 +        (("Colors:Window", "DecorationHover"), (
 +            ("Colors:Window", "ForegroundNormal"),
++            ("Colors:Window", "ForegroundActive"),
++        )),
++        (("Colors:Complementary", "DecorationFocus"), (
++            ("Colors:Complementary", "ForegroundNormal"),
++            ("Colors:Complementary", "ForegroundActive"),
++        )),
++        (("Colors:Complementary", "DecorationHover"), (
++            ("Colors:Complementary", "ForegroundNormal"),
++            ("Colors:Complementary", "ForegroundActive"),
 +        )),
 +        (("Colors:Header", "DecorationFocus"), (
 +            ("Colors:Header", "ForegroundNormal"),
++            ("Colors:Header", "ForegroundActive"),
 +        )),
 +        (("Colors:Header", "DecorationHover"), (
 +            ("Colors:Header", "ForegroundNormal"),
++            ("Colors:Header", "ForegroundActive"),
 +        )),
 +        (("Colors:Header][Inactive", "DecorationFocus"), (
 +            ("Colors:Header][Inactive", "ForegroundNormal"),
++            ("Colors:Header][Inactive", "ForegroundActive"),
 +        )),
 +        (("Colors:Header][Inactive", "DecorationHover"), (
 +            ("Colors:Header][Inactive", "ForegroundNormal"),
++            ("Colors:Header][Inactive", "ForegroundActive"),
 +        )),
      )
  
@@ -124,7 +150,8 @@ diff -ruN old/src/kde_material_you_colors/schemeconfigs.py new/src/kde_material_
 +        foregrounds = _background_values(sections, foreground_refs)
 +        normalized_background = _opaque_hex(background)
 +        if normalized_background is None or not foregrounds:
-+            continue
+             continue
+-        if _contrast_ratio(selection_text, background) >= _WCAG_NORMAL_TEXT_CONTRAST:
 +
 +        if _passes_contrast(
 +            normalized_background,
@@ -139,8 +166,7 @@ diff -ruN old/src/kde_material_you_colors/schemeconfigs.py new/src/kde_material_
 +                ", ".join(foregrounds),
 +                _ratios_text(normalized_background, foregrounds),
 +            )
-             continue
--        if _contrast_ratio(selection_text, background) >= _WCAG_NORMAL_TEXT_CONTRAST:
++            continue
 +
 +        repaired, compliant = _nearest_wcag_background(
 +            normalized_background,
@@ -178,137 +204,48 @@ diff -ruN old/src/kde_material_you_colors/schemeconfigs.py new/src/kde_material_
          )
  
  
-@@ -382,9 +461,8 @@
+@@ -382,29 +488,10 @@
              _WCAG_NORMAL_TEXT_CONTRAST,
          )
  
 -    _repair_interactive_state_backgrounds(lines, sections, mode)
--
++    # State fills are repaired after the semantic foreground roles are final.
++    # This prevents a state-specific background fix from fighting the normal
++    # foreground repair pass.
+ 
 -    # Re-check Selection after state backgrounds have been made coherent.
-+    # Re-check Selection after its foregrounds and the generated state roles are
-+    # in place.
-     selection_state_backgrounds = selection_backgrounds + (
-         ("Colors:Selection", "DecorationFocus"),
-         ("Colors:Selection", "DecorationHover"),
-@@ -465,6 +543,11 @@
+-    selection_state_backgrounds = selection_backgrounds + (
+-        ("Colors:Selection", "DecorationFocus"),
+-        ("Colors:Selection", "DecorationHover"),
+-        ("Colors:View", "DecorationFocus"),
+-        ("Colors:View", "DecorationHover"),
+-        ("Colors:Button", "DecorationFocus"),
+-        ("Colors:Button", "DecorationHover"),
+-        ("Colors:Tooltip", "DecorationFocus"),
+-        ("Colors:Tooltip", "DecorationHover"),
+-    )
+-    for key in ("ForegroundNormal", "ForegroundActive", "ForegroundInactive"):
+-        _repair_foreground(
+-            lines,
+-            sections,
+-            mode,
+-            "Colors:Selection",
+-            key,
+-            selection_state_backgrounds,
+-            _WCAG_NORMAL_TEXT_CONTRAST,
+-        )
+ 
+     normal_text_checks = {
+         "Colors:View": (
+@@ -465,6 +552,11 @@
              _WCAG_NORMAL_TEXT_CONTRAST,
          )
  
 +    # Finally validate the actual interactive state fills against the stable
-+    # foreground roles.  Doing this after normal/active foreground repair keeps
-+    # the state check from fighting the ordinary per-role checks.
++    # foreground roles.  This is deliberately late in the pass so state repair
++    # does not fight ordinary per-role foreground repair.
 +    _repair_interactive_state_backgrounds(lines, sections, mode)
 +
      wm_checks = {
          "activeForeground": (("WM", "activeBackground"),),
          "inactiveForeground": (("WM", "inactiveBackground"),),
-diff -ruN old/tests/test_scheme_contrast_states.py new/tests/test_scheme_contrast_states.py
---- old/tests/test_scheme_contrast_states.py	1970-01-01 00:00:00.000000000 +0000
-+++ new/tests/test_scheme_contrast_states.py	2026-08-09 17:28:13.516223730 +0000
-@@ -0,0 +1,106 @@
-+import unittest
-+
-+from kde_material_you_colors.schemeconfigs import (
-+	_contrast_ratio,
-+	_parse_kde_scheme,
-+	_repair_interactive_state_backgrounds,
-+	_scheme_value,
-+)
-+
-+
-+LIGHT_SCHEME = """[Colors:View]
-+BackgroundNormal=#f5f5f5
-+DecorationFocus=#95d6f2
-+DecorationHover=#1b6872
-+ForegroundNormal=#4a4a4a
-+
-+[Colors:Window]
-+BackgroundNormal=#f5f5f5
-+DecorationFocus=#95d6f2
-+DecorationHover=#1b6872
-+ForegroundNormal=#4a4a4a
-+
-+[Colors:Header]
-+BackgroundNormal=#f5f5f5
-+DecorationFocus=#95d6f2
-+DecorationHover=#1b6872
-+ForegroundNormal=#4a4a4a
-+
-+[Colors:Button]
-+BackgroundNormal=#f5f5f5
-+DecorationFocus=#95d6f2
-+DecorationHover=#1b6872
-+ForegroundNormal=#4a4a4a
-+
-+[Colors:Tooltip]
-+BackgroundNormal=#f5f5f5
-+DecorationFocus=#95d6f2
-+DecorationHover=#1b6872
-+ForegroundNormal=#4a4a4a
-+"""
-+
-+
-+DARK_SCHEME = """[Colors:View]
-+BackgroundNormal=#171a1c
-+DecorationFocus=#9cc8d2
-+DecorationHover=#d7eef2
-+ForegroundNormal=#f1f4f5
-+
-+[Colors:Window]
-+BackgroundNormal=#171a1c
-+DecorationFocus=#9cc8d2
-+DecorationHover=#d7eef2
-+ForegroundNormal=#f1f4f5
-+
-+[Colors:Header]
-+BackgroundNormal=#171a1c
-+DecorationFocus=#9cc8d2
-+DecorationHover=#d7eef2
-+ForegroundNormal=#f1f4f5
-+
-+[Colors:Button]
-+BackgroundNormal=#171a1c
-+DecorationFocus=#9cc8d2
-+DecorationHover=#d7eef2
-+ForegroundNormal=#f1f4f5
-+
-+[Colors:Tooltip]
-+BackgroundNormal=#171a1c
-+DecorationFocus=#9cc8d2
-+DecorationHover=#d7eef2
-+ForegroundNormal=#f1f4f5
-+"""
-+
-+
-+class InteractiveStateContrastTests(unittest.TestCase):
-+	def _repair(self, scheme):
-+		lines, sections = _parse_kde_scheme(scheme)
-+		_repair_interactive_state_backgrounds(lines, sections, "test")
-+		return lines, sections
-+
-+	def test_light_hover_repairs_cross_set_menu_state(self):
-+		lines, sections = self._repair(LIGHT_SCHEME)
-+		hover = _scheme_value(sections, "Colors:View", "DecorationHover")
-+		window_text = _scheme_value(sections, "Colors:Window", "ForegroundNormal")
-+		self.assertGreaterEqual(_contrast_ratio(window_text, hover), 4.5)
-+		self.assertNotEqual(hover, "#1b6872")
-+
-+	def test_dark_hover_repairs_light_state_fill(self):
-+		lines, sections = self._repair(DARK_SCHEME)
-+		hover = _scheme_value(sections, "Colors:View", "DecorationHover")
-+		window_text = _scheme_value(sections, "Colors:Window", "ForegroundNormal")
-+		self.assertGreaterEqual(_contrast_ratio(window_text, hover), 4.5)
-+		self.assertNotEqual(hover, "#d7eef2")
-+
-+	def test_compliant_state_is_left_alone(self):
-+		lines, sections = self._repair(
-+			LIGHT_SCHEME.replace("DecorationHover=#1b6872", "DecorationHover=#a8e3ea")
-+		)
-+		self.assertEqual(
-+			_scheme_value(sections, "Colors:View", "DecorationHover"),
-+			"#a8e3ea",
-+		)
-+
-+
-+if __name__ == "__main__":
-+	unittest.main()

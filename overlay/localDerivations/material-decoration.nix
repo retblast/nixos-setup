@@ -23,12 +23,12 @@ stdenv.mkDerivation {
 
 	nativeBuildInputs = [
 		cmake
-		extra-cmake-modules
+		kdePackages.extra-cmake-modules
 	];
 
 	buildInputs = with kdePackages; [
 		qtbase
-
+		qttools
 		kconfig
 		kconfigwidgets
 		kcoreaddons
@@ -40,6 +40,8 @@ stdenv.mkDerivation {
 		kdecoration
 		kwin
 	];
+
+	dontWrapQtApps = true;
 
 	cmakeFlags = [
 		"-DKDE_INSTALL_USE_QT_SYS_PATHS=ON"

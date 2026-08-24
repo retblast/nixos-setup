@@ -13,21 +13,18 @@ unconditionally. The bounded GDDV readers then throw gddv_exception and the
 complete adaptive policy is discarded.
 
 Accept this legacy short form only when:
-
   * the table revision is exactly 1; and
   * the buffer ends exactly after pl1_max.
-
 Every other truncation remains rejected. Also bounds-check the reserved
 revision-1 object before skipping it.
-
 ---
- src/thd_gddv.cpp | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ src/thd_gddv.cpp | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
 diff --git a/src/thd_gddv.cpp b/src/thd_gddv.cpp
 --- a/src/thd_gddv.cpp
 +++ b/src/thd_gddv.cpp
-@@ -864,6 +864,17 @@ int cthd_gddv::parse_itmt(char *name, char *buf, int len) {
+@@ -862,6 +862,21 @@ int cthd_gddv::parse_itmt(char *name, char *buf, int len) {
  		itmt_entry.trip_point = get_uint64(buf, &offset);
  		itmt_entry.pl1_min = get_string_obj(buf, &offset);
  		itmt_entry.pl1_max = get_string_obj(buf, &offset);
@@ -48,7 +45,9 @@ diff --git a/src/thd_gddv.cpp b/src/thd_gddv.cpp
 +
  		itmt_entry.unused = get_string_obj(buf, &offset);
  		if (version == 2) {
-@@ -877,6 +877,9 @@ int cthd_gddv::parse_itmt(char *name, char *buf, int len) {
+ 			// Ref DPTF/Sources/Manager/DataManager.cpp DataManager::loadItmtTableObject()
+@@ -875,6 +890,11 @@ int cthd_gddv::parse_itmt(char *name, char *buf, int len) {
+ 			dummy3 = get_uint64(buf, &offset);
  			thd_log_debug("ignore dummy_str:%s %llu %llu %llu\n", dummy_str.c_str(), dummy1, dummy2, dummy3);
  		} else {
 +			if (offset < 0 || offset > len || len - offset < 12) {
@@ -58,3 +57,6 @@ diff --git a/src/thd_gddv.cpp b/src/thd_gddv.cpp
 +			}
  			offset += 12;
  		}
+ 
+-- 
+2.45.0
