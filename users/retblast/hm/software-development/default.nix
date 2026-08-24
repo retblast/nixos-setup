@@ -1,14 +1,14 @@
-{ taihouConfig, pkgs, username, ... }:{
+{ taihouConfig, pkgs, username, ... }: {
   # Here goes everything related to software development
 	imports = [
 		./zed.nix
 	];
-	
+
   services = {
+
     lorri = {
 			enable = true;
 			enableNotifications = true;
-			# There's also package and nixPackage.
 		};
 
     gpg-agent = {
@@ -20,16 +20,16 @@
 
   programs = {
 		direnv = {
-			enable = true;
+			 enable = true;
 			# Fish integration is always enabled
 			#enableFishIntegration = true;
 			enableBashIntegration = true;
 			nix-direnv.enable = true;
 		};
-    gpg = {
-			enable = true;
-			# mutableKeys and mutableTrust are enabled by default
 
+    gpg = {
+      enable = true;
+			# mutableKeys and mutableTrust are enabled by default
 		};
 		delta.enable = true;
 		delta.enableGitIntegration = true;
@@ -50,6 +50,11 @@
 		};
 		gh = {
 			enable = true;
+		};
+
+		opencode = {
+		  enable = true;
+			web.enable = true;
 		};
   };
 }

@@ -1,0 +1,60 @@
+From a3b2a351b7d90887fd3c585dacc064bc7a0b5caa Mon Sep 17 00:00:00 2001
+From: X1605ZA firmware compatibility analysis <x1605za@localhost>
+Date: Fri, 21 Aug 2026 21:20:00 +0000
+Subject: [PATCH] thermald: accept exact short-form revision-1 ITMT entries
+
+Some ASUS firmware, including the Vivobook X1605ZA, ships an otherwise valid
+GDDV data vault with a revision-1 ITMT entry that ends immediately after the
+PL1 maximum string. The firmware omits the final unused string and reserved
+uint64 object defined by the reference schema.
+
+thermald does not consume either omitted field, but attempts to read them
+unconditionally. The bounded GDDV readers then throw gddv_exception and the
+complete adaptive policy is discarded.
+
+Accept this legacy short form only when:
+
+  * the table revision is exactly 1; and
+  * the buffer ends exactly after pl1_max.
+
+Every other truncation remains rejected. Also bounds-check the reserved
+revision-1 object before skipping it.
+
+---
+ src/thd_gddv.cpp | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/src/thd_gddv.cpp b/src/thd_gddv.cpp
+--- a/src/thd_gddv.cpp
++++ b/src/thd_gddv.cpp
+@@ -864,6 +864,17 @@ int cthd_gddv::parse_itmt(char *name, char *buf, int len) {
+ 		itmt_entry.trip_point = get_uint64(buf, &offset);
+ 		itmt_entry.pl1_min = get_string_obj(buf, &offset);
+ 		itmt_entry.pl1_max = get_string_obj(buf, &offset);
++
++		/*
++		 * Some firmware emits a revision-1 ITMT entry containing only
++		 * the four fields thermald actually consumes. Accept that legacy
++		 * form only when the entry ends exactly after pl1_max. This keeps
++		 * all other malformed or partially truncated entries fatal.
++		 */
++		if (version == 1 && offset == len) {
++			thd_log_warn(
++					"GDDV: accepting short revision-1 ITMT entry\n");
++			itmt_entry.unused.clear();
++			itmt.itmt_entries.push_back(std::move(itmt_entry));
++			continue;
++		}
++
+ 		itmt_entry.unused = get_string_obj(buf, &offset);
+ 		if (version == 2) {
+@@ -877,6 +877,9 @@ int cthd_gddv::parse_itmt(char *name, char *buf, int len) {
+ 			thd_log_debug("ignore dummy_str:%s %llu %llu %llu\n", dummy_str.c_str(), dummy1, dummy2, dummy3);
+ 		} else {
++			if (offset < 0 || offset > len || len - offset < 12) {
++				thd_log_warn(
++						"GDDV: truncated revision-1 ITMT reserved object\n");
++				throw gddv_exception;
++			}
+ 			offset += 12;
+ 		}

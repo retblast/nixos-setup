@@ -4,7 +4,7 @@ let
     (final: prev: {
       thermald = prev.thermald.overrideAttrs (old: {
         patches = [
-          ./patches/thermald-2.5.11-accept-short-itmt-v1.patch
+          ./patches/thermald-2.5.12-accept-short-itmt-v1.patch
         ];
       });
       # TODO: apply this as overlay somehow on flake.nix

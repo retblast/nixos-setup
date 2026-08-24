@@ -1,7 +1,8 @@
 [soe][Limiter#0]
 attack=2
-lookahead=4
+bypass=true
+lookahead=4.000000000000021
 outputGain=-1
 oversampling=22
 release=8
-threshold=-6
+threshold=-7.5

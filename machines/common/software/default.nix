@@ -115,12 +115,12 @@
         pkgs.gst_all_1.gst-plugins-bad
         pkgs.gst_all_1.gst-plugins-ugly
         pkgs.gst_all_1.gst-libav
-        pkgs.gst_all_1.gst-vaapi
+        # pkgs.gst_all_1.gst-vaapi
         pkgs.pkgsi686Linux.gst_all_1.gst-plugins-base
         pkgs.pkgsi686Linux.gst_all_1.gst-plugins-good
         pkgs.pkgsi686Linux.gst_all_1.gst-plugins-bad
         pkgs.pkgsi686Linux.gst_all_1.gst-plugins-ugly
-        pkgs.pkgsi686Linux.gst_all_1.gst-vaapi
+        # pkgs.pkgsi686Linux.gst_all_1.gst-vaapi
         pkgs.pkgsi686Linux.gst_all_1.gst-libav
       ];
     };
@@ -207,10 +207,10 @@
     man = {
       cache.enable = true;
       mandoc = {
-        enable = false;
+        enable = true;
       };
       man-db = {
-        enable = true;
+        enable = false;
       };
     };
     enable = true;

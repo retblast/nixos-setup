@@ -100,6 +100,7 @@ in
           kde-material-you-colors
           klassy
           kwin-effects-better-blur-dx
+          material-decoration
 
           #  Extra KDE stuff
           kdePackages.filelight

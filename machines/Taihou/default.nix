@@ -94,7 +94,7 @@
         serviceConfig = {
           Type = "oneshot";
           # Some IRQs can't be modified, so use || true to work around this
-          ExecStart = "${pkgs.bash}/bin/bash -c 'echo 12-15 | tee /proc/irq/*/smp_affinity_list || true'";
+          ExecStart = "${pkgs.bash}/bin/bash -c 'echo 8-11 | tee /proc/irq/*/smp_affinity_list || true'";
         };
         wantedBy = [
           "multi-user.target"
@@ -147,6 +147,16 @@
   # Desktop Environment
   localModule.gnome.enable = true;
   localModule.gnome.minimal.enable = false;
+  # Trying it out!
+  # Keep this for the future.
+  # programs.singularity-desktop = {
+  #   enable = false;
+  #   greeter = {
+  #     enable = false;
+  #   };
+  # };
+  # I don't really know mateoalfaro, but I ran an AI scan on the repository fwiw...
+  # singularity-flake.cache.enable = false;
 
   localModule.intel_lpmd.enable = false;
   localModule.intel_lpmd.debug = false;

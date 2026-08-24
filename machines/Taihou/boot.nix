@@ -47,6 +47,11 @@ in
         name = "Set the Intel EPP change to ADL, adapted from EPB. Check patch comment for details.";
         patch = ./patches/intel-epp-fix.patch;
       }
+      {
+        #
+        name = "KConfig for ZSTD level";
+        patch = ./patches/0001-crypto-zstd-make-default-compression-level-a-Kconfig-knob.patch;
+      }
       # {
       #   # Keyboard backlight fix
       #   name = "Keyboard backlight fix";

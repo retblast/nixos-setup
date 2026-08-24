@@ -5,7 +5,15 @@
   lib,
   ...
 }:
-{
+
+let rawMonospaceFont = config.dconf.settings."org/gnome/desktop/interface".monospace-font-name;
+rawMonospaceFontParts =  lib.strings.splitString " " rawMonospaceFont;
+MonospaceFontSize = lib.strings.toInt (builtins.elemAt rawMonospaceFontParts ((builtins.length rawMonospaceFontParts) - 1));
+rawSansFont = config.dconf.settings."org/gnome/desktop/interface".monospace-font-name;
+rawSansFontParts =  lib.strings.splitString " " rawSansFont;
+SansFontSize = lib.strings.toInt (builtins.elemAt rawSansFontParts ((builtins.length rawSansFontParts) - 1));
+
+in {
   # Packages necessary for Zed to not complain about things
   # Does make using NixOS annoying tbf
   home.packages = with pkgs; [
@@ -21,6 +29,15 @@
       "rust"
     ];
     userSettings = {
+      git_panel = {
+        dock = "left";
+      };
+      outline_panel = {
+        dock = "left";
+      };
+      project_panel = {
+        dock = "left";
+      };
       buffer_font_family = "${builtins.elemAt taihouConfig.fonts.fontconfig.defaultFonts.monospace 0}";
       ui_font_family = "${builtins.elemAt taihouConfig.fonts.fontconfig.defaultFonts.sansSerif 0}";
       features = {
@@ -28,21 +45,8 @@
       };
       load_direnv = "shell_hook";
       vim_mode = false;
-      ui_font_size =
-        (
-          lib.strings.toInt (
-            builtins.elemAt (builtins.split " " config.dconf.settings."org/gnome/desktop/interface".font-name) 2
-          )
-          + 1
-        )
-        * 1.33;
-      buffer_font_size =
-        lib.strings.toInt (
-          builtins.elemAt (builtins.split " "
-            config.dconf.settings."org/gnome/desktop/interface".monospace-font-name
-          ) 2
-        )
-        * 1.33;
+      ui_font_size = (SansFontSize + 1) * 1.33;
+      buffer_font_size = MonospaceFontSize * 1.33;
       languages = {
         Nix = {
           language_servers = [

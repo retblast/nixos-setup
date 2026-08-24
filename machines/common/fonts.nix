@@ -34,7 +34,7 @@
       roboto
       roboto-slab
       roboto-mono
-      jetbrains-mono-variable
+#       jetbrains-mono-variable
       input-fonts
       source-sans
       source-serif
@@ -84,7 +84,7 @@
       };
       localConf = ''
         				<fontconfig>
-        				<alias>
+        				<alias binding="strong">
         					<family>system-ui</family>
         					<prefer>
         						<family>Inter</family>
@@ -92,7 +92,7 @@
         					</prefer>
         				</alias>
 
-        				<alias>
+        				<alias binding="strong">
         					<family>ui-sans-serif</family>
         					<prefer>
         						<family>Inter</family>
@@ -100,7 +100,7 @@
         					</prefer>
         				</alias>
 
-        				<alias>
+        				<alias binding="strong">
         					<family>ui-serif</family>
         					<prefer>
         						<family>Roboto Slab</family>
@@ -108,7 +108,7 @@
         					</prefer>
         				</alias>
 
-        				<alias>
+        				<alias binding="strong">
         					<family>ui-monospace</family>
         					<prefer>
         						<family>${builtins.elemAt config.fonts.fontconfig.defaultFonts.monospace 0}</family>

@@ -13,7 +13,7 @@
       remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
       dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
       extraPackages = with pkgs; [
-        openssl_1_1
+#         openssl_1_1
         curl
         libssh2
         openal

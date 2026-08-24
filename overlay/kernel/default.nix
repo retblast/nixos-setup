@@ -3,6 +3,13 @@
 }:
 with prev.lib.kernel;
 {
+  # Fix for Steam's laggy overlay
+  TRANSPARENT_HUGEPAGE_TMPFS_HUGE_NEVER = prev.lib.mkForce no;
+  TRANSPARENT_HUGEPAGE_TMPFS_HUGE_ADVISE = yes;
+
+  # Default ZSTD level
+  CRYPTO_ZSTD_DEFAULT_LEVEL = freeform "1";
+
   # Tickless idle
   NO_HZ_IDLE = yes;
   NO_HZ_FULL = prev.lib.mkForce no;

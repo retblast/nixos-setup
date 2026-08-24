@@ -17,6 +17,8 @@
     # nixpkgs-usable-easyeffects.url = "nixpkgs/21a328d166594e938deb8d5c668ff3527ca3d9a0";
     # nixpkgs.url = "nixpkgs/9da7f1c";
     # nixpkgs.url = "github:NixOS/nixpkgs/pull/426048/head";
+    #
+    # singularity-desktop.url = "github:mateoalfaro/singularity-flake";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";

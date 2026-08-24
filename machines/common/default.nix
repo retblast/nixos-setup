@@ -22,15 +22,15 @@
   # Like Dolphin, for example.
   system.replaceDependencies.replacements = [
     # Patch freetype to have stem darkening for TTFs
-    {
-      oldDependency = pkgs.freetype;
-      newDependency = pkgs.freetype.overrideAttrs (old: {
-        patches = old.patches ++ [
-          ./patches/freetype-ttf-stem-darkening.patch
-          ./patches/freetype-macos-like-darkening-curve.patch
-        ];
-      });
-    }
+    # {
+    #   oldDependency = pkgs.freetype;
+    #   newDependency = pkgs.freetype.overrideAttrs (old: {
+    #     patches = old.patches ++ [
+    #       ./patches/freetype-ttf-stem-darkening.patch
+    #       ./patches/freetype-macos-like-darkening-curve.patch
+    #     ];
+    #   });
+    # }
     # Disable stem darkening on QT
     {
       oldDependency = pkgs.kdePackages.qtbase;

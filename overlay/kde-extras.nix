@@ -4,6 +4,7 @@ let
       kde-material-you-colors = final.callPackage ./localDerivations/kde-material-you-colors.nix {
         python-kde-material-you-colors = final.python3Packages.kde-material-you-colors;
       };
+      material-decoration = final.callPackage ./localDerivations/material-decoration.nix {};
       # Technically should be a fix but it's for kde-material-you-colors
       python3Packages = prev.python3Packages.overrideScope (
         scopeFinal: scopePrev: {
@@ -11,14 +12,15 @@ let
           kde-material-you-colors = scopePrev.kde-material-you-colors.overrideAttrs (old: rec {
             patches = [
               ../overlay/patches/kde-material-you-colors-wcag-repair-pass.patch
+              ../overlay/patches/kde-material-you-colors-interactive-state-wcag.patch
               # ../overlay/patches/kde-material-you-colors-kde-role-matrix.patch
             ];
             postInstall = ''
-                substituteInPlace $out/lib/python3.13/site-packages/kde_material_you_colors/data/kde-material-you-colors.desktop \
+                substituteInPlace $out/lib/python3.14/site-packages/kde_material_you_colors/data/kde-material-you-colors.desktop \
                   --replace "Exec=kde-material-you-colors" \
                   "Exec=$out/bin/kde-material-you-colors"
 
-              substituteInPlace $out/lib/python3.13/site-packages/kde_material_you_colors/data/kde-material-you-colors-stop.desktop \
+              substituteInPlace $out/lib/python3.14/site-packages/kde_material_you_colors/data/kde-material-you-colors-stop.desktop \
                   --replace "Exec=kde-material-you-colors" \
                   "Exec=$out/bin/kde-material-you-colors"
             '';

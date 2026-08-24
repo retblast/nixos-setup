@@ -1,0 +1,43 @@
+diff --git a/crypto/Kconfig b/crypto/Kconfig
+index b07e7de61..8b9e2aac8 100644
+--- a/crypto/Kconfig
++++ b/crypto/Kconfig
+@@ -1109,6 +1109,25 @@ config CRYPTO_ZSTD
+ 
+ 	  See https://github.com/facebook/zstd for further information.
+ 
++config CRYPTO_ZSTD_DEFAULT_LEVEL
++	int "Default zstd compression level"
++	depends on CRYPTO_ZSTD
++	range 1 22
++	default 3
++	help
++	  Sets the compression level used by the generic crypto-API zstd
++	  acomp driver (crypto/zstd.c). This is the level zswap ends up
++	  using when zswap_compressor=zstd, since zswap has no level knob
++	  of its own and goes through this driver.
++
++	  Higher values trade CPU time during compress/decompress for a
++	  better compression ratio. The zstd upstream default (3) is a
++	  reasonable balance; raise it if you have CPU headroom and want
++	  a denser compressed pool, lower it if compression is showing up
++	  as a bottleneck under memory pressure.
++
++	  If unsure, say 3.
++
+ endmenu
+ 
+ menu "Random number generation"
+diff --git a/crypto/zstd.c b/crypto/zstd.c
+index 556f5d2bd..f9647d024 100644
+--- a/crypto/zstd.c
++++ b/crypto/zstd.c
+@@ -17,7 +17,7 @@
+ #include <crypto/scatterwalk.h>
+ 
+ 
+-#define ZSTD_DEF_LEVEL		3
++#define ZSTD_DEF_LEVEL		CONFIG_CRYPTO_ZSTD_DEFAULT_LEVEL
+ #define ZSTD_MAX_WINDOWLOG	18
+ #define ZSTD_MAX_SIZE		BIT(ZSTD_MAX_WINDOWLOG)
+ 

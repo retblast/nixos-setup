@@ -279,11 +279,21 @@
       "org/gnome/desktop/datetime" = {
         automatic-timezone = true;
       };
+
+      "org/gnome/mutter/wayland" = {
+        xwayland-scaling-factor = lib.hm.gvariant.mkDouble 1.0;
+      };
+
       "org/gnome/desktop/interface" = {
         # icon-theme = "MoreWaita";
-        font-name = "system-ui 11";
-        document-font-name = "sans 11";
-        monospace-font-name = "monospace 11";
+        #
+        # Did this to work around the Chrome/Electron bug regarding
+        # resolving generic font names (system-ui, sans, serif, monospace, ui-*)
+        # to their actual values
+        # TBQH this feels better ngl
+        font-name = "${builtins.elemAt taihouConfig.fonts.fontconfig.defaultFonts.sansSerif 0} 10";
+        document-font-name = "${builtins.elemAt taihouConfig.fonts.fontconfig.defaultFonts.sansSerif 0} 10";
+        monospace-font-name = "${builtins.elemAt taihouConfig.fonts.fontconfig.defaultFonts.monospace 0} 10";
         font-hinting = "${taihouConfig.fonts.fontconfig.hinting.style}";
         font-rendering = "manual";
         gtk-enable-primary-paste = true;

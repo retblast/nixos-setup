@@ -31,11 +31,16 @@ in
       };
     };
     zram = {
-      enable = lib.mkEnableOption "zram, for memory compression.";
+      enable = lib.mkEnableOption "zram using zstd as algorithm, for memory compression.";
       size = lib.mkOption {
         default = 100;
         description = "Size (in % of ram) of the zram device. Default size is the same as the machine's ram.";
         type = lib.types.ints.between 1 999;
+      };
+      level = lib.mkOption {
+        default = 1;
+        description = "ZSTD compression level. The higher, the better the compression, but also slower.";
+        type = lib.types.ints.between 1 15;
       };
     };
   };
@@ -75,6 +80,10 @@ in
     zramSwap = {
       enable = cfg.zram.enable;
       memoryPercent = cfg.zram.size;
+      algorithm = "zstd";
     };
+
+    # TODO: Make this work natively! zram-generator supports this, and so should zramSwap.
+    services.zram-generator.settings.zram0 = { compression-algorithm = lib.mkForce "${config.zramSwap.algorithm}(level=${toString cfg.zram.level})"; };
   };
 }
