@@ -39,6 +39,7 @@ let
 in
 {
   boot = {
+    tmp.cleanOnBoot = true;
     initrd.prepend = lib.mkAfter [ "${acpiOverrideKeyboardBacklightFix}" ];
     kernelPackages = lib.mkForce pkgs.linux-retblast-zen;
     kernelPatches = [
@@ -83,7 +84,10 @@ in
     extraModprobeConfig = ''
       			# Godforsaken MT7921
       			# options mt7921e disable_aspm=Y
+            # For the fingerprint sensor
+            options spidev bufsiz=16642
       		'';
+
     # initrd.availableKernelModules = [ "" ];
     # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/tasks/filesystems/zfs.nix#L18
     # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/tasks/filesystems/zfs.nix#L19

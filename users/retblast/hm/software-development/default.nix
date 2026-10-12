@@ -38,6 +38,7 @@
 			package = pkgs.gitFull;
 			settings.user.name = "${username}";
 			settings.user.email = "retblast@proton.me";
+			settings.gpg.ssh.allowedSignersFile = "~/.ssh/allowed_signers";
 			lfs = {
 				enable = true;
 			};
@@ -55,6 +56,7 @@
 		opencode = {
 		  enable = true;
 			web.enable = true;
+			package = pkgs.usable-opencode.opencode;
 		};
   };
 }

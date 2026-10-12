@@ -1,0 +1,55 @@
+--- a/src/thd_engine_adaptive.cpp	2026-08-26 20:18:11.511769837 -0500
++++ b/src/thd_engine_adaptive.cpp	2026-08-26 20:43:26.608488971 -0500
+@@ -564,6 +564,52 @@
+ 	thd_log_info("target:%s %d\n", target.code.c_str(), argument);
+ 	if (cdev)
+ 		cdev->set_adaptive_target(target);
++
++	/*
++	 * Sync RAPL power limit targets to the other RAPL cdev so both
++	 * the MSR and MMIO paths carry the same limits.  Without this the
++	 * BIOS-set PL1 on the untouched path acts as a hard ceiling
++	 * because the CPU enforces min(MSR_PL1, MMIO_PL1).
++	 *
++	 * PL1MIN is intentionally NOT synced: its handler calls
++	 * set_curr_state(max_state, 1) which rewrites PL1 via
++	 * rapl_update_pl1(), clobbering the PL1PowerLimit we set.
++	 * On the other cdev (no trip points in adaptive mode) PL1MIN
++	 * is never targeted, so omitting it is safe.
++	 */
++	if (cdev && (target.code == "PL1MAX" ||
++		     target.code == "PL2PowerLimit" || target.code == "TccOffset")) {
++		const std::string &type = cdev->get_cdev_type();
++		std::string other;
++
++		if (type == "rapl_controller_mmio")
++			other = "rapl_controller";
++		else if (type == "rapl_controller")
++			other = "rapl_controller_mmio";
++
++		if (!other.empty()) {
++			cthd_cdev *other_cdev = search_cdev(other);
++			if (other_cdev) {
++				thd_log_info("syncing %s to %s cdev\n",
++					     target.code.c_str(),
++					     other.c_str());
++				other_cdev->set_adaptive_target(target);
++
++				/*
++				 * PL1MAX only updates the internal min_state
++				 * threshold; it does not write PL1 to sysfs.
++				 * Force a direct PL1 write so the other path
++				 * carries the same value.
++				 */
++				if (target.code == "PL1MAX") {
++					struct adaptive_target pl1;
++					pl1.code = "PL1PowerLimit";
++					pl1.argument = target.argument;
++					other_cdev->set_adaptive_target(pl1);
++				}
++			}
++		}
++	}
+ }
+ 
+ void cthd_engine_adaptive::exec_fallback_target(int target) {

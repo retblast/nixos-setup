@@ -24,6 +24,9 @@
   };
 
   services = {
+    logind.settings.Login = {
+      RuntimeDirectorySize = "4G";
+    };
     # Needed for anything GUI
     xserver.enable = true;
     # Web sharing
@@ -66,6 +69,9 @@
       EDITOR = "nano";
     };
     systemPackages = with pkgs; [
+      # Has to be here otherwise the stuff for "unlock with system keyring" doesn't work
+      bitwarden-desktop
+
       # System monitoring, managing & benchmarking tools
       libva-utils
       mesa-demos
@@ -152,6 +158,9 @@
         22000
         # Fragments
         59432
+
+        # rvmf
+        5173
       ];
     };
   };

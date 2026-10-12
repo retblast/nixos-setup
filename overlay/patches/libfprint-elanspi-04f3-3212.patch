@@ -1,0 +1,19 @@
+# Add ElanTech SPI sensor 04f3:3212 to the elanspi driver's supported list.
+#
+# This laptop's fingerprint sensor (USB 04f3:3212 over the SPI bus) is not
+# present in the driver's hardware table, so fprintd reports it as
+# unsupported:
+#   "Device 0x04f3:0x3212 is not supported"
+# The sensor sits on an SPI bus with ACPI id ELAN7001; adding an entry with
+# the matching hid pid lets the elanspi driver claim it.
+#
+# Verified on Taihou: device opens, captures frames, enrolls and verifies.
+diff --git a/libfprint/drivers/elanspi.h b/libfprint/drivers/elanspi.h
+--- a/libfprint/drivers/elanspi.h
++++ b/libfprint/drivers/elanspi.h
+@@ -352,3 +352,4 @@
+   {.udev_types = ELANSPI_UDEV_TYPES, .spi_acpi_id = "ELAN7001", .hid_id = {.vid = ELANSPI_TP_VID, .pid = 0x309f}, .driver_data = ELANSPI_180_ROTATE},
+   {.udev_types = ELANSPI_UDEV_TYPES, .spi_acpi_id = "ELAN7001", .hid_id = {.vid = ELANSPI_TP_VID, .pid = 0x241f}, .driver_data = ELANSPI_NO_ROTATE},
++  {.udev_types = ELANSPI_UDEV_TYPES, .spi_acpi_id = "ELAN7001", .hid_id = {.vid = ELANSPI_TP_VID, .pid = 0x3212}, .driver_data = ELANSPI_180_ROTATE},
+   {.udev_types = 0}
+ };

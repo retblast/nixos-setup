@@ -21,7 +21,7 @@ stdenvNoCC.mkDerivation rec {
   dontBuild = true;
   dontFixup = true;
   doCheck = false;
-  installPhase = commit-mono.installPhase + ''
+  installPhase =  ''
         # No longer using OTFs
         rm -rf $out/share/fonts/opentype
         # ${commit-mono-retblast-script}/bin/cmsc --srcPath=${commit-mono}/share/fonts/opentype --localPath=$out/share/fonts/opentype --inputFontFormat=otf --outputFontFormat=otf

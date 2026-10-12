@@ -2,17 +2,17 @@
 {
 
   users.users.retblast.packages = with pkgs; [
-    # RC
-#    cisco-packet-tracer_9
+    # RC2
+    cisco-packet-tracer_9
     putty
     wireshark
+    gns3-gui
+    inetutils
 
-    # BDA
     # TODO PR: 476332
-    mysql-workbench
+    # mysql-workbench
     dia
-    # INTART
+    # IA-2
     swi-prolog-gui
-
   ];
 }

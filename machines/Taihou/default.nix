@@ -23,6 +23,16 @@
 
   # override to scx_bpfland
   # services.scx.scheduler = lib.mkForce "scx_bpfland";
+  services.scx.extraArgs = [
+    "--preempt-shift 5"
+    "--lat-load-target-pct 85"
+  ];
+
+  services.gns3-server.enable = true;
+  services.gns3-server.vpcs.enable = true;
+  services.gns3-server.ubridge.enable = true;
+  # services.gns3-server.ssl.enable = true;
+  services.gns3-server.dynamips.enable = true;
 
   #nix.settings.system-features = [ "gccarch-alderlake" ];
   # Doesn't seem to work
@@ -254,7 +264,7 @@
   '';
   localModule.performance.memory = {
     zswap = {
-      enable = false;
+      enable = true;
       size = 23726;
       hibernation = {
         enable = false;
@@ -263,12 +273,16 @@
       };
     };
     zram = {
-      enable = true;
+      enable = false;
       size = 200;
     };
   };
 
   services = {
+    udev.extraRules = ''
+      SUBSYSTEM=="spi", ATTRS{modalias}=="acpi:ELAN7001*", RUN+="${pkgs.kmod}/bin/modprobe spidev"
+      SUBSYSTEM=="spi", ATTRS{modalias}=="acpi:ELAN7001*", RUN+="/bin/sh -c 'echo spidev > /sys$env{DEVPATH}/driver_override; for i in 1 2 3 4 5; do echo spi-ELAN7001:00 > /sys/bus/spi/drivers/spidev/bind 2>/dev/null && exit 0; sleep 1; done'"
+    '';
     keyd = {
       enable = true;
       keyboards = {
@@ -310,33 +324,6 @@
           };
         }
       ];
-    };
-
-    #TODO: Testing
-    # thermald.enable = lib.mkForce false;
-
-    ollama = {
-      enable = false;
-      package = pkgs.ollama-sycl;
-      environmentVariables = {
-        OLLAMA_INTEL_GPU = "1";
-      };
-      loadModels = [
-
-      ];
-    };
-    # Currently not feasible to run
-    # 1. Laptop iGPU 2 slow :(
-    # 2. Llama-cpp with vulkan is slower
-    open-webui = {
-      enable = false;
-      port = 8080;
-      environment = {
-        WEBUI_AUTH = "False";
-        ENABLE_OPENAI_API = "False";
-        ENABLE_OLLAMA_API = "True";
-        OLLAMA_BASE_URL = "http://127.0.0.1:11434";
-      };
     };
   };
 

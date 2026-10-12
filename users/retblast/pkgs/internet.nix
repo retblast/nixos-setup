@@ -9,9 +9,6 @@
     discord
     mumble
 
-    # Password management
-    bitwarden-desktop
-
     # Downloaders
     curl
     wget

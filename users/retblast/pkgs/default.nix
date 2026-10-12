@@ -12,6 +12,10 @@
   users.users.retblast.packages = with pkgs; [
     # TODO: Organize better
 
+    # misc
+    libnotify
+    manim
+
     # AI
     whisperx
     koboldcpp
@@ -38,8 +42,6 @@
     hunspellDicts.es_PE
     aspellDicts.en
     aspellDicts.es
-    aspellDicts.en-science
-    aspellDicts.en-computers
 
   ];
 }

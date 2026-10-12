@@ -3,8 +3,9 @@
   boot.kernel.sysctl = {
     # Memory
     # Disable swap read ahead, increases latency when dealing with swap and it's rather meaningless when using zram+zstd anyway
-    # Set to two due to zswap.
-    "vm.page-cluster" = 2;
+    # Set to two for zswap, 0 for zram.
+    # TODO set an if
+    "vm.page-cluster" = 0;
     # Hugepages configuration, mostly for xmrig
     # Not needed anymore
     #"vm.nr_hugepages" = 25;

@@ -20,7 +20,8 @@ with prev.lib.kernel;
   PINCTRL_GEMINILAKE = prev.lib.mkForce no;
   PINCTRL_ICELAKE = prev.lib.mkForce no;
   PINCTRL_JASPERLAKE = prev.lib.mkForce no;
-  PINCTRL_TIGERLAKE = prev.lib.mkForce no;
+  # needed by things in Taihou
+  PINCTRL_TIGERLAKE = prev.lib.mkForce yes;
   PINCTRL_CANNONLAKE = prev.lib.mkForce no;
   PINCTRL_CEDARFORK = prev.lib.mkForce no;
   PINCTRL_DENVERTON = prev.lib.mkForce no;

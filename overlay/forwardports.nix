@@ -14,6 +14,10 @@ let
         localSystem = final.stdenv.hostPlatform;
         config.allowUnfree = true;
       };
+      usable-opencode = import inputs.nixpkgs-fixed-opencode {
+        localSystem = final.stdenv.hostPlatform;
+        config.allowUnfree = true;
+      };
     });
 in
 forwardportsOverlay

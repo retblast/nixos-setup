@@ -39,13 +39,13 @@ let
 in
 effectiveStdenv.mkDerivation (finalAttrs: {
   pname = "koboldcpp";
-  version = "1.117";
+  version = "1.119";
 
   src = fetchFromGitHub {
     owner = "LostRuins";
     repo = "koboldcpp";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-WtcqDR2RrRpPOrPAd7Dq8kAJvgIlKE8i+vAGgEVQqW4=";
+    hash = "sha256-WJVbzh4BGLiQdd/rzqSe2Q9PGqMpsqmQNQf33INJkd8=";
   };
 
   enableParallelBuilding = true;
@@ -53,7 +53,8 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   nativeBuildInputs = [
     makeWrapper
     python3Packages.wrapPython
-  ];
+  ]
+  ++ lib.optionals vulkanSupport [ shaderc ];
 
   postPatch = ''
     nixLog "patching $PWD/Makefile to remove explicit linking against CUDA driver"
@@ -61,23 +62,10 @@ effectiveStdenv.mkDerivation (finalAttrs: {
       --replace-fail \
         'CUBLASLD_FLAGS = -lcuda ' \
         'CUBLASLD_FLAGS = '
-    nixLog "patching $PWD/Makefile to replace -march=native with explicit arch"
-        substituteInPlace "$PWD/Makefile" \
-        --replace-fail \
-            '-march=native' \
-            '-march=alderlake'
-
   '';
 
   pythonInputs = builtins.attrValues {
-    inherit (python3Packages)
-      tkinter
-      customtkinter
-      packaging
-      jinja2
-      psutil
-      darkdetect
-      ;
+    inherit (python3Packages) tkinter customtkinter packaging;
   };
 
   buildInputs = [
@@ -88,7 +76,7 @@ effectiveStdenv.mkDerivation (finalAttrs: {
     cudaPackages.libcublas
     cudaPackages.cuda_nvcc
     cudaPackages.cuda_cudart
-    cudaPackages.cuda_cccl
+    cudaPackages.cccl
   ]
   ++ lib.optionals clblastSupport [
     clblast
@@ -96,7 +84,6 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   ]
   ++ lib.optionals vulkanSupport [
     vulkan-loader
-    shaderc
   ];
 
   pythonPath = finalAttrs.pythonInputs;
@@ -106,52 +93,36 @@ effectiveStdenv.mkDerivation (finalAttrs: {
     (makeBool "LLAMA_CLBLAST" clblastSupport)
     (makeBool "LLAMA_VULKAN" vulkanSupport)
     (makeBool "LLAMA_METAL" metalSupport)
-    (lib.optionals cublasSupport "CUDA_DOCKER_ARCH=${builtins.head cudaArches}")
+  ]
+  ++ lib.optionals cublasSupport [
+    "CUDA_DOCKER_ARCH=${builtins.head cudaArches}"
   ];
 
   installPhase = ''
-    	runHook preInstall
+    runHook preInstall
 
-    	mkdir -p "$out/share/koboldcpp"
+    mkdir -p "$out/bin/embd_res"
 
-    	install -Dm644 ./*.so "$out/share/koboldcpp/"
-    	install -Dm644 json_to_gbnf.py "$out/share/koboldcpp/"
-    	install -Dm644 koboldcpp.py "$out/share/koboldcpp/koboldcpp.py"
+    install -Dm755 koboldcpp.py "$out/bin/koboldcpp.unwrapped"
+    cp *.so "$out/bin"
+    cp -r embd_res/* "$out/bin/embd_res/"
 
-    	cp -r embd_res "$out/share/koboldcpp/"
-    	cp -r kcpp_adapters "$out/share/koboldcpp/"
+    ${lib.optionalString metalSupport ''
+      cp *.metal "$out/bin"
+    ''}
 
-    	${lib.optionalString metalSupport ''
-       		cp *.metal "$out/share/koboldcpp/"
-       	''}
+    ${lib.optionalString (!koboldLiteSupport) ''
+      rm "$out/bin/embd_res/kcpp_docs.embd"
+      rm "$out/bin/embd_res/klite.embd"
+    ''}
 
-    	${
-       lib.optionalString (!koboldLiteSupport) ''
-         		rm -f "$out/share/koboldcpp/kcpp_docs.embd"
-         		rm -f "$out/share/koboldcpp/klite.embd"
-         	''
-     }
-
-    	runHook postInstall
+    runHook postInstall
   '';
 
   postFixup = ''
-    	wrapPythonProgramsIn "$out/share/koboldcpp" "''${pythonPath[*]}"
-
-    	makeWrapper \
-    		"${python3Packages.python.interpreter}" \
-    		"$out/bin/koboldcpp" \
-    		--add-flags "$out/share/koboldcpp/koboldcpp.py" \
-    		--prefix PATH : ${lib.makeBinPath [ tk ]} \
-    		${libraryPathWrapperArgs}
-  '';
-
-  postInstall = ''
-    	install -Dm644 LICENSE.md \
-    		"$out/share/licenses/koboldcpp/LICENSE.md"
-
-    	install -Dm644 MIT_LICENSE_GGML_SDCPP_LLAMACPP_ONLY.md \
-    		"$out/share/licenses/koboldcpp/MIT_LICENSE_GGML_SDCPP_LLAMACPP_ONLY.md"
+    wrapPythonProgramsIn "$out/bin" "''${pythonPath[*]}"
+    makeWrapper "$out/bin/koboldcpp.unwrapped" "$out/bin/koboldcpp" \
+      --prefix PATH : ${lib.makeBinPath [ tk ]} ${libraryPathWrapperArgs}
   '';
 
   passthru.updateScript = nix-update-script { };
@@ -163,8 +134,7 @@ effectiveStdenv.mkDerivation (finalAttrs: {
     license = lib.licenses.agpl3Only;
     mainProgram = "koboldcpp";
     maintainers = with lib.maintainers; [
-      maxstrid
-      FlameFlag
+      _4evy
     ];
     platforms = lib.platforms.unix;
   };

@@ -1,10 +1,11 @@
-{ 
+{
 	lib
 ,	fetchurl
 ,	writeScript
 ,	stdenv
 ,	p7zip
 ,	emoji-removal
+, cpio
 }:
 
 stdenv.mkDerivation rec {
@@ -16,7 +17,7 @@ stdenv.mkDerivation rec {
 	#	c = "Fonts";
 	#};
 
-	# Use this instead 
+	# Use this instead
 	specialHandlingBit1 = "SF";
 	specialHandlingBit2 = "Pro";
 	specialHandlingBit3 = "Fonts";
@@ -29,27 +30,28 @@ stdenv.mkDerivation rec {
 
 	src = fetchurl {
 		url = https://devimages-cdn.apple.com/design/resources/download/SF-Pro.dmg;
-		sha256 = "1krvzxz7kal6y0l5cx9svmgikqdj5v0fl5vnfjig0z4nwp903ir1";
+		hash = "sha256-loqzuLH5LC2K9h6waA9cIiTE541ZuYa/AEUCp/wBKRg=";
 	};
 
 	nativeBuildInputs = [
 		p7zip
 		emoji-removal
+		cpio
 	];
 
-	unpackCmd = "7z x $curSrc";
+	unpackCmd = ''
+	  7z x $curSrc
+	  cpio -id < Payload~
+	'';
 	phases = "unpackPhase installPhase fixupPhase";
 
 	installPhase = ''
-		echo
-		7z x "${specialHandlingBit1} ${specialHandlingBit2} ${specialHandlingBit3}.pkg"
-		7z x Payload~
 		# Doesn't work due to the script bug...
 		find . -name \*.otf -execdir emoji-removal {} \;
 		mkdir -p $out/share/fonts/${specialHandlingBit1}${specialHandlingBit2}${specialHandlingBit3}
 		find . -name \*.otf -execdir mv {} $out/share/fonts/${specialHandlingBit1}${specialHandlingBit2}${specialHandlingBit3} \;
 	'';
-		
+
 	meta = with lib; {
 		homepage = "https://developer.apple.com/fonts/";
 		description = "This neutral, flexible, sans-serif typeface is the system font for iOS, iPad OS, macOS and tvOS. SF Pro features nine weights, variable optical sizes for optimal legibility, four widths, and includes a rounded variant. SF Pro supports over 150 languages across Latin, Greek, and Cyrillic scripts.";

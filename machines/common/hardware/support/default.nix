@@ -32,7 +32,8 @@
     hardware.bolt.enable = true;
     xserver = {
       # Wacom tablets
-      wacom.enable = true;
+      # wacomtablet fails to build
+      wacom.enable = false;
       # Keyboard layout
       xkb.layout = "es";
     };
@@ -43,7 +44,7 @@
       };
       drivers = with pkgs; [
         # TODO: https://github.com/NixOS/nixpkgs/pull/476341
-        # cnijfilter2
+        cnijfilter2
       ];
     };
     udev.extraRules = ''

@@ -1,0 +1,14 @@
+diff --git a/src/gui/text/freetype/qfontengine_ft.cpp b/src/gui/text/freetype/qfontengine_ft.cpp
+--- a/src/gui/text/freetype/qfontengine_ft.cpp
++++ b/src/gui/text/freetype/qfontengine_ft.cpp
+@@ -1123,7 +1123,9 @@
+ bool QFontEngineFT::expectsGammaCorrectedBlending(QFontEngine::GlyphFormat format) const
+ {
+     Q_UNUSED(format);
+-    return stemDarkeningDriver;
++    // Blend CFF glyphs like the Qt Quick scene graph does (naive sRGB), so
++    // text is rendered consistently between widgets and QML applications.
++    return false;
+ }
+ 
+ int QFontEngineFT::loadFlags(QGlyphSet *set, GlyphFormat format, int flags,

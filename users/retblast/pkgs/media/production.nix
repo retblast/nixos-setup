@@ -51,7 +51,6 @@
     # Images
     gimp3-with-plugins
     imagemagickBig
-    waifu2x-converter-cpp
     libjxl
     libavif
   ];

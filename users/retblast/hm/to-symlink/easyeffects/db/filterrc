@@ -1,6 +1,5 @@
 [soe][Filter#0]
 bypass=true
-equalMode=3
 frequency=135
 gain=-2.5
 outputGain=1.3

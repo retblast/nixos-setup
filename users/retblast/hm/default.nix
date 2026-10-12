@@ -30,6 +30,7 @@
     };
   };
 
+
   # Home-manager
   home = {
     username = "retblast";
@@ -71,8 +72,8 @@
         "widget.use-xdg-desktop-portal.file-picker" = 1;
       };
     };
-    package =
-      if taihouConfig.services.desktopManager.gnome.enable then pkgs.firefox-gnome else pkgs.firefox;
+    #package =
+    #  if taihouConfig.services.desktopManager.gnome.enable then pkgs.firefox-gnome else pkgs.firefox;
   };
   # Enable cache for the nixified-ai flake.
   nix = {
@@ -85,6 +86,12 @@
   };
   services.easyeffects.enable = true;
   # services.easyeffects.package = pkgs.usable-easyeffects.easyeffects;
+
+
+  services.psd = {
+    enable = true;
+    backupLimit = 2;
+  };
 
   # QT look on gnome
   qt = {
@@ -125,6 +132,7 @@
       # };
     };
     services = {
+
       ollama-intel-gpu = {
         Unit = {
           # StopWhenUnneeded = false;

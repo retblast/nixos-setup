@@ -2,9 +2,25 @@ let
   fixesOverlay =
     { inputs, ... }:
     (final: prev: {
+      libfprint = prev.libfprint.overrideAttrs (old: {
+        patches = (old.patches or []) ++ [
+          ./patches/libfprint-elanspi-04f3-3212.patch
+          ./patches/libfprint-elanspi-bz3-threshold.patch
+          ./patches/libfprint-elanspi-capture-tune.patch
+          ./patches/libfprint-bozorth-min-computable.patch
+        ];
+        postInstall = (old.postInstall or "") + ''
+              mkdir -p $out/bin
+              cp -a examples/img-capture examples/enroll examples/verify examples/clear-storage $out/bin/
+            '';
+
+
+      });
+
       thermald = prev.thermald.overrideAttrs (old: {
         patches = [
           ./patches/thermald-2.5.12-accept-short-itmt-v1.patch
+          ./patches/thermald-2.5.12-rapl-dual-path-sync.patch
         ];
       });
       # TODO: apply this as overlay somehow on flake.nix

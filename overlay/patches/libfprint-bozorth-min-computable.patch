@@ -1,0 +1,35 @@
+# Lower bozorth's minimum-computable minutiae thresholds.
+#
+# bozorth refuses to score a probe that has fewer than
+# MIN_COMPUTABLE_BOZORTH_MINUTIAE (already lowered upstream from 12 to 10)
+# minutiae, always reporting a miss. On this small swipe sensor even clean
+# real swipes frequently extract only 3-11 minutiae, so verify silently
+# failed on them.
+#
+# 3 keeps short genuine swipes computable, and MMSTR 8 -> 2 relaxes the
+# related scrutiny without producing false accepts; the matching callback
+# still drops results with an invalid score.
+#
+# Verified on Taihou: swipes with 3-11 minutiae now score against the
+# gallery; the best long-swipe verify scored 15/8.
+diff --git a/libfprint/nbis/include/bozorth.h b/libfprint/nbis/include/bozorth.h
+--- a/libfprint/nbis/include/bozorth.h
++++ b/libfprint/nbis/include/bozorth.h
+@@ -119,7 +119,7 @@
+ #define DEFAULT_BOZORTH_MINUTIAE	150
+ #define MAX_BOZORTH_MINUTIAE		200
+ #define MIN_BOZORTH_MINUTIAE		0
+-#define MIN_COMPUTABLE_BOZORTH_MINUTIAE	10
++#define MIN_COMPUTABLE_BOZORTH_MINUTIAE	3
+ 
+ #define DEFAULT_MAX_MATCH_SCORE		400
+ #define ZERO_MATCH_SCORE		0
+@@ -133,7 +133,7 @@
+ #define TXS	121
+ #define CTXS	121801
+ #define MSTR	3
+-#define MMSTR	8
++#define MMSTR	2
+ #define WWIM	10
+ 
+ #define QQ_SIZE 4000

@@ -34,8 +34,8 @@
       roboto
       roboto-slab
       roboto-mono
-#       jetbrains-mono-variable
-      input-fonts
+      jetbrains-mono-variable
+      #input-fonts
       source-sans
       source-serif
       source-code-pro
@@ -59,14 +59,14 @@
       # Using commit-mono-retblast due to QT and Electron not respecting freetype font feature settings
       # commit-mono
 
-      commit-mono-retblast
+      # commit-mono-retblast
       nerd-fonts.geist-mono
       geist-font
-      # SF-Mono
-      # SF-Pro
-      # SF-Arabic
-      # SF-Compact
-      # New-York
+      SF-Mono
+      SF-Pro
+      SF-Arabic
+      SF-Compact
+      New-York
       # TODO: document the fonts.toml thing
       # Maybe it is already, anyway
       # the variable font is an attr of monaspace
@@ -87,7 +87,7 @@
         				<alias binding="strong">
         					<family>system-ui</family>
         					<prefer>
-        						<family>Inter</family>
+        						<family>SF Pro Text</family>
         						<family>Cantarell</family>
         					</prefer>
         				</alias>
@@ -95,7 +95,7 @@
         				<alias binding="strong">
         					<family>ui-sans-serif</family>
         					<prefer>
-        						<family>Inter</family>
+        						<family>SF Pro Text</family>
         						<family>Cantarell</family>
         					</prefer>
         				</alias>
@@ -103,7 +103,7 @@
         				<alias binding="strong">
         					<family>ui-serif</family>
         					<prefer>
-        						<family>Roboto Slab</family>
+        						<family>New York</family>
         						<family>Cantarell</family>
         					</prefer>
         				</alias>
@@ -135,12 +135,12 @@
       # TODO: Ask that these also set the ui-{whatever} font aliases.
       defaultFonts = {
         sansSerif = [
-          "Inter"
+          "SF Pro Text"
           # "IBM Plex Sans"
           "Cantarell"
         ];
-        serif = [ "Roboto Slab" ];
-        monospace = [ "Input Mono" ];
+        serif = [ "New York" ];
+        monospace = [ "SF Mono" ];
         emoji = [ "Blobmoji" ];
       };
     };

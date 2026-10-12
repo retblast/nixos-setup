@@ -22,21 +22,28 @@
   # Like Dolphin, for example.
   system.replaceDependencies.replacements = [
     # Patch freetype to have stem darkening for TTFs
-    # {
-    #   oldDependency = pkgs.freetype;
-    #   newDependency = pkgs.freetype.overrideAttrs (old: {
-    #     patches = old.patches ++ [
-    #       ./patches/freetype-ttf-stem-darkening.patch
-    #       ./patches/freetype-macos-like-darkening-curve.patch
-    #     ];
-    #   });
-    # }
-    # Disable stem darkening on QT
+    {
+      oldDependency = pkgs.freetype;
+      newDependency = pkgs.freetype.overrideAttrs (old: {
+        patches = old.patches ++ [
+          ./patches/freetype-ttf-stem-darkening.patch
+          ./patches/freetype-macos-like-darkening-curve.patch
+        ];
+      });
+    }
+    # Drop QT's forced override of the CFF no-stem-darkening property,
+    # so that FREETYPE_PROPERTIES governs darkening uniformly. Also drop
+    # the gamma-corrected blending expectation for CFF glyphs, so that
+    # Qt Widgets composites text the same way the Qt Quick scene graph
+    # does (naive sRGB). Without this, CFF fonts render differently
+    # between widgets apps (Dolphin) and QML apps (System Settings),
+    # while TTF fonts render the same in both.
     {
       oldDependency = pkgs.kdePackages.qtbase;
       newDependency = pkgs.kdePackages.qtbase.overrideAttrs (old: {
         patches = pkgs.kdePackages.qtbase.patches ++ [
-          ./patches/disable-stem-darkening.patch
+          ./patches/drop-cff-darkening-override.patch
+          ./patches/drop-gamma-corrected-blending.patch
         ];
       });
     }
@@ -44,7 +51,8 @@
       oldDependency = pkgs.libsForQt5.qtbase;
       newDependency = pkgs.libsForQt5.qtbase.overrideAttrs (old: {
         patches = pkgs.libsForQt5.qtbase.patches ++ [
-          ./patches/disable-stem-darkening-qt5.patch
+          ./patches/drop-cff-darkening-override-qt5.patch
+          ./patches/drop-gamma-corrected-blending-qt5.patch
         ];
       });
     }

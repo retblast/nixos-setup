@@ -1,0 +1,25 @@
+#  Lower the elanspi Bozorth3 binarization threshold from 24 to 8.
+#
+# The stock threshold (24) is tuned for high-resolution captures and makes
+# this sensor's images come out essentially blank. Even long, high-quality
+# swipes produced templates with almost no minutiae and matches never fired
+# (scores hovered around 0-2).
+#
+# 8 keeps enough ridge detail to extract a usable minutiae set while staying
+# well above the noise floor observed for unrelated prints (scores 0-4),
+# and below genuine-match scores (8-15 in our testing). Picked over 7 to
+# keep a wider margin against false accepts on this small swipe sensor.
+#
+# Verified on Taihou: 4/4 verify rounds matched.
+diff --git a/libfprint/drivers/elanspi.c b/libfprint/drivers/elanspi.c
+--- a/libfprint/drivers/elanspi.c
++++ b/libfprint/drivers/elanspi.c
+@@ -1703,6 +1703,6 @@
+   dev_class->nr_enroll_stages = 7;       /* these sensors are very hit or miss, may as well record a few extras */
+ 
+-  img_class->bz3_threshold = 24;
++  img_class->bz3_threshold = 8;
+   img_class->img_open = elanspi_open;
+   img_class->activate = elanspi_activate;
+   img_class->deactivate = elanspi_deactivate;
+
