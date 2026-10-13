@@ -1,6 +1,8 @@
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+// Theme singleton lives one dir up (declared in ../qmldir).
+import ".."
 
 Row {
     id: root

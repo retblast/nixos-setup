@@ -12,13 +12,18 @@ NotificationServer {
     imageSupported: true
     keepOnReload: false
 
-    readonly property var toasts: []
+    // Mutable: onNotification reassigns this list. It was readonly once and
+    // notifications silently never rendered ("Cannot assign to read-only
+    // property toasts").
+    property var toasts: []
 
     onNotification: toast => {
         server.toasts = server.toasts.concat([toast]);
     }
 
-    PanelWindow {
+    // NotificationServer has no default property, so the window must be a
+    // property value (quickshell instantiates it like a Variants delegate).
+    property PanelWindow window: PanelWindow {
         id: window
 
         anchors {

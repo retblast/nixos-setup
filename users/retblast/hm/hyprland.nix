@@ -28,6 +28,83 @@ let
         notify-send -a Clipboard "Pasted from history"
     end
   '';
+
+  # Random wallpaper rotation (GNOME parity: ~/Pictures/Wallpapers, 1h).
+  # The daemon is awww (swww was renamed upstream).
+  wallpaper-rotate = pkgs.writers.writeFishBin "wallpaper-rotate" ''
+    set -l dir ~/Pictures/Wallpapers
+    if not test -d $dir
+        exit 0
+    end
+    set -l files (find $dir -maxdepth 1 -type f \( -name '*.jpg' -o -name '*.jpeg' -o -name '*.png' -o -name '*.webp' \))
+    if test (count $files) -eq 0
+        exit 0
+    end
+    set -l pick $files[(random 1 (count $files))]
+    awww img "$pick" --transition-type random --transition-duration 2 --transition-fps 60
+  '';
+
+  # Float-mode toggle for the current workspace.
+  #
+  # Hyprland 0.56 has no per-workspace float rule anymore: the workspaceopt
+  # dispatcher is deprecated (warns and does nothing) and workspace rules
+  # lost the all:float field, so this is applied per window. on = float
+  # every tiled window, off = tile every floated window. The direction is
+  # tracked with a marker file in the runtime dir; the windows themselves
+  # keep the layout. Windows opened while the mode is on are not
+  # auto-floated; re-toggling off and on covers them.
+  float-workspace = pkgs.writers.writeFishBin "float-workspace" ''
+    set -l ws_flat (hyprctl -j activeworkspace | tr -d ' \n\t')
+    set -l ws_id (string match -r '"id":([0-9]+)' $ws_flat)[2]
+    if test -z "$ws_id"
+        exit 0
+    end
+
+    set -l state_dir $XDG_RUNTIME_DIR/hypr-float-ws
+    set -l marker $state_dir/$ws_id
+    set -l want_on true
+    if test -f $marker
+        set want_on false
+        rm $marker
+    else
+        mkdir -p $state_dir
+        touch $marker
+    end
+
+    # hyprctl -j prints pretty JSON. Flatten it and split on client
+    # boundaries; each chunk then holds exactly one client's fields,
+    # including its workspace id and floating state.
+    for chunk in (hyprctl -j clients | tr -d ' \n\t' | string split '"address":')
+        string match -q "*\"workspace\":{\"id\":$ws_id,*" $chunk
+        or continue
+        set -l addr (string match -r '"0x[0-9a-f]+"' $chunk | head -1 | string trim -c '"')
+        if test -z "$addr"
+            continue
+        end
+        set -l floating false
+        string match -q '*"floating":true*' $chunk
+        and set floating true
+        if test "$floating" != "$want_on"
+            hyprctl dispatch focuswindow address:$addr >/dev/null 2>&1
+            # setfloating is a no-op in 0.56 (answers ok, does nothing);
+            # togglefloating is the dispatcher that actually works. The
+            # pre-read state makes it deterministic.
+            hyprctl dispatch togglefloating >/dev/null 2>&1
+        end
+    end
+
+    # Tell the running shell so the dock shows/hides immediately. The
+    # marker dir stays the source of truth; the shell re-syncs from it on
+    # start. Fails silently when no shell instance is registered.
+    set -l state off
+    if test "$want_on" = true
+        set state on
+        hyprctl notify -1 1500 "0 rgb(3584e4)" "float mode: on (workspace $ws_id)"
+    else
+        hyprctl notify -1 1500 "0 rgb(909090)" "float mode: off (workspace $ws_id)"
+    end
+    quickshell ipc call floatws set $ws_id $state >/dev/null 2>&1
+  '';
 in
 {
   wayland.windowManager.hyprland = lib.mkIf hyprlandEnabled {
@@ -46,7 +123,7 @@ in
         kb_layout = "es";
         follow_mouse = 1;
         # GNOME ran with speed -0.75; scale differs, tune by feel.
-        sensitivity = -0.7;
+        # sensitivity = -0.7;
         touchpad = {
           natural_scroll = true;
           tap-to-click = true;
@@ -62,7 +139,9 @@ in
         gaps_in = 4;
         gaps_out = 8;
         border_size = 2;
-        "col.active_border" = "rgba(53, 132, 228, 0.7)";
+        # GNOME blue #3584e4 at ~70% alpha (b2). Hyprland only parses
+        # RRGGBBAA hex; CSS-style rgba(r, g, b, a) fails to parse.
+        "col.active_border" = "rgba(3584e4b2)";
         "col.inactive_border" = "rgba(1d1d20aa)";
         layout = "dwindle";
       };
@@ -94,9 +173,11 @@ in
       };
 
       bind = [
-        # Terminal (GNOME used F12 -> kgx; keep the habit + the standard)
+        # Terminal (GNOME used F12 -> kgx; keep the habit + the standard).
+        # Bare-key binds need the empty modifier field: F12 here is the key,
+        # not a modifier.
         "SUPER, Return, exec, ptyxis"
-        "F12, exec, ptyxis"
+        ", F12, exec, ptyxis"
         # Custom keybinding carried over from GNOME (custom0)
         "CTRL ALT, ntilde, exec, env TERM=xterm-256color fish -c dmmm-mouse-fix"
         # Apps
@@ -107,6 +188,8 @@ in
         "SUPER, Q, killactive"
         "SUPER, F, fullscreen"
         "SUPER, Space, togglefloating"
+        # Float mode for the whole workspace (see float-workspace above)
+        "SUPER SHIFT, F, exec, float-workspace"
         "SUPER, L, exec, hyprlock"
         "SUPER, M, exit"
         # Workspaces
@@ -145,8 +228,9 @@ in
         # Tray applets
         "nm-applet"
         "blueman-applet"
-        # Wallpaper daemon restores the last image itself
-        "swww-daemon"
+        # The wallpaper daemon runs as a user service (see awww-daemon below);
+        # it restores the last image itself and the rotation timer sets one
+        # shortly after login anyway.
       ];
     };
   };
@@ -239,9 +323,51 @@ in
     allowImages = true;
   };
 
+  # Wallpaper daemon + rotation. swww was renamed to awww in nixpkgs and the
+  # old exec-once "swww-daemon" silently failed (command not found).
+  systemd.user = lib.mkIf hyprlandEnabled {
+    services = {
+      awww-daemon = {
+        Unit = {
+          Description = "awww (swww) wallpaper daemon";
+          PartOf = [ "graphical-session.target" ];
+          After = [ "graphical-session.target" ];
+        };
+        Service = {
+          ExecStart = "${pkgs.awww}/bin/awww-daemon";
+          Restart = "on-failure";
+          RestartSec = 3;
+        };
+        Install.WantedBy = [ "graphical-session.target" ];
+      };
+      wallpaper-rotate = {
+        Unit = {
+          Description = "Set a random wallpaper from ~/Pictures/Wallpapers";
+          After = [ "awww-daemon.service" ];
+          Requires = [ "awww-daemon.service" ];
+        };
+        Service = {
+          Type = "oneshot";
+          ExecStart = "${wallpaper-rotate}/bin/wallpaper-rotate";
+        };
+      };
+    };
+    timers.wallpaper-rotate = {
+      Unit.Description = "Rotate the wallpaper hourly";
+      Timer = {
+        OnBootSec = "20s";
+        OnUnitActiveSec = "1h";
+        AccuracySec = "10s";
+      };
+      Install.WantedBy = [ "timers.target" ];
+    };
+  };
+
   home.packages = lib.mkIf hyprlandEnabled [
     screenshot-region
     screenshot-full
     clipboard-pick
+    wallpaper-rotate
+    float-workspace
   ];
 }

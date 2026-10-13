@@ -20,6 +20,11 @@
     mono = "SF Mono";
     monoSize = 10;
 
+    # Shell layout sizes. Bar hosts 10pt text with 8px side margins; the dock
+    # centers a 52px background strip inside its window.
+    barHeight = 36;
+    dockHeight = 56;
+
     # Colors: dark palette aligned with libadwaita dark.
     colors = {
       bg = "#1d1d20";

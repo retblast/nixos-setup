@@ -23,6 +23,9 @@ let
         property string mono: "${t.mono}"
         property int monoSize: ${toString t.monoSize}
 
+        property int barHeight: ${toString t.barHeight}
+        property int dockHeight: ${toString t.dockHeight}
+
         property string bg: "${t.colors.bg}"
         property string bgAlt: "${t.colors.bg-alt}"
         property string fg: "${t.colors.fg}"
@@ -30,6 +33,15 @@ let
         property string accent: "${t.colors.accent}"
         property string urgent: "${t.colors.urgent}"
         property string border: "${t.colors.border}"
+
+        // The active icon theme (MoreWaita) does not inherit Adwaita, so
+        // theme-name icon lookups fail for symbolic UI icons. Resolve them
+        // by direct file path instead.
+        property string iconDir: "${pkgs.adwaita-icon-theme}/share/icons/Adwaita"
+
+        function adwaitaIcon(name) {
+            return "file://" + iconDir + "/symbolic/status/" + name + ".svg";
+        }
     }
   '';
 

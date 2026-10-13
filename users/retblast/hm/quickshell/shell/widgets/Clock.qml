@@ -1,4 +1,6 @@
 import QtQuick
+// Theme singleton lives one dir up (declared in ../qmldir).
+import ".."
 
 Text {
     id: root

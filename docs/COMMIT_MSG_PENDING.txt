@@ -1,0 +1,48 @@
+Batch 4 wave 1: OSD, wallpaper rotation, bar fix, runtime triage
+
+Runtime triage (first-boot + shell fixes, see status journal):
+- greetd launches start-hyprland (package wrapper), not the raw binary
+- bare-key binds use the empty modifier field (, F12, ...)
+- Hyprland gradients are RRGGBBAA only (rgba(3584e4b2))
+- qmldir is authoritative: all root components declared; widgets import
+  .. for the Theme singleton
+- Toasts: window as property value; toasts list made mutable (readonly
+  blocked assignment, notifications never rendered)
+- dock rebuilt without DesktopEntries (empty index in 0.3.1): static
+  favorites, Quickshell.execDetached, Quickshell.iconPath
+
+Batch 4 wave 1:
+- OSD.qml: volume + brightness pill (icon, bar, auto-hide). Volume driven
+  by Pipewire signals (onVolumesChanged - plural - is the real notify
+  name), brightness by a brightnessctl stream process. PwObjectTracker
+  required or nodes stay unbound (volume reads 0, mute fails)
+- wallpapers: swww renamed to awww in nixpkgs; old swww-daemon exec-once
+  never existed. awww-daemon.service + hourly wallpaper-rotate timer
+- bar: title anchored between workspaces and clock (no more overlap);
+  volume/battery use Adwaita symbolic icons via Theme.adwaitaIcon direct
+  paths (MoreWaita does not inherit Adwaita)
+- shell-theme: barHeight/dockHeight/iconDir tokens
+- battery icon: adwaita 50.0 renamed level 100 to -charged-symbolic (no
+  -charging variant); clamp level with Math.min(100, ...) so 100% does
+  not request a nonexistent icon
+- OSD: visible bound to pill opacity so the layer surface unmaps when
+  idle; a mapped layer window swallowed dock pointer input even while
+  fully transparent (verified via hyprctl layers)
+- float mode per workspace: float-workspace script (fish) toggles
+  togglefloating per window on the active workspace, records the state
+  in marker files ($XDG_RUNTIME_DIR/hypr-float-ws) and pokes the shell
+  over IPC (quickshell ipc call floatws set). Bound to SUPER SHIFT F.
+  Hyprland 0.56 notes: workspaceopt is a deprecated no-op, workspace
+  rules lost all:float, setfloating is a no-op, togglefloating works
+- dock visibility follows float mode: hidden on tiling workspaces,
+  shown on floating ones. quickshell 0.3.1 focusedWorkspace never
+  updates after startup, so the active workspace is probed from
+  hyprctl at start and tracked via Hyprland.rawEvent (event data is
+  the value after >>: workspace>>77 -> "77"); a shell restart re-syncs
+  float state from the marker dir
+
+Verified: nix build green; live shell loads 0 errors; OSD visually
+confirmed via screenshots (volume 55%, brightness 20%); wallpaper
+rendered via awww query; battery icon renders at 100%; OSD unmapped at
+idle leaves dock clickable; float cycle verified live (windows float
+and tile, dock maps on floating workspace, unmapped on tiling)

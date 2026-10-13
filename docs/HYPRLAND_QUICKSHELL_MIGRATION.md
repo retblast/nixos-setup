@@ -131,7 +131,9 @@ configures, under `mkIf`:
 - `xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ]` (file
   chooser outside Firefox).
 - `services.greetd` with tuigreet
-  (`--time --remember --cmd Hyprland`, user "greeter").
+  (`--time --remember --cmd start-hyprland`, user "greeter"). start-hyprland
+  is the package's launcher (env setup + crash watchdog); launching the
+  compositor binary directly makes Hyprland warn at startup.
 - Explicit service set: `services.gnome.gnome-keyring.enable`,
   `services.gvfs.enable`, `programs.dconf.enable`,
   `services.upower.enable`, `services.power-profiles-daemon.enable`,
@@ -248,6 +250,31 @@ UI, weather widget (geoclue2 present).
 
 ## Gotchas (learned from the sweep)
 
+- Bare-key binds need the empty modifier field: `", F12, exec, cmd"`, not
+  `"F12, exec, cmd"`. In the malformed form Hyprland reads `exec` as the key
+  and `cmd` as the dispatcher ("Invalid dispatcher" error + red error
+  overlay at startup). Found live on first boot.
+- Hyprland colors only parse RRGGBBAA hex (`rgba(3584e4b2)`), not CSS-style
+  comma lists (`rgba(53, 132, 228, 0.7)`). Found live on first boot.
+- Launch Hyprland through the package's `start-hyprland` wrapper (env setup
+  + crash watchdog). The compositor warns when started directly; found live
+  on first boot.
+- Quickshell QML gotchas (all found live on first boot):
+  - `DesktopEntries` in 0.3.1 returns an empty index on this system
+    (probe-verified). Do not build on it until upgraded; favorites/launchers
+    carry their own data, launching uses `Quickshell.execDetached`.
+  - `IconImage` resolves bare names as relative URLs. Theme icons must go
+    through `Quickshell.iconPath(name)` (`image://icon/...`).
+  - A `qmldir` in a directory makes it authoritative for its types: every
+    component referenced from that directory must be listed in it, or QML
+    fails with "X is not a type" in varying order per process.
+  - Service types (NotificationServer, ...) have no default property:
+    host windows as `property PanelWindow window: PanelWindow { }`, not as
+    bare children.
+  - Subdirectory widgets do not see the parent dir's singletons: they need
+    `import ".."`. Build-time qmllint with the shell dir on the import path
+    masks all of the above — only a live
+    `quickshell --config <built-dir>` run proves the shell loads.
 - HM `configType` defaults to "lua" for stateVersion >= 26.05; force
   hyprlang (decision 7).
 - `deskEnv-config.nix` gated gtk/qt/dconf on the GNOME toggle; re-gate
@@ -263,6 +290,15 @@ UI, weather widget (geoclue2 present).
 - Do not add KDE Frameworks deps.
 - `hyprpolkitagent` also ships D-Bus activation in the package, but the HM
   service is the deterministic path.
+- **swww is renamed to awww in nixpkgs** (binaries awww / awww-daemon); use `awww`, not `swww`.
+- **quickshell PipeWire: PwObjectTracker is mandatory.** Untracked nodes stay unbound: `audio.volumes` empty, volume reads 0, mute writes fail. Track `[Pipewire.defaultAudioSink]`.
+- **The volume notify signal is `volumesChanged`** (plural), not `volumeChanged`.
+- **PanelWindow has no `opacity` property**; animate a child instead.
+- **MoreWaita (active icon theme) does not inherit Adwaita**, so `Quickshell.iconPath()` fails for symbolic UI icons. Use `Theme.adwaitaIcon(name)` (direct file path).
+- A directory qmldir is authoritative: every root-level component must be declared in it.
+- Widgets one dir down need `import ".."` to see the Theme singleton.
+- Hyprland binds: bare keys need the empty modifier field (`, F12, ...`); colors are RRGGBBAA only.
+- greetd must launch `start-hyprland` (the package wrapper), not the raw compositor binary.
 
 ## References
 

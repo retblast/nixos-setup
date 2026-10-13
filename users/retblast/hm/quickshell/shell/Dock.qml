@@ -1,10 +1,18 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Widgets
 import Quickshell.Hyprland
 
-// Dock: favorites + running apps, GNOME dash-to-dock style (v1: always
-// visible, centered, 48px icons). Autohide comes in a later batch.
+// Dock: favorites + running apps, GNOME dash-to-dock style (centered,
+// 48px icons). Shown only on workspaces in float mode (see float-workspace
+// script): tiling workspace = no dock, floating workspace = dock.
+//
+// quickshell 0.3.1's DesktopEntries returns an empty index on this system
+// (verified by probe: applications count 0 even with a correct
+// XDG_DATA_DIRS), so favorites carry their own launch argv and theme icon
+// names. IconImage resolves theme names through the Qt icon engine, which
+// reads XDG_DATA_DIRS. Bottles is not listed: it ships no .desktop here.
 PanelWindow {
     id: root
 
@@ -17,36 +25,112 @@ PanelWindow {
     implicitHeight: Theme.dockHeight
     color: "transparent"
 
+    // Float mode per workspace id. The float-workspace script holds the
+    // truth (marker files in the runtime dir) and pokes the running shell
+    // over IPC; this map mirrors it. Rebuilt from the marker dir on start,
+    // so a shell restart re-syncs without a toggle.
+    property var floatStates: ({})
+
+    // Active workspace id. Hyprland.focusedWorkspace looked right but is
+    // stale in quickshell 0.3.1: it never updates after startup, so the dock
+    // always read workspace 1. Probe hyprctl once at start, then follow the
+    // event socket (workspace>>ID), which is reliable.
+    property int wsId: 1
+
+    // An unmapped window reserves no exclusive zone, so tiled windows use
+    // the full height while the dock is hidden.
+    visible: root.floatStates[root.wsId] === true
+
+    Component.onCompleted: {
+        floatSyncProbe.running = true;
+        wsProbe.running = true;
+    }
+
+    Connections {
+        target: Hyprland
+
+        function onRawEvent(event) {
+            // Event data is the part after ">>": "workspace>>77" -> "77".
+            // Named workspaces parse as NaN and keep the current id.
+            if (event.name === "workspace") {
+                const id = parseInt(event.data);
+                if (id)
+                    root.wsId = id;
+            }
+        }
+    }
+
+    Process {
+        id: floatSyncProbe
+        command: ["fish", "-c", "ls $XDG_RUNTIME_DIR/hypr-float-ws 2>/dev/null; or true"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const map = {};
+                for (const line of this.text.split("\n")) {
+                    const id = line.trim();
+                    if (id)
+                        map[id] = true;
+                }
+                root.floatStates = map;
+            }
+        }
+    }
+
+    Process {
+        id: wsProbe
+        command: [
+            "fish", "-c",
+            "hyprctl -j activeworkspace | tr -d ' \\n\\t' | string replace -rf '.*\"id\":([0-9]+).*' '$1'"
+        ]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const id = parseInt(this.text.trim());
+                if (id)
+                    root.wsId = id;
+            }
+        }
+    }
+
+    IpcHandler {
+        target: "floatws"
+
+        function set(ws: string, state: string): void {
+            const map = Object.assign({}, root.floatStates);
+            map[ws] = state === "on";
+            root.floatStates = map;
+        }
+    }
+
     readonly property var favorites: [
         {
-            id: "google-chrome.desktop",
             match: "google-chrome",
-            name: "Chrome"
+            name: "Chrome",
+            command: ["google-chrome-stable"],
+            icon: "google-chrome"
         },
         {
-            id: "firefox.desktop",
             match: "firefox",
-            name: "Firefox"
+            name: "Firefox",
+            command: ["firefox", "--name", "firefox"],
+            icon: "firefox"
         },
         {
-            id: "org.gnome.Ptyxis.desktop",
             match: "ptyxis",
-            name: "Ptyxis"
+            name: "Ptyxis",
+            command: ["ptyxis"],
+            icon: "org.gnome.Ptyxis"
         },
         {
-            id: "org.gnome.Nautilus.desktop",
             match: "nautilus",
-            name: "Nautilus"
+            name: "Nautilus",
+            command: ["nautilus", "--new-window"],
+            icon: "org.gnome.Nautilus"
         },
         {
-            id: "dev.zed.Zed.desktop",
             match: "zed",
-            name: "Zed"
-        },
-        {
-            id: "com.usebottles.Bottles.desktop",
-            match: "bottles",
-            name: "Bottles"
+            name: "Zed",
+            command: ["zeditor"],
+            icon: "zed"
         }
     ]
 
@@ -81,8 +165,6 @@ PanelWindow {
                     id: appBtn
 
                     required property var modelData
-                    readonly property var entry: DesktopEntries.byId(modelData.id)
-                        ?? DesktopEntries.byId(modelData.id.replace(".desktop", ""))
                     readonly property var running: root.runningFor(modelData.match)
                     readonly property bool focused: running.some(t => t.activated)
 
@@ -95,10 +177,11 @@ PanelWindow {
 
                     IconImage {
                         anchors.centerIn: parent
-                        source: appBtn.entry ? appBtn.entry.icon : ""
+                        // Bare names resolve as relative URLs in IconImage;
+                        // iconPath goes through the freedesktop theme lookup.
+                        source: Quickshell.iconPath(appBtn.modelData.icon)
                         implicitWidth: 40
                         implicitHeight: 40
-                        visible: appBtn.entry
                     }
 
                     // Running indicator (GNOME dock dot)
@@ -123,8 +206,8 @@ PanelWindow {
                                     Hyprland.dispatch("minimize");
                                 else
                                     Hyprland.dispatch("focuswindow class:" + appBtn.modelData.match);
-                            } else if (appBtn.entry) {
-                                appBtn.entry.execute();
+                            } else {
+                                Quickshell.execDetached(appBtn.modelData.command);
                             }
                         }
                     }

@@ -8,6 +8,9 @@ ShellRoot {
     Dock {
     }
 
+    OSD {
+    }
+
     Toasts {
     }
 }

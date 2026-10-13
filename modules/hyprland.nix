@@ -25,11 +25,13 @@ in
     xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
 
     # Login manager. Stock tuigreet for now; a custom Quickshell greeter is a
-    # future batch.
+    # future batch. Launch via the package's start-hyprland wrapper: it sets
+    # up the session environment and the crash watchdog. Launching the
+    # compositor binary directly makes Hyprland warn at startup.
     services.greetd = {
       enable = true;
       settings.default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd Hyprland";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd start-hyprland";
         user = "greeter";
       };
     };
@@ -67,7 +69,9 @@ in
         hyprpolkitagent
         hypridle
         hyprlock
-        swww
+        # Wallpaper daemon. swww was renamed to awww upstream; the binaries
+        # are awww / awww-daemon.
+        awww
         fuzzel
 
         # Session utilities
