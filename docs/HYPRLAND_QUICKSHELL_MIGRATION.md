@@ -299,6 +299,22 @@ UI, weather widget (geoclue2 present).
 - Widgets one dir down need `import ".."` to see the Theme singleton.
 - Hyprland binds: bare keys need the empty modifier field (`, F12, ...`); colors are RRGGBBAA only.
 - greetd must launch `start-hyprland` (the package wrapper), not the raw compositor binary.
+- **`quickshell ipc` needs explicit instance selection with a named
+  config.** A bare `quickshell ipc call ...` resolves the default config
+  (`~/.config/quickshell/shell.qml`, which does not exist here) and fails
+  silently. Use `quickshell -c shell ipc call ...` to match the service
+  instance.
+- **The systemd user manager lacks WAYLAND_DISPLAY at login.** The
+  quickshell unit then dies before Qt can load the wayland platform plugin
+  ("Failed to create wl_display" -> "no Qt platform plugin could be
+  initialized" -> start-limit-hit); a later manual `systemctl --user
+  restart` works because env has landed by then. Fixes: exec-once
+  `dbus-update-activation-environment --systemd ...` in the Hyprland
+  config + `Environment=WAYLAND_DISPLAY=wayland-1` on the unit.
+- **`/run/user/1000/hypr/` keeps stale signature dirs after relogin.**
+  `ls | head -1` picks the dead one; use the newest dir (`ls -t`) or the
+  one whose `.socket.sock` exists. The manager env's
+  HYPRLAND_INSTANCE_SIGNATURE (after the env import) is authoritative.
 - **Layer-shell windows swallow pointer input while mapped**, even when fully
   transparent. A always-mapped OSD above the dock made the dock unclickable.
   Unmap unused PanelWindows (`visible` bound to activity); an unmapped

@@ -95,7 +95,9 @@ let
 
     # Tell the running shell so the dock shows/hides immediately. The
     # marker dir stays the source of truth; the shell re-syncs from it on
-    # start. Fails silently when no shell instance is registered.
+    # start. -c shell matches the service instance: a bare ipc call looks
+    # for the default config (~/.config/quickshell/shell.qml), which does
+    # not exist with a named config, so the poke would silently fail.
     set -l state off
     if test "$want_on" = true
         set state on
@@ -103,7 +105,7 @@ let
     else
         hyprctl notify -1 1500 "rgb(909090)" "float mode: off (workspace $ws_id)"
     end
-    quickshell ipc call floatws set $ws_id $state >/dev/null 2>&1
+    quickshell -c shell ipc call floatws set $ws_id $state >/dev/null 2>&1
   '';
 in
 {
@@ -225,6 +227,11 @@ in
       ];
 
       exec-once = [
+        # Publish the session variables to the systemd user manager and
+        # the D-Bus activation environment. Without this, services started
+        # by systemd (quickshell) lack WAYLAND_DISPLAY at login and die
+        # before the compositor socket is found.
+        "dbus-update-activation-environment --systemd WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE"
         # Tray applets
         "nm-applet"
         "blueman-applet"

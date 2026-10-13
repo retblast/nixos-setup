@@ -34,6 +34,42 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 
 Newest first.
 
+### 2026-10-13 (afternoon) — deploy gate fixes: login start, IPC poke, screen keepalive (agent session, Master napping)
+
+Master switched + relogged onto the wave-1 commits. Two issues reported:
+
+- **quickshell did not start at login** ("qt plugins missing"). Journal:
+  "Failed to create wl_display (No such file or directory)" -> Qt cannot
+  load the wayland platform plugin (it probes the default wayland-0) ->
+  FATAL -> quickshell's own crash-loop guard -> start-limit-hit. Root
+  cause: the systemd user manager has no WAYLAND_DISPLAY at login
+  (nothing in the session imported it). Manual restarts worked because
+  the env had landed by then. Fixes: (1) exec-once
+  `dbus-update-activation-environment --systemd WAYLAND_DISPLAY
+  HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE` in
+  hyprland.nix; (2) `Environment=WAYLAND_DISPLAY=wayland-1` merged into
+  the quickshell unit (systemd.user.services in quickshell/default.nix).
+  (3) A user-level drop-in
+  (~/.config/systemd/user/quickshell.service.d/override.conf) applies the
+  same Environment now, before the next rebuild; the flake fix makes it
+  redundant later. Verified: restarted unit env carries WAYLAND_DISPLAY.
+- **Dock did not appear in float mode**: float-workspace's bare
+  `quickshell ipc call` cannot find the service instance (default-config
+  resolution fails with a named config) so live pokes silently failed;
+  the dock only reflected float state from its startup marker sync.
+  Fix: `quickshell -c shell ipc call floatws set ...`. Verified live
+  through the service instance: toggle on -> marker + dock maps; toggle
+  off -> dock unmaps. Goes live on the PATH with the next rebuild (the
+  in-store binary already has it).
+- Tooling note: after relogin /run/user/1000/hypr/ keeps the old
+  session's signature dir; `ls | head -1` returns a dead socket. Use
+  `ls -t`.
+- Screen keepalive per Master: systemd-inhibit block on
+  sleep:idle:shutdown for 8h (hypridle respects it).
+- Pending: one `sudo nixos-rebuild switch` to move the script fix +
+  exec-once import into the deployed generation (drop-in already covers
+  the service env).
+
 ### 2026-10-13 (morning) — batch 4 wave 1 finished: battery icon, dock input, float mode (agent session, Master at machine)
 
 Committed `a279af4` (unsigned, per agreement; re-sign later — see pending

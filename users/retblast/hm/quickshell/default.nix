@@ -59,4 +59,14 @@ in
     activeConfig = "shell";
     systemd.enable = true;
   };
+
+  # The generated unit starts before the Wayland socket is visible to it:
+  # the user manager lacks WAYLAND_DISPLAY at login, Qt cannot load the
+  # wayland platform plugin ("Failed to create wl_display") and the unit
+  # hits its start limit. This machine always runs one compositor whose
+  # socket is wayland-1; the env import in hyprland.nix exec-once covers
+  # the general case, this pins the service itself.
+  systemd.user.services.quickshell = lib.mkIf hyprlandEnabled {
+    Service.Environment = [ "WAYLAND_DISPLAY=wayland-1" ];
+  };
 }
