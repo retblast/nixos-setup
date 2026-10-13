@@ -10,7 +10,7 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 1 | NixOS plumbing: greetd, services, GNOME off | done | switched + rebooted 2026-10-12; greetd cmd fixed to start-hyprland |
 | 2 | HM Hyprland: config, binds, idle/lock, daemons | done | runtime verified after re-switch (F12, gradient, keybinds) |
 | 3 | Quickshell skeleton: theme, bar, dock, toasts | done | live: bar/dock render; notifications fixed (see journal) |
-| 4 | Shell completion | in-progress | OSD (volume+brightness) verified visually; wallpaper rotation done; bar overlap fixed; bar icons polished. Remaining: launcher panel, caffeine toggle |
+| 4 | Shell completion | in-progress | wave 1 committed (a279af4): OSD, wallpaper, bar, battery/OSD/dock fixes, per-workspace float mode. Remaining: launcher panel, caffeine toggle; deploy gate pending |
 | 5 | Cleanup: dconf trim, package audit | pending | |
 | 6 | Future: custom greeter, dynamic theming, overview | not started | |
 
@@ -26,10 +26,78 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 2026-10-12 | keep GTK apps + adw-gtk3 + dconf | apps are not the desktop; Qt keeps adwaita platformtheme + adwaita-qt style (no KDE deps) |
 | 2026-10-12 | Hyprland configType forced to hyprlang | HM would default to Lua for stateVersion >= 26.05; hyprlang is the documented stable format |
 | 2026-10-12 | retTheme as theme source of truth | zed.nix previously derived font sizes from dconf, which died with GNOME; shell reads generated Theme.qml |
+| 2026-10-13 | per-workspace float mode is client-side (script + marker files + IPC), no Hyprland rules | 0.56 removed workspaceopt (no-op) and all:float rules; setfloating is a no-op; togglefloating is the only working per-window toggle |
+| 2026-10-13 | dock visible only on floating workspaces | Master's call: tiling = no dock; dock returns on float-mode workspaces (SUPER SHIFT F) |
+| 2026-10-13 | track active workspace via Hyprland.rawEvent, not focusedWorkspace | quickshell 0.3.1 focusedWorkspace never updates after startup (empirically stale); the event socket is reliable |
 
 ## Journal
 
 Newest first.
+
+### 2026-10-13 (morning) — batch 4 wave 1 finished: battery icon, dock input, float mode (agent session, Master at machine)
+
+Committed `a279af4` (unsigned, per agreement; re-sign later — see pending
+note below). Content on top of the staged wave:
+
+- **Volume widget "missing" was a false alarm**: volume sat muted at 5% from
+  the night tests; the % text is hidden when muted, and the muted-speaker
+  icon was misread at 5x zoom as a "sliders" glyph. Unmuted to 45%. The tray
+  "sliders" glyph is easyeffects' real tray icon; nm-applet colored bars and
+  blueman's bluetooth-off icon are also genuine. Accepted as-is; forcing
+  symbolic tray icons is fragile polish, deferred.
+- **Battery icon fixed**: adwaita 50.0 has no `battery-level-100-charging`;
+  level 100 is `-charged`. Battery.qml clamps the level and switches to
+  `-charged` at 100% while charging. Verified in a screenshot.
+- **Dock input root cause**: the OSD PanelWindow was always mapped
+  (1920x140 at the dock's edge) and layer-shell surfaces swallow pointer
+  input even when fully transparent — the dock was clickable only where the
+  OSD did not overlap. Fix: `visible: pill.opacity > 0` (unmaps when idle,
+  releases the exclusive zone) + implicitHeight 100. `hyprctl layers` shows
+  exactly bar + dock + toasts at idle; the OSD maps on change and unmaps
+  1.8s after hide. Master confirmed dock hover works.
+- **Per-workspace float mode** (Master's request): `float-workspace` fish
+  script in `hyprland.nix` (writeFishBin, bound to SUPER SHIFT F). It
+  toggles `togglefloating` for each window on the ACTIVE workspace that
+  needs flipping, records the state in
+  `$XDG_RUNTIME_DIR/hypr-float-ws/<ws-id>` marker files, pokes the shell
+  over IPC (`quickshell ipc call floatws set <ws> on|off`), and notifies.
+  Windows opened while float mode is on stay tiled (documented limitation:
+  0.56 has no working per-workspace float rule; `workspaceopt` and
+  `setfloating` are no-ops, `togglefloating` works).
+- **Dock follows float mode**: hidden on tiling workspaces, shown on
+  floating ones. State source is the marker dir (re-synced at shell start);
+  the IPC handler updates the live map. Gotcha found the hard way:
+  quickshell 0.3.1 `Hyprland.focusedWorkspace` never updates after startup
+  (empirically stale -> dock always read ws 1). Active workspace is probed
+  from `hyprctl -j activeworkspace` at start and tracked via
+  `Hyprland.rawEvent`; **event data is the value after `>>`**
+  (`workspace>>77` -> data `"77"`), no separator to strip.
+- Verified live with debug logging: startup sync loads markers, rawEvent
+  fires on workspace switches, dock maps on a floating workspace and
+  unmaps on a tiling one, windows float and tile. Test instances were
+  killed; during testing quickshell instances died whenever their last
+  layer surface was closed (quickshell quits with zero windows) — that was
+  us closing the duplicate bars, not a crash. Note: quickshell daemonizes,
+  so the effective pid is a child of the launched one; `pgrep -f` the
+  config path and check `/proc/<pid>/cmdline`.
+- **Notifications crashed the shell on every send** (Master: "notify-send
+  doesn't do anything"). Crash reports in ~/.cache/quickshell/crashes:
+  segfault in Qt 6.11.2's VDMListDelegateDataType::createMissingProperties
+  when the Toasts Repeater model was reassigned from the onNotification
+  JS handler. The wave-1 readonly fix un-masked it (the assignment used to
+  fail harmlessly). A count model did NOT avoid it; the fix is the
+  imperative rewrite in Toasts.qml (cards via Component.createObject,
+  declared as `property Component` — bare Component children hit
+  NotificationServer's missing default property). Verified live:
+  notify-send renders a styled card, instance survives, zero errors.
+- **hyprctl notify color syntax**: the color argument must be a plain
+  `"rgb(3584e4)"`; the `"0 rgb(...)"` form renders the color string as
+  message text. float-workspace notify lines fixed.
+
+**Deploy gate (needs Master)**: `sudo nixos-rebuild switch --flake .#Taihou`
+from the repo, then `systemctl --user restart quickshell` + `hyprctl reload`
+(relogin also fine). After that: SUPER SHIFT F toggles float mode + dock per
+workspace; OSD no longer eats dock clicks; battery icon correct at 100%.
 
 ### 2026-10-13 (night) — batch 4 wave 1: OSD, wallpaper, bar fix (agent session, Master asleep)
 
@@ -80,17 +148,19 @@ Remaining batch 4: launcher panel, caffeine toggle (hypridle stop/start).
 
 ### Commit pending: SSH keyring locked (2026-10-13 ~01:30)
 
-Batch 4 wave 1 is fully staged (`git status` shows the staged set) but the
-commit is blocked: commit signing needs the SSH agent, and both agent
+RESOLVED 2026-10-13 morning: committed unsigned (`git -c commit.gpgsign=false
+commit -F docs/COMMIT_MSG_PENDING.txt`) per Master's authorization; the
+staged wave-1 plus the morning fixes are in `a279af4`. Re-sign later if
+desired (`git rebase --exec 'git commit --amend -S' <base>` or re-sign the
+commits individually). The keyring/prompter gap under Hyprland is still open
+(secret prompts have no UI yet).
+
+Original note: commit signing needs the SSH agent, and both agent
 sockets are locked — gcr lists the keys but signing fails ("communication
 with agent failed", the gcr unlock prompter cannot run outside GNOME), and
 the gnupg socket hangs waiting for a pinentry that cannot display. Signing
 worked earlier in the evening; the user-service restarts during the
 generation switches appear to have re-locked it.
-
-Morning procedure: after login (PAM unlocks the keyring), run
-`git commit -F docs/COMMIT_MSG_PENDING.txt` or ask the agent to commit the
-staged set.
 
 Migration finding to address later: secret/unlock prompts (gcr prompter,
 pinentry) have no working UI under Hyprland yet. SSH signing, keyring
@@ -240,12 +310,14 @@ came from complaint 2.
 
 ## Pending runtime gate (Master)
 
-1. `sudo nixos-rebuild switch` from /etc/nixos (batch 4 wave 1: OSD,
-   wallpaper timer + awww daemon service, bar fix, icon polish, toasts fix)
-2. Relogin (or reboot) so quickshell restarts with the new shell
-3. Check: wallpaper appears after ~20s and rotates hourly; volume/brightness
-   keys pop the OSD pill; bar title no longer overlaps the clock; top-right
-   shows symbolic icons with %; notify-send renders a toast
+1. `sudo nixos-rebuild switch --flake .#Taihou` from the repo (batch 4
+   wave 1 commit a279af4: OSD + dock input fix, battery icon, wallpaper
+   rotation, bar fix, float-workspace + keybind, dock float visibility)
+2. `systemctl --user restart quickshell && hyprctl reload` (or relogin)
+3. Check: OSD no longer blocks the dock (hover cursor over dock);
+   battery icon correct at 100%; volume/brightness keys pop the OSD;
+   wallpaper rotates hourly; bar title no longer overlaps the clock;
+   SUPER SHIFT F toggles float mode + dock on the active workspace
 4. Rollback if needed: previous generation in GRUB
 
 Note: the wallpaper for the night was already set manually (`awww img`);

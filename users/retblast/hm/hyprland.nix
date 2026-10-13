@@ -99,9 +99,9 @@ let
     set -l state off
     if test "$want_on" = true
         set state on
-        hyprctl notify -1 1500 "0 rgb(3584e4)" "float mode: on (workspace $ws_id)"
+        hyprctl notify -1 1500 "rgb(3584e4)" "float mode: on (workspace $ws_id)"
     else
-        hyprctl notify -1 1500 "0 rgb(909090)" "float mode: off (workspace $ws_id)"
+        hyprctl notify -1 1500 "rgb(909090)" "float mode: off (workspace $ws_id)"
     end
     quickshell ipc call floatws set $ws_id $state >/dev/null 2>&1
   '';

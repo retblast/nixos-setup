@@ -299,6 +299,43 @@ UI, weather widget (geoclue2 present).
 - Widgets one dir down need `import ".."` to see the Theme singleton.
 - Hyprland binds: bare keys need the empty modifier field (`, F12, ...`); colors are RRGGBBAA only.
 - greetd must launch `start-hyprland` (the package wrapper), not the raw compositor binary.
+- **Layer-shell windows swallow pointer input while mapped**, even when fully
+  transparent. A always-mapped OSD above the dock made the dock unclickable.
+  Unmap unused PanelWindows (`visible` bound to activity); an unmapped
+  surface also releases its exclusive zone.
+- **adwaita-icon-theme 50.0**: battery level 100 has no `-charging` variant;
+  it is `battery-level-100-charged-symbolic` (`-plugged-in` exists at all
+  levels).
+- **Hyprland 0.56 per-workspace float**: `workspaceopt` is a deprecated
+  no-op (warns, does nothing), workspace rules no longer have an
+  `all:float` field, `setfloating` is a no-op (returns ok, does nothing),
+  dynamic `windowrule float` keywords do not match new windows. The only
+  working per-window toggle is `togglefloating`; per-workspace float mode
+  is therefore client-side (see the `float-workspace` script).
+- **quickshell 0.3.1 `Hyprland.focusedWorkspace` never updates after
+  startup** (empirically stale; qmltypes lists it with a change signal, but
+  it does not fire). Track the active workspace via `Hyprland.rawEvent`:
+  event `name` is the type before `>>`, `data` is the value after it
+  (`workspace>>77` -> `"77"`; no separator to strip). `HyprlandToplevel`
+  has no typed `class`/`appId`; use `lastIpcObject.class`.
+- **quickshell daemonizes**: the launched process exits after forking the
+  real instance. Match instances via `pgrep -f <config-path>` and check
+  `/proc/<pid>/cmdline`; `hyprctl layers` reports the real pid.
+- **quickshell quits when its last layer surface closes** (e.g. after an
+  external `closelayer` dispatch). It is a clean exit, not a crash.
+- `hyprctl notify <icon> <time_ms> <color> <message>`: the color argument
+  must be a plain `rgb(3584e4)` / `rgba(...)` string. Extra tokens (e.g. an
+  icon index inside the color string) make Hyprland render the color as
+  message text.
+- **Qt 6.11 + quickshell 0.3.1: Repeater models crash when reassigned from
+  a JS handler** — VDMListDelegateDataType::createMissingProperties
+  segfaults during delegate incubation, even with a plain count model and
+  no required properties (every notification crashed the shell; reports
+  under ~/.cache/quickshell/crashes). A Repeater that only incubates once
+  at component creation (static favorites list) is fine. Anything
+  reassigned at runtime must create objects imperatively
+  (`Component.createObject`, declared as `property Component`) or use a
+  real QAbstractListModel.
 
 ## References
 
