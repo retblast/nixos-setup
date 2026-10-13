@@ -155,8 +155,9 @@
   };
 
   # Desktop Environment
-  localModule.gnome.enable = true;
-  localModule.gnome.minimal.enable = false;
+  # GNOME replaced by Hyprland + Quickshell; see docs/HYPRLAND_QUICKSHELL_MIGRATION.md
+  localModule.gnome.enable = false;
+  localModule.hyprland.enable = true;
   # Trying it out!
   # Keep this for the future.
   # programs.singularity-desktop = {

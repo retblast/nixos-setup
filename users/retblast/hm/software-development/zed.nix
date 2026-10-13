@@ -6,13 +6,11 @@
   ...
 }:
 
-let rawMonospaceFont = config.dconf.settings."org/gnome/desktop/interface".monospace-font-name;
-rawMonospaceFontParts =  lib.strings.splitString " " rawMonospaceFont;
-MonospaceFontSize = lib.strings.toInt (builtins.elemAt rawMonospaceFontParts ((builtins.length rawMonospaceFontParts) - 1));
-rawSansFont = config.dconf.settings."org/gnome/desktop/interface".monospace-font-name;
-rawSansFontParts =  lib.strings.splitString " " rawSansFont;
-SansFontSize = lib.strings.toInt (builtins.elemAt rawSansFontParts ((builtins.length rawSansFontParts) - 1));
-
+# Font sizes derive from the shared shell theme (retTheme), which is the
+# single source of truth. Previously this read dconf (GNOME settings), which
+# stopped existing with the Hyprland migration.
+let
+  theme = config.retTheme;
 in {
   # Packages necessary for Zed to not complain about things
   # Does make using NixOS annoying tbf
@@ -38,15 +36,15 @@ in {
       project_panel = {
         dock = "left";
       };
-      buffer_font_family = "${builtins.elemAt taihouConfig.fonts.fontconfig.defaultFonts.monospace 0}";
-      ui_font_family = "${builtins.elemAt taihouConfig.fonts.fontconfig.defaultFonts.sansSerif 0}";
+      buffer_font_family = theme.mono;
+      ui_font_family = theme.sans;
       features = {
         copilot = false;
       };
       load_direnv = "shell_hook";
       vim_mode = false;
-      ui_font_size = (SansFontSize + 1) * 1.33;
-      buffer_font_size = MonospaceFontSize * 1.33;
+      ui_font_size = (theme.sansSize + 1) * 1.33;
+      buffer_font_size = theme.monoSize * 1.33;
       languages = {
         Nix = {
           language_servers = [

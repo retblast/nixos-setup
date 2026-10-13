@@ -12,8 +12,11 @@
     ./envvars.nix
     ./fish.nix
     ./deskEnv-config.nix
+    ./shell-theme.nix
     ./workarounds.nix
     ./mpv.nix
+    ./hyprland.nix
+    ./quickshell
     #TODO: I might have to fix this when using home manager as standalone
     inputs.nix-index-database.homeModules.nix-index
 
@@ -93,14 +96,7 @@
     backupLimit = 2;
   };
 
-  # QT look on gnome
-  qt = {
-    style.name = "kde";
-  }
-  // lib.mkIf (taihouConfig.services.desktopManager.gnome.enable) {
-    enable = true;
-    platformTheme.name = "adwaita";
-  };
+  # QT theming is handled in deskEnv-config.nix (single source).
 
   programs.yt-dlp = {
     enable = true;

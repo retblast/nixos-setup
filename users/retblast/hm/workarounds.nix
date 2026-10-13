@@ -13,17 +13,18 @@
 	
 	# Workaround: for cursors broken in gnome by default
 	# affects: mpv and games it seems
-	# This might be uneeded when gtk 4.18 drops
-		 pointerCursor = lib.mkIf taihouConfig.services.desktopManager.gnome.enable {
+	# Kept unconditional after the Hyprland migration: Hyprland itself reads
+	# the XCURSOR env vars, and GTK apps need the gtk cursor config.
+		pointerCursor = {
 		 	package = pkgs.adwaita-icon-theme;
 		 	name = "Adwaita";
 		 	# Set to 12 because of mpv
 		 	# TODO: does this affect other stuff?
 		 	size = 24;
 			# Makes the GNOME cursor tiny
-		 	gtk.enable = false;
+		 	gtk.enable = true;
 			# I only really need this, I think?
 		 	x11.enable = true;
-		 }  ;
+		 };
 	};
 }

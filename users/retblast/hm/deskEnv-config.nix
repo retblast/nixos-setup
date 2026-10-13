@@ -5,100 +5,22 @@
   ...
 }:
 {
-  programs.gnome-shell = {
-    enable = taihouConfig.services.desktopManager.gnome.enable;
-    extensions = [
-      # Alphabetical App Grid
-      { package = pkgs.gnomeExtensions.alphabetical-app-grid; }
-
-      # Disabled given that I now use Vitals
-      # System Monitor
-      # {
-      #	id = "system-monitor@gnome-shell-extensions.gcampax.github.com";
-      #	package = pkgs.gnome-shell-extensions;
-      # }
-
-      # GTK3 Themes
-      # For adw-gtk3
-      {
-        id = "user-theme@gnome-shell-extensions.gcampax.github.com";
-        package = pkgs.gnome-shell-extensions;
-      }
-      # Lock Keys
-      { package = pkgs.gnomeExtensions.lock-keys; }
-
-      # Wallpaper slideshow
-      { package = pkgs.gnomeExtensions.wallpaper-slideshow; }
-
-      # Caffeine
-      { package = pkgs.gnomeExtensions.caffeine; }
-
-      # CamPeek
-      # Doesn't really work
-      # { package = pkgs.gnomeExtensions.campeek; }
-
-      # Vitals
-      { package = pkgs.gnomeExtensions.vitals; }
-
-      #
-      # Astra Monitor
-      # { package = pkgs.gnomeExtensions.astra-monitor; }
-
-      # Accented Panel
-      { package = pkgs.gnomeExtensions.accented-panel; }
-
-      # Accented Icons
-      { package = pkgs.gnomeExtensions.accent-directories; }
-
-      # Auto Accent Color
-      { package = pkgs.gnomeExtensions.auto-accent-colour; }
-
-      # Tinted Shell
-      { package = pkgs.gnomeExtensions.tinted-shell; }
-
-      # Dash to Dock
-      { package = pkgs.gnomeExtensions.dash-to-dock; }
-
-      # Dock from dash
-      # Disabled until these 2 issues are fixed!
-      # https://github.com/fthx/dock-from-dash/issues/102
-      # https://github.com/fthx/dock-from-dash/issues/99
-      #{ package = pkgs.gnomeExtensions.dock-from-dash; }
-      # ddterm
-      # Re-enable once https://github.com/ddterm/gnome-shell-extension-ddterm/pull/1209 is dealt with
-      #{ package = pkgs.gnomeExtensions.ddterm; }
-    ];
-  };
-
-  #programs.plasma = {
-  #	enable = taihouConfig.services.desktopManager.plasma.enable;
-  #};
+  # GTK/Qt/dconf settings that serve desktop apps (Nautilus, Ptyxis, Papers, ...).
+  # Previously gated on the GNOME desktop being enabled; the apps survive the
+  # Hyprland migration, so these are now unconditional.
   xresources.properties = {
     "Xft.rgba" = "0";
     "Xft.lcdfilter" = "lcddefault";
     "Xft.autohint" = if taihouConfig.fonts.fontconfig.hinting.autohint then "1" else "0";
   };
 
-  home.packages =
-    if taihouConfig.services.desktopManager.gnome.enable then
-      with pkgs;
-      [
-        # Workaround for gtk.theme.package
-        adw-gtk3
-        # Astra Monitor
-        gtop
-        nethogs
-        wirelesstools
-        # auto-accent-color
-        gjs
-      ]
-    else
-      [ ];
+  home.packages = with pkgs; [
+    # GTK3 theme (GTK4 uses libadwaita)
+    adw-gtk3
+  ];
 
-  # TODO: does this break anything in KDE?
-  # Probably not
   gtk = {
-    enable = taihouConfig.services.desktopManager.gnome.enable;
+    enable = true;
     theme = {
       name = "adw-gtk3";
       # package = pkgs.adw-gtk3;
@@ -115,15 +37,14 @@
   };
 
   qt = {
-    enable = taihouConfig.services.desktopManager.gnome.enable;
+    enable = true;
     platformTheme.name = "adwaita";
-    style.name = "breeze";
+    # adwaita-qt (no KDE deps)
+    style.name = "adwaita";
   };
 
-  # TODO: does this break anything in KDE?
-  # Probably not
   dconf = {
-    enable = taihouConfig.services.desktopManager.gnome.enable;
+    enable = true;
     settings = {
 
       # "com/github/amezin/ddterm" = {
@@ -297,6 +218,9 @@
         font-hinting = "${taihouConfig.fonts.fontconfig.hinting.style}";
         font-rendering = "manual";
         gtk-enable-primary-paste = true;
+        # Was set at runtime under GNOME (settings-daemon); make it declarative
+        # so libadwaita and Qt apps stay dark.
+        color-scheme = "prefer-dark";
       };
     };
   };
