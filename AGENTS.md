@@ -1,5 +1,13 @@
 # nixos-setup — agent notes
 
+## Scope
+
+This file exists only for the Hyprland + Quickshell migration. It is not a
+general guideline set for this repository — none has been designed yet.
+Treat everything below as migration-scoped instructions, not repo-wide
+policy. Once the repository has real guidelines, review this file against
+them and fold or delete it accordingly.
+
 NixOS flake for machines Taihou (main laptop), TaihouLite (ISO), Hearts.
 User: retblast. Shell: fish. Desktop: Hyprland + Quickshell (GNOME removed on
 Taihou; see docs/ for the migration).
