@@ -12,7 +12,7 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 3 | Quickshell skeleton: theme, bar, dock, toasts | done | live: bar/dock render; notifications fixed (see journal) |
 | 4 | Shell completion | in-progress | waves 1-3 committed; wave 4 live-verified (hyprplayground sandbox, gestures, Ctrl+Alt binds, tray centering). Deploy gate pending |
 | 5 | Cleanup: dconf trim, package audit | done | trim + live DB reset + audit clean + cliphist/pointerCursor deprecations fixed; build warning-free |
-| 6 | Future: custom greeter, dynamic theming, overview | in-progress | greeter built + opt-in wired (customGreeter.enable, default off); login-flow test pending at Master's next logout |
+| 6 | Future: custom greeter, dynamic theming, overview | in-progress | greeter built (opt-in pending logout test); app overview built (SUPER+TAB + 3-finger-up, gate pending); palette theming + weather next |
 
 ## Decisions
 
@@ -37,6 +37,18 @@ Newest first.
 
 ### 2026-10-14 (morning) — batch 6 started: custom Quickshell greeter built (agent session, Master awake)
 
+- **App overview implemented** (`shell/Overview.qml`): fullscreen overlay
+  (WlrLayer.Overlay, exclusive keyboard) with a GridView over
+  `ToplevelManager.toplevels` (real QAbstractListModel — the Repeater
+  crash gotcha does not apply) and live `ScreencopyView` thumbnails
+  (capture only while visible; letter placeholder when the compositor
+  refuses per-window capture). Click focuses via `Toplevel.activate()`,
+  close button and Esc close, backdrop click closes. Toggled through
+  `IpcHandler target: "overview"` (Quickshell.Io import needed — it is
+  NOT in the root module): SUPER+TAB and the new
+  `gesture = 3, up, dispatcher, exec, ... overview toggle` (GNOME's
+  overview swipe). Verified in the rig: 0 QML errors, layer maps
+  fullscreen on toggle and unmaps on toggle-off.
 - **Greeter implemented** (`modules/quickshell-greeter/`): shell.qml +
   Greeter.qml (fullscreen PanelWindow: clock, date, fixed user, password
   field, status line) + Theme.qml (palette duplicated from retTheme —

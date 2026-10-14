@@ -486,6 +486,20 @@ UI, weather widget (geoclue2 present).
   (pam_fprintd) arrive as non-response authMessages. `Greetd.available`
   is false outside a greetd session — gate UI wiring on it so the
   config loads harmlessly for testing.
+- **Window overview building blocks (0.3.1)**: `import Quickshell.Wayland`
+  re-exports ScreencopyView and ToplevelManager (the underscore subdirs
+  are internal). `ScreencopyView.captureSource` takes a wlr-foreign
+  `Toplevel` (from `ToplevelManager.toplevels` — a real QAbstractListModel,
+  safe as a GridView model), with `live` and `constraintSize`; gate
+  `live` to visibility or it captures constantly. `Toplevel.activate()`
+  focuses, `close()` closes. Hyprland's own `HyprlandToplevel` (used by
+  the dock) is a DIFFERENT type and is not a screencopy source.
+- **`IpcHandler` lives in Quickshell.Io**, not the root module — a bare
+  `import Quickshell` fails with "IpcHandler is not a type".
+- **pgrep -f self-match, third variant**: the pattern must not appear
+  anywhere in the same call, including IPC call lines
+  (`quickshell -p <path> ipc call ...` contains the launch text). Any
+  kill-by-pattern call must be a lone invocation.
 - **`Hyprland --verify-config -c <file>`** parses a config without
   launching — use it as a gate on the generated config before switching.
 - **A dconf settings trim does not clean the user DB**: `dconf.settings`

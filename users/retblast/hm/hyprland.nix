@@ -332,6 +332,9 @@ in
         "SUPER, Q, killactive"
         "SUPER, F, fullscreen"
         "SUPER, Space, togglefloating"
+        # App overview (widgets: shell/Overview.qml). GNOME-parity: also on
+        # the 3-finger-up gesture below.
+        "SUPER, TAB, exec, quickshell -c shell ipc call overview toggle"
         # Float mode for the whole workspace (see float-workspace above)
         "SUPER SHIFT, F, exec, float-workspace"
         "SUPER, L, exec, hyprlock"
@@ -376,6 +379,8 @@ in
       # Dispatcher actions dispatch discretely on gesture end.
       gesture = [
         "3, horizontal, workspace"
+        # GNOME's overview swipe: toggles the app overview.
+        "3, up, dispatcher, exec, quickshell -c shell ipc call overview toggle"
         "4, left, dispatcher, cyclenext, prev"
         "4, right, dispatcher, cyclenext"
       ];

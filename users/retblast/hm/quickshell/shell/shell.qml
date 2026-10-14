@@ -13,4 +13,7 @@ ShellRoot {
 
     Toasts {
     }
+
+    Overview {
+    }
 }
