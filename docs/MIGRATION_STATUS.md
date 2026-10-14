@@ -10,7 +10,7 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 1 | NixOS plumbing: greetd, services, GNOME off | done | switched + rebooted 2026-10-12; greetd cmd fixed to start-hyprland |
 | 2 | HM Hyprland: config, binds, idle/lock, daemons | done | runtime verified after re-switch (F12, gradient, keybinds) |
 | 3 | Quickshell skeleton: theme, bar, dock, toasts | done | live: bar/dock render; notifications fixed (see journal) |
-| 4 | Shell completion | in-progress | wave 1 committed (a279af4) + wave 2 live-verified (bar polish, native wifi, caffeine toggle, toast lifecycle root cause). Launcher = fuzzel. Deploy gate pending |
+| 4 | Shell completion | in-progress | wave 1+2 committed; wave 3 live-verified (bluetooth widget, tray applets out, title alignment). Deploy gate pending |
 | 5 | Cleanup: dconf trim, package audit | pending | |
 | 6 | Future: custom greeter, dynamic theming, overview | not started | |
 
@@ -34,6 +34,47 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 ## Journal
 
 Newest first.
+
+### 2026-10-13 (night) — tray applets out: native bluetooth widget, title alignment (agent session, Master at machine)
+
+Post-switch feedback, three fixes:
+
+- **Old wifi + bluetooth tray icons still present**: nm-applet had survived
+  from the pre-wave-2 generation's exec-once (it was never actually killed
+  earlier — the kill silently failed), and blueman-applet was still in
+  exec-once. Killed nm-applet, blueman-applet and blueman-tray (by pid;
+  pgrep -c -x verified zero afterwards), dropped blueman-applet from
+  exec-once, and removed the networkmanagerapplet package from
+  modules/hyprland.nix (nm-applet and nm-connection-editor are gone;
+  nmtui from networkmanager covers connection editing; the blueman
+  package stays for blueman-manager). quickshell itself hosts
+  org.kde.StatusNotifierWatcher, so nothing external resurrects tray
+  items; the tray is empty now.
+- **Bluetooth.qml** (new): native widget from Quickshell.Bluetooth
+  (Bluetooth.defaultAdapter with writable `enabled`, device connected
+  state from Bluetooth.devices.values). Icon mapping: adapter off or
+  missing -> bluetooth-disabled-symbolic at 0.55 opacity; a device
+  connected -> bluetooth-active-symbolic; on and idle ->
+  bluetooth-disconnected-symbolic. Left-click toggles adapter power;
+  right-click launches blueman-manager (temporary handler until a native
+  panel exists). Hidden
+  when the machine has no adapter. All five bluetooth symbolic SVGs were
+  already in the recolored icon set. Live-verified through a test
+  instance: config loads with zero errors, bar renders; the adapter is
+  Powered: no on this machine, so the disabled icon is the expected
+  render.
+- **Title floated ~1px high next to the clock**: ActiveWindow was 9pt vs
+  the clock's 10pt. Both are center-anchored to the bar, but different
+  sizes put their baselines at different heights, which reads as the
+  title sitting high. Title is now 10pt — equal metrics align center,
+  baseline and x-height.
+- Tooling trap (bit this session): never put the
+  `setsid nohup quickshell ... &` launch inside a backgrounded `&&`
+  chain — `A && B && setsid nohup quickshell ... &` backgrounds the whole
+  list, setsid execs quickshell as the async subshell's foreground
+  child, and the subshell waits forever (the tool call timed out while
+  quickshell itself detached fine and kept running). Background the
+  launch statement alone.
 
 ### 2026-10-13 (evening) — batch 4 wave 2: bar polish, native wifi, caffeine toggle, toast root cause (agent session, Master at machine)
 
@@ -387,18 +428,20 @@ came from complaint 2.
 
 ## Pending runtime gate (Master)
 
-1. `sudo nixos-rebuild switch --flake .#Taihou` from the repo (wave 1
-   a279af4..561574f + wave 2: bar polish, native wifi, caffeine toggle,
-   toast lifecycle)
+1. `sudo nixos-rebuild switch --flake .#Taihou` from the repo (waves 1-3)
 2. `systemctl --user restart quickshell && hyprctl reload` (or relogin)
 3. Check: OSD no longer blocks the dock (hover cursor over dock);
    battery icon correct at 100%; volume/brightness keys pop the OSD;
    wallpaper rotates hourly; bar title no longer overlaps the clock;
    SUPER SHIFT F toggles float mode + dock on the active workspace;
-   bar right side shows white aligned icons + wifi SSID + caffeine moon;
-   notify-send without -t disappears after ~5s, critical notifications
-   stay until clicked; clicking the caffeine moon toggles hypridle
-   (sun = idle blocked); nm-applet gone from the tray after relogin
+   bar right side shows white aligned icons + wifi SSID + caffeine moon
+   + bluetooth icon; title baseline matches the clock; notify-send
+   without -t disappears after ~5s, critical notifications stay until
+   clicked; clicking the caffeine moon toggles hypridle (sun = idle
+   blocked); left-click on the bluetooth icon toggles the adapter,
+   right-click opens blueman-manager; tray has
+   no applet icons (nm-applet/blueman processes are dead already; they
+   cannot come back after relogin)
 4. Rollback if needed: previous generation in GRUB
 
 Note: the wallpaper for the night was already set manually (`awww img`);

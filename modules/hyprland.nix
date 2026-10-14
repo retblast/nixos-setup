@@ -84,9 +84,11 @@ in
         brightnessctl
         libnotify
 
-        # Tray applets
+        # blueman stays for the pairing/manager UI (blueman-manager). The
+        # tray status icons are native quickshell widgets now, so the
+        # applets (blueman-applet, networkmanagerapplet/nm-applet) are not
+        # installed; nmtui (from networkmanager) covers connection editing.
         blueman
-        networkmanagerapplet
 
         # Apps previously pulled in by the GNOME module (keep the essentials)
         nautilus

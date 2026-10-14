@@ -68,6 +68,9 @@ PanelWindow {
         Widgets.Caffeine {
         }
 
+        Widgets.Bluetooth {
+        }
+
         Widgets.Tray {
         }
     }

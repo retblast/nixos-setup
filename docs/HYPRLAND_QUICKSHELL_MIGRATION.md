@@ -388,6 +388,26 @@ UI, weather widget (geoclue2 present).
   matches the wrapper shell's own cmdline, which then kills itself
   mid-script. The `[q]uickshell` bracket trick only protects the pattern
   text itself. Keep kill commands in their own invocation.
+- **Never background a launch inside a `&&` chain**: `A && B && setsid
+  nohup quickshell ... &` backgrounds the whole list. Inside the async
+  subshell, setsid execs quickshell as a foreground child, so the
+  subshell waits for quickshell to exit — the caller times out while
+  quickshell runs on detached. Background the launch statement alone
+  (`... && echo staged; setsid nohup quickshell ... &; sleep ...`).
+- **The bluetooth module imports as `Quickshell.Bluetooth`** (singleton
+  `Bluetooth`): `Bluetooth.defaultAdapter` (null when no adapter),
+  writable `enabled`, `state` enum
+  (Disabled/Enabled/Enabling/Disabling/Blocked), devices from
+  `Bluetooth.devices.values` with a writable `connected` each. The bar
+  widget toggles `adapter.enabled` on left-click and launches
+  `blueman-manager` on right-click via `Quickshell.execDetached` (same
+  list form the dock uses).
+- **quickshell hosts org.kde.StatusNotifierWatcher itself** (the tray is
+  client + host in one). Killing tray applets (nm-applet, blueman) is
+  permanent unless something D-Bus-activates them again — blueman ships
+  org.blueman.Applet.service, so opening blueman-manager can respawn the
+  applet. Nothing autostarts applets under this config (no XDG autostart
+  machinery active, no systemd user units for them).
 
 ## References
 
