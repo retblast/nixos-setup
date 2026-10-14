@@ -20,6 +20,11 @@ NotificationServer {
     keepOnReload: false
 
     onNotification: toast => {
+        // Claim the notification: untracked ones are deleted by the server
+        // right after this handler returns, which leaves every later
+        // access (Timer's expire(), click handlers) hitting a dangling
+        // QML wrapper ("Property 'expire' ... is not a function").
+        toast.tracked = true;
         toastCardComp.createObject(cardColumn, { toast: toast });
     }
 
@@ -70,11 +75,19 @@ NotificationServer {
                 : Theme.border
 
             Timer {
-                // Auto-expire only when the app asked for it
-                running: toastCard.toast && toastCard.toast.expireTimeout > 0
-                interval: toastCard.toast
-                    ? Math.max(toastCard.toast.expireTimeout, 100)
-                    : 5000
+                // expireTimeout <= 0 means "server default" in the
+                // spec; notify-send sends -1 when -t is absent. Use 5s
+                // for normal urgency, keep critical notifications until
+                // dismissed (GNOME behavior).
+                readonly property int timeout: {
+                    if (!toastCard.toast)
+                        return 5000;
+                    if (toastCard.toast.expireTimeout > 0)
+                        return toastCard.toast.expireTimeout;
+                    return toastCard.toast.urgency === 2 ? 0 : 5000;
+                }
+                running: toastCard.toast && timeout > 0
+                interval: Math.max(timeout, 100)
                 onTriggered: if (toastCard.toast)
                     toastCard.toast.expire()
             }
@@ -121,7 +134,9 @@ NotificationServer {
                 anchors.fill: parent
                 onClicked: {
                     // Invoke the default action if present, then dismiss
-                    const actions = toastCard.toast ? toastCard.toast.actions : [];
+                    const actions = toastCard.toast && toastCard.toast.actions
+                        ? toastCard.toast.actions
+                        : [];
                     if (actions.length > 0)
                         actions[0].invoke();
                     toastCard.toast.dismiss();

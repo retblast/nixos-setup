@@ -352,6 +352,42 @@ UI, weather widget (geoclue2 present).
   reassigned at runtime must create objects imperatively
   (`Component.createObject`, declared as `property Component`) or use a
   real QAbstractListModel.
+- **Untracked quickshell Notifications are destroyed** shortly after the
+  `notification` handler returns. Every later access then hits a dangling
+  QML wrapper ("Property 'expire' of object TypeError ... is not a
+  function" — the object stringifies as a TypeError itself), while
+  bindings that evaluated while it lived keep rendering stale text.
+  Claim each notification with `toast.tracked = true` inside the handler;
+  cards then destroy via the `closed(reason)` signal.
+- **The package's qmltypes files are the API ground truth**:
+  `<quickshell>/lib/qt-6/qml/Quickshell/**/*.qmltypes` lists every
+  property, signal and method of the installed version. Check there
+  before trusting the docs site (it can serve a different version — it
+  defaulted to v0.1.0 content for a 0.3.1 install).
+- **The networking module imports as `Quickshell.Networking`** (its qmldir
+  declares `module Quickshell.Networking`). `Quickshell.Services.Networking`
+  does not exist and fails as "module not installed". Devices come from
+  `Networking.devices.values` (`.values` on the object model), device type
+  via `DeviceType.Wifi/Wired`, wifi state per network entry in
+  `wifiDevice.networks.values` (`connected`, `signalStrength` 0..1).
+- **Adwaita symbolic SVGs hardcode `fill="#2e3436"`** (dark grey) —
+  invisible on a dark bar. quickshell/default.nix recolors them at build
+  time (`iconRecolor` runCommand: copy the status + devices sets, flatten
+  devices into status, `chmod -R u+w` first — store files are read-only
+  and sed -i fails without it — then sed the fills to the theme fg).
+- **notify-send without -t sends expire_timeout = -1** ("the server
+  decides"). The shell's Toasts.qml picks the default itself: 5s for
+  normal urgency, sticky for critical (GNOME behavior). Clicking a card
+  invokes its default action (if any) and dismisses it.
+- **Fast QML iteration without a rebuild**: `cp -r <built-config>/ /tmp/x
+  && chmod -R u+w /tmp/x`, patch the copy, `quickshell -p /tmp/x`. The
+  notification bus goes to whichever instance registers first — stop the
+  service (or kill the old test instance) before testing toasts.
+- **pgrep/pkill -f self-match**: a -f pattern that appears anywhere else
+  in the same bash command line (e.g. the launch line further down)
+  matches the wrapper shell's own cmdline, which then kills itself
+  mid-script. The `[q]uickshell` bracket trick only protects the pattern
+  text itself. Keep kill commands in their own invocation.
 
 ## References
 

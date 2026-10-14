@@ -26,13 +26,17 @@ Item {
         id: icon
         anchors.verticalCenter: parent.verticalCenter
         source: Theme.adwaitaIcon(root.iconName)
-        implicitWidth: 17
-        implicitHeight: 17
+        // Adwaita symbolic art is a 16x16 viewBox; render 1:1 for crispness.
+        implicitWidth: 16
+        implicitHeight: 16
     }
 
     Text {
         id: pct
         anchors.verticalCenter: parent.verticalCenter
+        // Digits have no descender; without the nudge they sit ~1px high
+        // relative to the icon's optical center.
+        anchors.verticalCenterOffset: 1
         anchors.left: icon.right
         anchors.leftMargin: 5
         visible: !root.muted

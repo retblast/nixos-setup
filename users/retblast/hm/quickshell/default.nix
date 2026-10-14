@@ -34,15 +34,36 @@ let
         property string urgent: "${t.colors.urgent}"
         property string border: "${t.colors.border}"
 
-        // The active icon theme (MoreWaita) does not inherit Adwaita, so
-        // theme-name icon lookups fail for symbolic UI icons. Resolve them
-        // by direct file path instead.
-        property string iconDir: "${pkgs.adwaita-icon-theme}/share/icons/Adwaita"
+        // Adwaita symbolic icons hardcode a dark fill (#2e3436), which is
+        // invisible on the dark bar. The recolored set (below) paints them
+        // with the theme foreground; its files are flattened under status/.
+        property string iconDir: "${iconRecolor}"
 
         function adwaitaIcon(name) {
-            return "file://" + iconDir + "/symbolic/status/" + name + ".svg";
+            return "file://" + iconDir + "/status/" + name + ".svg";
         }
     }
+  '';
+
+  # Mirror Adwaita's monochrome symbolic sets (status + devices) and swap
+  # every fill for the theme foreground. Symbolic icons are monochrome by
+  # design, so a blanket fill swap is safe. Colors in style attributes are
+  # covered too; opacity attributes survive and keep faint shapes faint.
+  iconRecolor = pkgs.runCommand "adwaita-symbolic-recolored" { } ''
+    src="${pkgs.adwaita-icon-theme}/share/icons/Adwaita"
+    fg="${t.colors.fg}"
+    install -d "$out"
+    cp -r "$src/symbolic/status" "$out/status"
+    cp -r "$src/symbolic/devices" "$out/devices" 2>/dev/null || true
+    # status wins on name collisions.
+    mv -n "$out/devices"/* "$out/status/" 2>/dev/null || true
+    rmdir "$out/devices" 2>/dev/null || true
+    # The copied SVGs are read-only (store permissions); sed -i needs write.
+    chmod -R u+w "$out"
+    find "$out" -name '*.svg' -exec sed -i -E \
+      -e "s/fill=\"#[0-9a-fA-F]{3,8}\"/fill=\"$fg\"/g" \
+      -e "s/fill:#[0-9a-fA-F]{3,8}/fill:$fg/g" \
+      {} +
   '';
 
   shellDir = pkgs.runCommand "quickshell-shell-config" { } ''

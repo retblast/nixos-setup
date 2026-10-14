@@ -10,7 +10,7 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 1 | NixOS plumbing: greetd, services, GNOME off | done | switched + rebooted 2026-10-12; greetd cmd fixed to start-hyprland |
 | 2 | HM Hyprland: config, binds, idle/lock, daemons | done | runtime verified after re-switch (F12, gradient, keybinds) |
 | 3 | Quickshell skeleton: theme, bar, dock, toasts | done | live: bar/dock render; notifications fixed (see journal) |
-| 4 | Shell completion | in-progress | wave 1 committed (a279af4): OSD, wallpaper, bar, battery/OSD/dock fixes, per-workspace float mode. Remaining: launcher panel, caffeine toggle; deploy gate pending |
+| 4 | Shell completion | in-progress | wave 1 committed (a279af4) + wave 2 live-verified (bar polish, native wifi, caffeine toggle, toast lifecycle root cause). Launcher = fuzzel. Deploy gate pending |
 | 5 | Cleanup: dconf trim, package audit | pending | |
 | 6 | Future: custom greeter, dynamic theming, overview | not started | |
 
@@ -29,10 +29,51 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 2026-10-13 | per-workspace float mode is client-side (script + marker files + IPC), no Hyprland rules | 0.56 removed workspaceopt (no-op) and all:float rules; setfloating is a no-op; togglefloating is the only working per-window toggle |
 | 2026-10-13 | dock visible only on floating workspaces | Master's call: tiling = no dock; dock returns on float-mode workspaces (SUPER SHIFT F) |
 | 2026-10-13 | track active workspace via Hyprland.rawEvent, not focusedWorkspace | quickshell 0.3.1 focusedWorkspace never updates after startup (empirically stale); the event socket is reliable |
+| 2026-10-13 | native wifi widget (Quickshell.Networking) replaces nm-applet | full NM bindings ship in quickshell 0.3.1; nm-applet's fallback pixmaps were misaligned and off-theme; SSID + signal strength now render in the bar |
 
 ## Journal
 
 Newest first.
+
+### 2026-10-13 (evening) — batch 4 wave 2: bar polish, native wifi, caffeine toggle, toast root cause (agent session, Master at machine)
+
+- **Toasts stuck forever — root cause fixed.** quickshell deletes untracked
+  Notification objects shortly after the onNotification handler returns.
+  Every later access then hits a dangling QML wrapper: the 5s timer logged
+  "Property 'expire' of object TypeError ... is not a function", and clicks
+  failed the same way through dismiss()/actions (four click errors in the
+  old test log). Card texts kept rendering because their bindings evaluated
+  once while the object was alive. The expireTimeout change from the
+  previous session (5s default for -1, sticky critical) was correct but
+  dead code while the object died. Fix: `toast.tracked = true` in
+  onNotification plus a guarded `actions` access. Verified live through
+  hyprctl layers (no screenshots): a normal toast maps at +1.5s and the
+  window shrinks back to its empty 12px container by +7.5s; a critical
+  toast is still mapped at +8.5s (sticky by design); zero TypeErrors in
+  the log. API surface confirmed from the package's qmltypes files —
+  expire/dismiss/tracked all exist server-side (the docs site served
+  v0.1.0 content; the installed binary is the authority).
+- **Bar right side rebuilt** (contrast + alignment): adwaita symbolic SVGs
+  hardcode `fill="#2e3436"`, invisible on the dark bar. iconRecolor
+  runCommand rewrites the fills to the theme fg at build time (status +
+  devices sets flattened into one dir; `chmod -R u+w` required before
+  sed -i — store files are read-only). Icons 16px, % text baseline-offset.
+  New Network.qml: native wifi widget (signal-strength icon + SSID text,
+  wired/offline fallbacks) from Quickshell.Networking; nm-applet dropped
+  from exec-once (blueman stays). New Caffeine.qml: hypridle.service
+  stop/start toggle with an is-active probe and a 60s re-probe; moon =
+  normal, sun = idle blocked. Screenshot-verified earlier in the session:
+  white icons, SSID rendered, everything aligned.
+- **Tooling**: QML-only changes iterate without a rebuild — copy the built
+  store config to /tmp, `chmod -R u+w`, patch the copy, run
+  `quickshell -p <copy>`. The pgrep self-match trap hit twice more: a kill
+  command must live in its own bash invocation, because any other text in
+  the same command line (e.g. the launch line) matches the -f pattern and
+  the wrapper shell kills itself mid-script.
+- End state: test instances killed; quickshell.service active and owning
+  the bar + notification bus. The deployed service still runs the old
+  config until the switch, so normal toasts still stick until then — do
+  not re-test notifications before the gate.
 
 ### 2026-10-13 (afternoon) — deploy gate fixes: login start, IPC poke, screen keepalive (agent session, Master napping)
 
@@ -346,14 +387,18 @@ came from complaint 2.
 
 ## Pending runtime gate (Master)
 
-1. `sudo nixos-rebuild switch --flake .#Taihou` from the repo (batch 4
-   wave 1 commit a279af4: OSD + dock input fix, battery icon, wallpaper
-   rotation, bar fix, float-workspace + keybind, dock float visibility)
+1. `sudo nixos-rebuild switch --flake .#Taihou` from the repo (wave 1
+   a279af4..561574f + wave 2: bar polish, native wifi, caffeine toggle,
+   toast lifecycle)
 2. `systemctl --user restart quickshell && hyprctl reload` (or relogin)
 3. Check: OSD no longer blocks the dock (hover cursor over dock);
    battery icon correct at 100%; volume/brightness keys pop the OSD;
    wallpaper rotates hourly; bar title no longer overlaps the clock;
-   SUPER SHIFT F toggles float mode + dock on the active workspace
+   SUPER SHIFT F toggles float mode + dock on the active workspace;
+   bar right side shows white aligned icons + wifi SSID + caffeine moon;
+   notify-send without -t disappears after ~5s, critical notifications
+   stay until clicked; clicking the caffeine moon toggles hypridle
+   (sun = idle blocked); nm-applet gone from the tray after relogin
 4. Rollback if needed: previous generation in GRUB
 
 Note: the wallpaper for the night was already set manually (`awww img`);
@@ -361,11 +406,10 @@ the daemon keeps it until logout even without the switch.
 
 ## Next actions
 
-1. Master: switch + relogin gate (above).
-2. Batch 4 remainder: launcher panel, caffeine toggle in the bar.
-3. Then batch 5 cleanup (dconf trim, package audit).
-4. Session-keepalive: a systemd-inhibit lock (idle+sleep+shutdown) was
-   started 2026-10-13 ~01:00 for 14h at Master's request; it expires on its
+1. Master: switch + restart gate (above).
+2. Batch 5 cleanup (dconf trim, package audit).
+3. Session-keepalive: an 8h systemd-inhibit lock (idle+sleep+shutdown)
+   was started 2026-10-13 ~15:10 at Master's request; it expires on its
    own.
 
 ## Open questions

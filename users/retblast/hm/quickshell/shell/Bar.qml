@@ -48,7 +48,7 @@ PanelWindow {
         anchors.verticalCenter: parent.verticalCenter
     }
 
-    // Right: volume, battery, tray
+    // Right: volume, battery, network, caffeine, tray
     Row {
         id: rightSide
         anchors.right: parent.right
@@ -60,6 +60,12 @@ PanelWindow {
         }
 
         Widgets.Battery {
+        }
+
+        Widgets.Network {
+        }
+
+        Widgets.Caffeine {
         }
 
         Widgets.Tray {

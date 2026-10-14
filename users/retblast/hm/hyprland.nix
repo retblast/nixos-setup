@@ -232,8 +232,9 @@ in
         # by systemd (quickshell) lack WAYLAND_DISPLAY at login and die
         # before the compositor socket is found.
         "dbus-update-activation-environment --systemd WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE"
-        # Tray applets
-        "nm-applet"
+        # Tray applets. Network status is native now (widgets/Network.qml via
+        # Quickshell.Networking); nm-applet would only add its fallback
+        # pixmaps to the tray. Blueman stays for BT pairing UI.
         "blueman-applet"
         # The wallpaper daemon runs as a user service (see awww-daemon below);
         # it restores the last image itself and the rotation timer sets one
