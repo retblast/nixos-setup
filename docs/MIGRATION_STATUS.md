@@ -11,7 +11,7 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 2 | HM Hyprland: config, binds, idle/lock, daemons | done | runtime verified after re-switch (F12, gradient, keybinds) |
 | 3 | Quickshell skeleton: theme, bar, dock, toasts | done | live: bar/dock render; notifications fixed (see journal) |
 | 4 | Shell completion | in-progress | waves 1-3 committed; wave 4 live-verified (hyprplayground sandbox, gestures, Ctrl+Alt binds, tray centering). Deploy gate pending |
-| 5 | Cleanup: dconf trim, package audit | pending | |
+| 5 | Cleanup: dconf trim, package audit | done | trim + live DB reset + audit clean + cliphist/pointerCursor deprecations fixed; build warning-free |
 | 6 | Future: custom greeter, dynamic theming, overview | not started | |
 
 ## Decisions
@@ -34,6 +34,34 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 ## Journal
 
 Newest first.
+
+### 2026-10-14 (early morning) — batch 5 done: dconf trim, package audit, deprecations (agent session, Master awake)
+
+- **dconf trim**: deskEnv-config.nix keeps only app-facing keys
+  (org/gtk file-chooser, nautilus, wm/preferences button-layout,
+  desktop/interface fonts+color-scheme). Everything consumed only by
+  GNOME Shell / gnome-settings-daemon or by removed apps went:
+  dash-to-dock, vitals, caffeine, azwallpaper, lockkeys, shell
+  favorites/app-switcher/weather, media-keys custom binds (now Hyprland
+  binds), search-providers, power, mouse, mutter, datetime, locale,
+  location, sound's allow-volume-above-100-percent (gsd-consumed;
+  pamixer does not read dconf), and keys for apps that are not
+  installed (epiphany, Resources, Console, TextEditor,
+  gnome-system-monitor).
+- **Live DB cleanup**: a dconf trim only changes the declarative source —
+  stale keys stay in the user DB until reset. Ran
+  `dconf reset -f` on the 14 dead trees plus the single sound key;
+  `dconf dump /` now shows exactly the app-facing residue (kept keys
+  plus app-owned trees: blueman, file-roller, Fractal, papers, Ptyxis).
+- **Package audit**: users/retblast/pkgs/* and modules/hyprland.nix have
+  no GNOME-desktop leftovers — the only GNOME apps are the intentional
+  keeps (nautilus, ptyxis, file-roller, papers). No package changes.
+- **Deprecations fixed**: cliphist `systemdTarget` -> `systemdTargets`
+  (list), `home.pointerCursor.enable = true` explicit. Eval output is
+  now warning-free apart from the git-dirty note.
+- Master confirmed the gcr/keyring unlock prompts work under Hyprland —
+  the journal note from 2026-10-13 about the missing prompter UI is
+  resolved; SSH signing path is whole again.
 
 ### 2026-10-13 (late night) — hyprplayground sandbox, gestures, GNOME-parity binds, tray centering (agent session, Master at machine)
 
@@ -519,15 +547,19 @@ the daemon keeps it until logout even without the switch.
 
 ## Next actions
 
-1. Master: switch + restart gate (above).
+1. Master: switch gate (fuzzel border + prompt, tray centering, gesture
+   persistence, dconf trim live).
 2. Accents diagnostic (Master): what is pressed and what appears — dead
    key ´ then vowel, or RightAlt+letter (keyd turns a rightalt tap into
    `>`)? Fix follows from that: keyd tweak or kb_variant change.
-3. Batch 5 cleanup (dconf trim, package audit; includes the cliphist
-   systemdTarget rename deprecation warning from eval).
-4. Session-keepalive: an 8h systemd-inhibit lock (idle+sleep+shutdown)
-   was started 2026-10-13 ~15:10 at Master's request; it expires on its
-   own.
+3. Batch 4 exit criteria: exercise the never-verified parity items
+   (Steam/gamescope, waydroid, virt-manager polkit, Bitwarden keyring
+   unlock, MTP/trash in Nautilus) — needs Master at the machine.
+4. Batch 6 (future): custom greeter (fingerprint), overview (unlocks the
+   3-finger-up gesture), dynamic wallpaper->palette theming, custom lock
+   UI, weather widget (geoclue2 present).
+5. Session-keepalive: the 8h inhibit lock from 2026-10-13 ~15:10 has
+   expired by now; start a fresh one for overnight runs if asked.
 
 ## Open questions
 

@@ -475,6 +475,12 @@ UI, weather widget (geoclue2 present).
   `hyprctl keyword gesture ...`.
 - **`Hyprland --verify-config -c <file>`** parses a config without
   launching — use it as a gate on the generated config before switching.
+- **A dconf settings trim does not clean the user DB**: `dconf.settings`
+  changes only what future `dconf load` runs SET; previously-written keys
+  persist in `~/.config/dconf/user` until explicitly removed. Clean dead
+  trees with `dconf reset -f <path>` (whole trees are safe once nothing
+  reads them; prefer single-key `dconf reset <key>` for shared trees
+  like desktop/sound where libcanberra reads sibling keys).
 - **`Hyprland --verify-config`** checks a config file for errors without
   launching anything; `hyprctl keyword <setting> <value>` changes
   settings on the live session (lost on reload — by design, good for

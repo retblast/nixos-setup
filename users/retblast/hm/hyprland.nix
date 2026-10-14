@@ -494,7 +494,8 @@ in
   services.cliphist = lib.mkIf hyprlandEnabled {
     enable = true;
     # The HM service wires the wl-paste watchers on the session target.
-    systemdTarget = "hyprland-session.target";
+    # (Renamed from systemdTarget — the singular option is deprecated.)
+    systemdTargets = [ "hyprland-session.target" ];
     allowImages = true;
   };
 

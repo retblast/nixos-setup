@@ -16,6 +16,9 @@
 	# Kept unconditional after the Hyprland migration: Hyprland itself reads
 	# the XCURSOR env vars, and GTK apps need the gtk cursor config.
 		pointerCursor = {
+			# Explicit: HM deprecated cursor config generation gated on this
+			# option being set (eval warning otherwise).
+			enable = true;
 		 	package = pkgs.adwaita-icon-theme;
 		 	name = "Adwaita";
 		 	# Set to 12 because of mpv
