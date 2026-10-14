@@ -7,6 +7,11 @@ import Quickshell.Wayland
 // with live screencopy thumbnails. Toggle via IPC (SUPER+TAB or the
 // 3-finger-up gesture): quickshell -c shell ipc call overview toggle.
 // Click a card to focus the window; Esc or a backdrop click closes.
+//
+// PanelWindow already has a `visible` property that controls layer
+// mapping. Never shadow it with a custom property: the window then maps
+// at creation regardless and sits fullscreen over the desktop eating
+// every click (found the hard way 2026-10-14).
 PanelWindow {
 	id: root
 
@@ -21,8 +26,7 @@ PanelWindow {
 		right: true
 	}
 	color: "transparent"
-
-	property bool visible: false
+	visible: false
 
 	IpcHandler {
 		target: "overview"
@@ -30,10 +34,6 @@ PanelWindow {
 		function toggle(): void {
 			root.visible = !root.visible;
 		}
-	}
-
-	function open() {
-		root.visible = true;
 	}
 
 	function close() {

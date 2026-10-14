@@ -35,6 +35,39 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 
 Newest first.
 
+### 2026-10-14 (evening) — incident: overview ate the desktop; root cause + fix (agent session, Master on TTY)
+
+- **Incident**: after the switch + relogin, the mouse moved the cursor but
+  nothing reacted — no hover, no focus, no clicks. Cause: the Overview's
+  `property bool visible` SHADOWED PanelWindow's real `visible` property
+  (QsWindow exposes visible — qmltypes-confirmed), so the window's
+  mapping was never controlled and the overview mapped fullscreen at
+  creation, eating all pointer input on the output. The rig tests never
+  caught it: the toggle-on mapping was observed but attributed to the
+  toggle, and the toggle-off direction was never actually verified (the
+  verifying call kept dying to the pgrep self-match trap).
+- **Fix**: Overview.qml drops the custom property; the window's own
+  `visible: false` + IpcHandler writes drive mapping directly.
+- **Verification this time covered all three states** on a clean single
+  instance: start = no overview layer; toggle = mapped; toggle again =
+  unmapped. Test-harness lessons (both now runbook gotchas): never grep
+  layers by exact geometry (stacked instances' exclusive zones change it
+  — the overview rendered at 0 180 1536 500 under five accumulated test
+  instances while the grep hunted 0 36 1536 868); count instances before
+  asserting single-instance behavior; "ok" from `hyprctl dispatch exec`
+  is the dispatch ack, not the spawned command's output.
+- **Recovery for Master**: the deployed generation still has the broken
+  Overview — the quickshell service stays stopped (desktop usable, no
+  bar). Run `sudo nixos-rebuild switch --flake .#Taihou` from the TTY,
+  then RELOGIN (a relogin, not just a service start: ~17 leaked pid -1
+  layer surfaces from the incident and the test pile only clear on
+  relogin, and leaked exclusive zones would keep squeezing the real
+  bar/dock). After the relogin everything pending lands: fuzzel border +
+  prompt, tray centering, gesture persistence, dconf trim, overview
+  (fixed), palette theming, weather.
+- The greeter remains opt-in (customGreeter.enable, default off) and was
+  not part of this incident.
+
 ### 2026-10-14 (afternoon) — batch 6: dynamic wallpaper palette + weather widget (agent session, Master at machine)
 
 - **Dynamic wallpaper->palette theming**: matugen (4.2.0, in user

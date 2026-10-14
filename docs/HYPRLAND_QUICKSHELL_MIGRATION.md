@@ -473,6 +473,22 @@ UI, weather widget (geoclue2 present).
   list; probe candidate dispatchers with `hyprctl keyword bind ...`
   (volatile, validated at add time) and full gesture lines with
   `hyprctl keyword gesture ...`.
+- **NEVER shadow PanelWindow's `visible` with a custom property.**
+  QsWindow exposes `visible` (isVisible/setVisible — qmltypes-verified);
+  a `property bool visible` on the window type decouples the code from
+  the real mapping, the window then maps at creation, and a fullscreen
+  overlay sits over the desktop eating every click while the toggle IPC
+  "works" on the dead shadow. Drive the window's own `visible` directly.
+- **Verifying layers**: never grep `hyprctl layers` by exact geometry —
+  stacked quickshell instances each claim exclusive zones, shifting every
+  other window's geometry (five test instances squeezed a fullscreen
+  overlay from 868px to 500px). Grep by namespace + pid, and count live
+  instances (`pgrep -x quickshell`) before asserting single-instance
+  behavior; `pkill -x quickshell` spares nothing but leaked layer
+  surfaces (pid -1 in hyprctl layers) survive until relogin.
+- **`hyprctl dispatch exec` prints "ok" for the DISPATCH, not the
+  spawned command** — the child's stdout goes to the session, not the
+  caller. Assert on effects (layers, files), not on that "ok".
 - **Quickshell singletons may need up to three imports**: `Singleton`
   from Quickshell, `color`/`Timer` from QtQuick, FileView/Process from
   Quickshell.Io. The generated Theme.qml needed all three import lines;
