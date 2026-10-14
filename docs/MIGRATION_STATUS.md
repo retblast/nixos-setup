@@ -72,11 +72,18 @@ Newest first.
   fixed and this time live-load verified through the /tmp rig before
   committing.
 - **Fuzzel right border disappeared at fractional scaling**: fuzzel
-  1.15 with dpi-aware=yes at scale 1.25 computed a 322-logical-px window
-  -> 402.5 buffer px; the rounding drops the last column, which is the
-  border. Fix: `dpi-aware = false` (render at 1x, compositor scales;
-  integer buffers, border intact, text marginally softer at 1.25).
-  Goes live with the next switch; visual confirmation pending.
+  1.15 with dpi-aware=yes/auto at scale 1.25 computed a 322-logical-px
+  window -> 402.5 buffer px; the rounding drops the last column, which
+  is the border. First fix attempt used `dpi-aware = false` — **the ini
+  only accepts auto|yes|no; true/false are silently ignored** (geometry
+  identical, no error). Real fix: `dpi-aware = "no"`. Also found and
+  fixed: `prompt = ""` threw "key/value pair has no value" on every
+  launch (fuzzel ini has no empty values; a quoted single space
+  `prompt=" "` gives the visually-empty prompt). Verified from the
+  generated ini via `fuzzel --config <file>`: 0 errors, geometry
+  changed 322x312 -> 337x306 (scale-1 path active). No restart of any
+  kind needed — fuzzel reads the ini on every launch. Visual border
+  confirmation pending (Master).
 - **Keyboard/accents — verified, not yet solved**: `kb_layout = es` is
   applied (getoption set:true, active keymap "Spanish", deployed config
   line 80), no IME env vars anywhere (manager env, repo, no ibus). The

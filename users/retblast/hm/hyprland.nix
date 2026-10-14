@@ -470,12 +470,16 @@ in
         font = "SF Pro Text:size=11";
         terminal = "ptyxis -e";
         layer = "overlay";
-        prompt = "";
         # Render at scale 1 and let the compositor scale up. With
-        # dpi-aware=yes at 1.25 the buffer width comes out fractional
+        # dpi-aware=yes/auto at 1.25 the buffer width comes out fractional
         # (322 logical px -> 402.5 buffer px) and the rounding drops the
-        # right border column.
-        dpi-aware = false;
+        # right border column. Note: the ini accepts auto|yes|no only —
+        # true/false is silently ignored.
+        dpi-aware = "no";
+        # fuzzel's ini rejects empty values (prompt = "" threw a syntax
+        # error on every launch); the default is "> ", so a visually empty
+        # prompt needs a quoted single space.
+        prompt = "\" \"";
       };
       colors = {
         background = "1d1d20f0";

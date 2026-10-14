@@ -302,11 +302,16 @@ UI, weather widget (geoclue2 present).
   ("ReferenceError: Theme is not defined" per delegate). Any widget edit
   that touches Theme must add the import; run the /tmp-rig live load
   before committing QML changes.
-- **fuzzel + fractional scaling**: with `dpi-aware = true` (default) at
-  scale 1.25, fuzzel's buffer width comes out fractional (e.g. 322
-  logical px -> 402.5 buffer px) and rounding clips the right border.
-  Fix: `dpi-aware = false` in the fuzzel config (compositor scales a
-  1x buffer).
+- **fuzzel + fractional scaling**: with `dpi-aware = auto/yes` (default)
+  at scale 1.25, fuzzel's buffer width comes out fractional (322 logical
+  px -> 402.5 buffer px) and rounding clips the right border. Fix:
+  `dpi-aware = "no"` (compositor scales a 1x buffer). Two ini traps:
+  the option accepts only auto|yes|no — `true`/`false` are **silently
+  ignored** (geometry stays identical, no error) — and fuzzel's ini has
+  no empty values (`prompt = ""` throws "key/value pair has no value"
+  on every launch; a visually empty prompt needs a quoted single space,
+  `prompt=" "`). fuzzel reads the ini on every launch: config changes
+  need no restart/reload/relogin, only the file swap (HM switch).
 - Hyprland binds: bare keys need the empty modifier field (`, F12, ...`); colors are RRGGBBAA only.
 - greetd must launch `start-hyprland` (the package wrapper), not the raw compositor binary.
 - **`quickshell ipc` needs explicit instance selection with a named
