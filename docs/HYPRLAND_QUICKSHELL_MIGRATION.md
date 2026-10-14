@@ -473,12 +473,22 @@ UI, weather widget (geoclue2 present).
   list; probe candidate dispatchers with `hyprctl keyword bind ...`
   (volatile, validated at add time) and full gesture lines with
   `hyprctl keyword gesture ...`.
-- **Quickshell singletons may need two imports**: a singleton QML file
-  using `color` needs `import QtQuick` AND `import Quickshell` (for the
-  `Singleton` root type). Only-Quickshell works while every property is
-  string/int; the first `color` breaks it ("color is not a type"), and
-  swapping the import the other way breaks the root ("Singleton is not
-  a type").
+- **Quickshell singletons may need up to three imports**: `Singleton`
+  from Quickshell, `color`/`Timer` from QtQuick, FileView/Process from
+  Quickshell.Io. The generated Theme.qml needed all three import lines;
+  each missing one fails with "<Type> is not a type" at the use site.
+- **Quickshell 0.3.1 dynamic-data patterns** (all verified live
+  2026-10-14): `FileView.watchChanges` never fires (file creation and
+  in-place rewrites both go unnoticed) and adapter `reload()` silently
+  does nothing; restarting a finished `Process` from a Timer does not
+  re-fire its stdout collector either. The working polling pattern: ONE
+  long-lived Process whose command is a fish loop emitting one line per
+  read (`while true; cat f | tr -d '\n\r'; echo; sleep N; end`) with a
+  `SplitParser` per line. matugen's `--json hex` output nests every token
+  as `colors.<token>.dark.color` (the mode is inside the token), and the
+  `image` subcommand needs `--prefer`
+  (darkness|lightness|saturation|less-saturation|value|
+  closest-to-fallback) when stdout is not a terminal.
 - **greetd greeter flow with Quickshell.Services.Greetd**: the greeter
   drives the whole PAM conversation through the `Greetd` singleton
   (createSession -> authMessage -> respond -> readyToLaunch -> launch).

@@ -15,9 +15,13 @@ let
 
   themeQml = pkgs.writeText "Theme.qml" ''
     pragma Singleton
+    import QtQuick
     import Quickshell
+    import Quickshell.Io
 
     Singleton {
+        id: root
+
         property string sans: "${t.sans}"
         property int sansSize: ${toString t.sansSize}
         property string mono: "${t.mono}"
@@ -26,18 +30,68 @@ let
         property int barHeight: ${toString t.barHeight}
         property int dockHeight: ${toString t.dockHeight}
 
-        property string bg: "${t.colors.bg}"
-        property string bgAlt: "${t.colors.bg-alt}"
-        property string fg: "${t.colors.fg}"
-        property string fgDim: "${t.colors.fg-dim}"
-        property string accent: "${t.colors.accent}"
-        property string urgent: "${t.colors.urgent}"
-        property string border: "${t.colors.border}"
-
         // Adwaita symbolic icons hardcode a dark fill (#2e3436), which is
         // invisible on the dark bar. The recolored set (below) paints them
         // with the theme foreground; its files are flattened under status/.
         property string iconDir: "${iconRecolor}"
+
+        // Dynamic wallpaper palette (matugen, dark scheme). The
+        // update-palette script regenerates
+        // $XDG_CACHE_HOME/quickshell/palette.json on every wallpaper
+        // change; this reader polls it and the color tokens below fall
+        // back to the static retTheme values while the file is absent or
+        // invalid. Constraint: the dynamic foreground is the dark scheme's
+        // on_background, which stays light — required because the recolored
+        // symbolic icons are baked with the static foreground at build
+        // time and cannot follow a runtime change.
+        //
+        // FileView is not used: in quickshell 0.3.1 neither watchChanges
+        // nor adapter reload() deliver updates, and restarting a finished
+        // Process from a Timer does not re-fire its collector (all verified
+        // 2026-10-14). One long-lived fish loop re-reads the file every
+        // 10s and emits one minified line per read; SplitParser parses
+        // each line. The palette only changes on wallpaper rotation.
+        property string palettePath: {
+            const cache = Quickshell.env("XDG_CACHE_HOME");
+            const base = cache !== undefined && cache !== null && cache !== ""
+                ? cache
+                : Quickshell.env("HOME") + "/.cache";
+            return base + "/quickshell/palette.json";
+        }
+
+        property var palette: ({})
+
+        Process {
+            id: paletteProcess
+
+            command: ["fish", "-c", "set -l f " + root.palettePath
+                + "; while true; cat $f 2>/dev/null | tr -d '\\n\\r'; echo; sleep 10; end"]
+            stdout: SplitParser {
+                onRead: data => {
+                    try {
+                        root.palette = JSON.parse(data);
+                    } catch (e) {
+                        root.palette = {};
+                    }
+                }
+            }
+        }
+
+        Component.onCompleted: paletteProcess.running = true
+
+        function _pal(value, fallback) {
+            return value !== undefined && value !== null && value !== ""
+                ? value
+                : fallback;
+        }
+
+        property string bg: root._pal(root.palette.colors?.background?.dark?.color, "${t.colors.bg}")
+        property string bgAlt: root._pal(root.palette.colors?.surface_container_high?.dark?.color, "${t.colors.bg-alt}")
+        property string fg: root._pal(root.palette.colors?.on_background?.dark?.color, "${t.colors.fg}")
+        property string fgDim: root._pal(root.palette.colors?.on_surface_variant?.dark?.color, "${t.colors.fg-dim}")
+        property string accent: root._pal(root.palette.colors?.primary?.dark?.color, "${t.colors.accent}")
+        property string urgent: "${t.colors.urgent}"
+        property string border: root._pal(root.palette.colors?.outline?.dark?.color, "${t.colors.border}")
 
         function adwaitaIcon(name) {
             return "file://" + iconDir + "/status/" + name + ".svg";

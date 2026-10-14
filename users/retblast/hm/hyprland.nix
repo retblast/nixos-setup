@@ -29,6 +29,22 @@ let
     end
   '';
 
+  # Regenerate the quickshell wallpaper palette from the currently
+  # displayed wallpaper (awww query). matugen emits the Material You dark
+  # scheme as JSON; Theme.qml watches that file and falls back to the
+  # static retTheme values while it is absent. --prefer keeps the source
+  # color choice deterministic without a terminal.
+  update-palette = pkgs.writers.writeFishBin "update-palette" ''
+    set -l wp (awww query 2>/dev/null | grep -oP 'image: \K.*' | head -1)
+    if test -z "$wp"; or not test -f "$wp"
+        exit 0
+    end
+    set -l cachedir (if set -q XDG_CACHE_HOME; echo $XDG_CACHE_HOME; else; echo $HOME/.cache; end)
+    mkdir -p "$cachedir/quickshell"
+    matugen image "$wp" -m dark -q -j hex --prefer saturation \
+        > "$cachedir/quickshell/palette.json" 2>/dev/null
+  '';
+
   # Random wallpaper rotation (GNOME parity: ~/Pictures/Wallpapers, 1h).
   # The daemon is awww (swww was renamed upstream).
   wallpaper-rotate = pkgs.writers.writeFishBin "wallpaper-rotate" ''
@@ -42,6 +58,7 @@ let
     end
     set -l pick $files[(random 1 (count $files))]
     awww img "$pick" --transition-type random --transition-duration 2 --transition-fps 60
+    update-palette
   '';
 
   # Float-mode toggle for the current workspace.
@@ -401,7 +418,9 @@ in
         # installed for its pairing/manager UI and can be started on demand.
         # The wallpaper daemon runs as a user service (see awww-daemon below);
         # it restores the last image itself and the rotation timer sets one
-        # shortly after login anyway.
+        # shortly after login anyway. The palette regenerates at login too:
+        # the daemon needs a moment to restore the wallpaper first.
+        "fish -c 'sleep 4; and update-palette'"
       ];
     };
   };
@@ -549,7 +568,11 @@ in
     screenshot-full
     clipboard-pick
     wallpaper-rotate
+    update-palette
     float-workspace
     hyprplayground
+    # Palette generation for the dynamic shell theme (called by
+    # update-palette).
+    pkgs.matugen
   ];
 }

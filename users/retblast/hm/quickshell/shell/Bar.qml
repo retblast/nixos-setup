@@ -48,13 +48,16 @@ PanelWindow {
         anchors.verticalCenter: parent.verticalCenter
     }
 
-    // Right: volume, battery, network, caffeine, tray
-    Row {
+        // Right: weather, volume, battery, network, caffeine, bluetooth, tray
+        Row {
         id: rightSide
         anchors.right: parent.right
         anchors.rightMargin: 8
         anchors.verticalCenter: parent.verticalCenter
         spacing: 8
+
+        Widgets.Weather {
+        }
 
         Widgets.Volume {
         }

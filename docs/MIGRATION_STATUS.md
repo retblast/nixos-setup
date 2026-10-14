@@ -12,7 +12,7 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 3 | Quickshell skeleton: theme, bar, dock, toasts | done | live: bar/dock render; notifications fixed (see journal) |
 | 4 | Shell completion | in-progress | waves 1-3 committed; wave 4 live-verified (hyprplayground sandbox, gestures, Ctrl+Alt binds, tray centering). Deploy gate pending |
 | 5 | Cleanup: dconf trim, package audit | done | trim + live DB reset + audit clean + cliphist/pointerCursor deprecations fixed; build warning-free |
-| 6 | Future: custom greeter, dynamic theming, overview | in-progress | greeter built (opt-in pending logout test); app overview built (SUPER+TAB + 3-finger-up, gate pending); palette theming + weather next |
+| 6 | Future: custom greeter, dynamic theming, overview | in-progress | greeter built (opt-in pending logout test); overview built (SUPER+TAB + 3-finger-up); palette theming + weather built — all pending Master's switch + runtime gates |
 
 ## Decisions
 
@@ -34,6 +34,39 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 ## Journal
 
 Newest first.
+
+### 2026-10-14 (afternoon) — batch 6: dynamic wallpaper palette + weather widget (agent session, Master at machine)
+
+- **Dynamic wallpaper->palette theming**: matugen (4.2.0, in user
+  packages) generates the Material You dark scheme from the current
+  wallpaper. New `update-palette` fish script (awww query -> matugen
+  --prefer saturation -j hex -> $XDG_CACHE_HOME/quickshell/palette.json),
+  called by wallpaper-rotate after every img and by an exec-once at
+  login (4s sleep so the daemon restores first). Theme.qml gains a
+  runtime layer: a long-lived fish loop re-reads the file every 10s,
+  SplitParser + JSON.parse, and the color tokens (bg/bgAlt/fg/fgDim/
+  accent/border) fall back to the static retTheme values while the file
+  is absent. Mapping: background->bg, surface_container_high->bgAlt,
+  on_background->fg, on_surface_variant->fgDim, primary->accent,
+  outline->border; urgent stays static. The dynamic foreground stays
+  light by construction (dark-scheme on_background) — required because
+  the recolored symbolic icons are baked with the static foreground at
+  build time.
+- **Weather widget** (`widgets/Weather.qml`): wttr.in %C;%t one-liner
+  (no API key, IP geolocation), 30-min self-loop fetch, condition words
+  mapped to adwaita weather icons, hidden until the first successful
+  read. Bar right side: weather, volume, battery, network, caffeine,
+  bluetooth, tray.
+- **Verified in the rig**: static fallback with no palette file; pylons
+  palette (#111318/#e2e2e9/#acc7ff) applies live within 10s of the file
+  appearing; garish hand-made palettes apply at startup; weather curl
+  returns "Sunny;+19°C" and the shell loads with 0 errors.
+- **quickshell 0.3.1 dynamic-data findings** (see runbook): FileView
+  watchChanges and adapter reload() are dead; restarting a finished
+  Process from a Timer does not re-fire its collector; the working
+  pattern is one long-lived Process with a fish loop emitting one line
+  per read. matugen's --json output nests every token as
+  colors.<token>.dark.color (mode inside the token).
 
 ### 2026-10-14 (morning) — batch 6 started: custom Quickshell greeter built (agent session, Master awake)
 
