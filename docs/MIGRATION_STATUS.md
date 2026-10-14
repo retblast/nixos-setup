@@ -35,6 +35,27 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 
 Newest first.
 
+### 2026-10-14 (night) — palette reaches Hyprland borders; dock dots fixed (agent session, Master at machine)
+
+- **Window borders follow the palette**: Theme.qml's palette reader now
+  applies `general:col.active_border` (primary at b2 alpha) and
+  `col.inactive_border` (background at aa) via
+  `Quickshell.execDetached(hyprctl keyword ...)` on every palette read —
+  10s poll cycle, so reloads self-heal. Verified live: after the hourly
+  wallpaper rotation regenerated the palette (new primary #e0c56d), the
+  running instance applied it and `hyprctl getoption` shows the border
+  set. Hyprland prints border colors as AARRGGBB (alpha first) in its
+  "custom type" output. `hyprctl keyword` takes exactly ONE option per
+  call — a combined call parses the second option as an extra gradient
+  stop (found live).
+- **Dock running-dots fixed**: the indicator source was
+  `Hyprland.toplevels.values` + `lastIpcObject.class` — the same
+  quickshell-0.3.1 Hyprland-IPC integration that gave the stale
+  focusedWorkspace; live classes (firefox, org.gnome.Ptyxis) matched the
+  favorites exactly, so the source was the problem. Dock now filters
+  `ToplevelManager.toplevels.values` on `appId` (proven by the
+  overview). Lands with the next switch.
+
 ### 2026-10-14 (evening) — incident: overview ate the desktop; root cause + fix (agent session, Master on TTY)
 
 - **Incident**: after the switch + relogin, the mouse moved the cursor but

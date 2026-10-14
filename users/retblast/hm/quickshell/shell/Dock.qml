@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
 import Quickshell.Hyprland
+import Quickshell.Wayland
 
 // Dock: favorites + running apps, GNOME dash-to-dock style (centered,
 // 48px icons). Shown only on workspaces in float mode (see float-workspace
@@ -134,13 +135,16 @@ PanelWindow {
         }
     ]
 
-    function toplevelMatches(t, match) {
-        const cls = t.lastIpcObject && t.lastIpcObject.class;
-        return cls && cls.toLowerCase().includes(match);
-    }
-
+    // Running detection via the wlr-foreign toplevel list
+    // (ToplevelManager): quickshell 0.3.1's Hyprland.toplevels model is
+    // unreliable (same family as the stale focusedWorkspace), while
+    // ToplevelManager works (the overview uses it). appId carries the
+    // window class on Hyprland.
     function runningFor(match) {
-        return Hyprland.toplevels.values.filter(t => root.toplevelMatches(t, match));
+        return ToplevelManager.toplevels.values.filter(t => {
+            const id = (t.appId || "").toLowerCase();
+            return id.includes(match);
+        });
     }
 
     Rectangle {
