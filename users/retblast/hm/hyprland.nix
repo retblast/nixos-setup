@@ -271,15 +271,8 @@ in
         };
       };
 
-      # GNOME-parity gestures: a 3-finger horizontal swipe switches
-      # workspaces (built-in). The GNOME overview swipe has no Hyprland
-      # equivalent yet (batch 6); hyprgrass does not build against
-      # Hyprland 0.56.2 in this nixpkgs pin (verified 2026-10-14).
-      gestures = {
-        workspace_swipe = true;
-        workspace_swipe_fingers = 3;
-      };
-
+      # Touchpad gestures are plain binds now (see the bind list);
+      # Hyprland 0.56 removed the old gestures{} block entirely.
       cursor = {
         # Avoid flicker on the Intel iGPU
         no_hardware_cursors = true;
@@ -361,6 +354,16 @@ in
         "CTRL ALT, right, workspace, e+1"
         "CTRL ALT SHIFT, left, movetoworkspace, e-1"
         "CTRL ALT SHIFT, right, movetoworkspace, e+1"
+        # Touchpad gestures: plain binds with swipe:<fingers>:<direction> as
+        # the key. natural_scroll is on, so fingers moving left reveals the
+        # workspace to the right (GNOME feel). 4-finger swipes cycle window
+        # focus, standing in for GNOME's app-switch gesture. Reverse
+        # cycling is cyclenext's "prev" argument — there is no cycleprev
+        # dispatcher in 0.56.
+        ", swipe:3:left, workspace, e+1"
+        ", swipe:3:right, workspace, e-1"
+        ", swipe:4:left, cyclenext, prev"
+        ", swipe:4:right, cyclenext"
         # Media
         ", XF86AudioPlay, exec, playerctl play-pause"
         ", XF86AudioNext, exec, playerctl next"

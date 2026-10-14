@@ -48,11 +48,18 @@ Newest first.
   restores WAYLAND_DISPLAY in the systemd/D-Bus env — verified live end
   to end, env came back to wayland-1 and both sandbox processes died.
   `--reset` re-copies from the deployed generation.
-- **Touchpad gestures à la GNOME**: native `gestures.workspace_swipe`
-  (3 fingers) covers the workspace swipe. The overview swipe has no
-  Hyprland equivalent yet (batch 6); **hyprgrass does not build against
-  Hyprland 0.56.2 in this nixpkgs pin** (ninja failure, verified) — retry
-  after an upstream sync. 4-finger app switching therefore waits too.
+- **Touchpad gestures à la GNOME**: the first attempt used the old
+  `gestures { workspace_swipe }` block and 0.56 rejected it live (config
+  error lines 79-80) — **0.56 removed the gestures block entirely**;
+  gestures are plain binds now (`bind = , swipe:3:left, workspace, e+1`,
+  no `dispatcher` word; reverse cycling is `cyclenext, prev` since
+  `cycleprev` does not exist). Probed live via `hyprctl keyword bind`,
+  then gated with `Hyprland --verify-config` on the regenerated config
+  ("config ok"). Binds shipped: 3-finger left/right = workspace
+  prev/next (natural_scroll-aware), 4-finger left/right = window focus
+  cycling (GNOME app-switch stand-in). The overview swipe still waits
+  for an overview (batch 6); hyprgrass still does not build against this
+  pin (ninja failure, verified).
 - **Ctrl+Alt+Left/Right** now switch workspaces, **Ctrl+Alt+Shift+**
   moves the focused window (GNOME parity).
 - **Tray icons were 8px high**: the Tray Row's delegates were 20px tall

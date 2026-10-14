@@ -439,6 +439,17 @@ UI, weather widget (geoclue2 present).
   `gestures.workspace_swipe` (3 fingers) is the working GNOME-parity
   gesture; overview-style swipes wait for an overview (batch 6) or a
   hyprgrass rebuild.
+- **Hyprland 0.56 removed the old `gestures {}` block entirely**
+  ("config option <gestures:workspace_swipe> does not exist"). Touchpad
+  gestures are plain binds now, with `swipe:<fingers>:<direction>` as the
+  key: `bind = , swipe:3:left, workspace, e+1`. No literal `dispatcher`
+  word (that was hyprgrass syntax). Reverse window cycling is
+  `cyclenext, prev` — a `cycleprev` dispatcher does not exist. Also note:
+  `hyprctl dispatchers` needs an argument in 0.56 and is not a reliable
+  list; probe candidate binds with `hyprctl keyword bind ...` (volatile,
+  validated at add time).
+- **`Hyprland --verify-config -c <file>`** parses a config without
+  launching — use it as a gate on the generated config before switching.
 - **`Hyprland --verify-config`** checks a config file for errors without
   launching anything; `hyprctl keyword <setting> <value>` changes
   settings on the live session (lost on reload — by design, good for
