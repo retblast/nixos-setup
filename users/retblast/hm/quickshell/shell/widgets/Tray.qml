@@ -2,6 +2,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Widgets
 import Quickshell.Services.SystemTray
+// Theme singleton lives one dir up (declared in ../qmldir).
+import ".."
 
 Row {
     id: root

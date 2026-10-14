@@ -271,8 +271,9 @@ in
         };
       };
 
-      # Touchpad gestures are plain binds now (see the bind list);
-      # Hyprland 0.56 removed the old gestures{} block entirely.
+      # Touchpad gestures live in the `gesture` keyword below (see the end
+      # of the settings block); Hyprland 0.56 removed the old gestures{}
+      # block and gesture binds do not exist.
       cursor = {
         # Avoid flicker on the Intel iGPU
         no_hardware_cursors = true;
@@ -354,16 +355,6 @@ in
         "CTRL ALT, right, workspace, e+1"
         "CTRL ALT SHIFT, left, movetoworkspace, e-1"
         "CTRL ALT SHIFT, right, movetoworkspace, e+1"
-        # Touchpad gestures: plain binds with swipe:<fingers>:<direction> as
-        # the key. natural_scroll is on, so fingers moving left reveals the
-        # workspace to the right (GNOME feel). 4-finger swipes cycle window
-        # focus, standing in for GNOME's app-switch gesture. Reverse
-        # cycling is cyclenext's "prev" argument — there is no cycleprev
-        # dispatcher in 0.56.
-        ", swipe:3:left, workspace, e+1"
-        ", swipe:3:right, workspace, e-1"
-        ", swipe:4:left, cyclenext, prev"
-        ", swipe:4:right, cyclenext"
         # Media
         ", XF86AudioPlay, exec, playerctl play-pause"
         ", XF86AudioNext, exec, playerctl next"
@@ -376,6 +367,17 @@ in
         # Screenshots
         ", Print, exec, screenshot-region"
         "SHIFT, Print, exec, screenshot-full"
+      ];
+
+      # Trackpad gestures. 0.56 legacy syntax is a dedicated `gesture`
+      # keyword — NOT binds (a `bind = , swipe:...` line silently registers
+      # a bind on a keysym that never exists and never fires). The
+      # `workspace` action is the 1:1 drag animation, GNOME-style.
+      # Dispatcher actions dispatch discretely on gesture end.
+      gesture = [
+        "3, horizontal, workspace"
+        "4, left, dispatcher, cyclenext, prev"
+        "4, right, dispatcher, cyclenext"
       ];
 
       bindm = [
@@ -469,6 +471,11 @@ in
         terminal = "ptyxis -e";
         layer = "overlay";
         prompt = "";
+        # Render at scale 1 and let the compositor scale up. With
+        # dpi-aware=yes at 1.25 the buffer width comes out fractional
+        # (322 logical px -> 402.5 buffer px) and the rounding drops the
+        # right border column.
+        dpi-aware = false;
       };
       colors = {
         background = "1d1d20f0";

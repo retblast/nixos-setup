@@ -48,24 +48,35 @@ Newest first.
   restores WAYLAND_DISPLAY in the systemd/D-Bus env — verified live end
   to end, env came back to wayland-1 and both sandbox processes died.
   `--reset` re-copies from the deployed generation.
-- **Touchpad gestures à la GNOME**: the first attempt used the old
-  `gestures { workspace_swipe }` block and 0.56 rejected it live (config
-  error lines 79-80) — **0.56 removed the gestures block entirely**;
-  gestures are plain binds now (`bind = , swipe:3:left, workspace, e+1`,
-  no `dispatcher` word; reverse cycling is `cyclenext, prev` since
-  `cycleprev` does not exist). Probed live via `hyprctl keyword bind`,
-  then gated with `Hyprland --verify-config` on the regenerated config
-  ("config ok"). Binds shipped: 3-finger left/right = workspace
-  prev/next (natural_scroll-aware), 4-finger left/right = window focus
-  cycling (GNOME app-switch stand-in). The overview swipe still waits
-  for an overview (batch 6); hyprgrass still does not build against this
-  pin (ninja failure, verified).
+- **Touchpad gestures à la GNOME**: two dead ends found live. The old
+  `gestures { workspace_swipe }` block is gone in 0.56 (config error
+  overlay), and `bind = , swipe:3:left, ...` is a silent trap — the bind
+  parser registers it as an ordinary bind on a keysym that never exists
+  ("ok", listed in `hyprctl binds`, never fires). The real syntax is the
+  dedicated `gesture` keyword (verified against the 0.56.2 source,
+  `CConfigManager::handleGesture`): shipped `3, horizontal, workspace`
+  (1:1 GNOME-style drag) + 4-finger focus cycling via
+  `dispatcher, cyclenext[, prev]`. Probed live with
+  `hyprctl keyword gesture` ("ok" ×3, gestures work on the running
+  session immediately), then gated with `Hyprland --verify-config`
+  ("config ok"). The overview swipe still waits for an overview
+  (batch 6); hyprgrass still does not build against this pin.
 - **Ctrl+Alt+Left/Right** now switch workspaces, **Ctrl+Alt+Shift+**
   moves the focused window (GNOME parity).
 - **Tray icons were 8px high**: the Tray Row's delegates were 20px tall
   while every other right-side widget is barHeight (36px), and the Row
   positioner top-aligns children. Delegates are now barHeight with the
-  icon centered inside.
+  icon centered inside. The first version of that edit also hit the
+  documented `import ".."` gotcha (used Theme without the import ->
+  "ReferenceError: Theme is not defined" per delegate, tray broken);
+  fixed and this time live-load verified through the /tmp rig before
+  committing.
+- **Fuzzel right border disappeared at fractional scaling**: fuzzel
+  1.15 with dpi-aware=yes at scale 1.25 computed a 322-logical-px window
+  -> 402.5 buffer px; the rounding drops the last column, which is the
+  border. Fix: `dpi-aware = false` (render at 1x, compositor scales;
+  integer buffers, border intact, text marginally softer at 1.25).
+  Goes live with the next switch; visual confirmation pending.
 - **Keyboard/accents — verified, not yet solved**: `kb_layout = es` is
   applied (getoption set:true, active keymap "Spanish", deployed config
   line 80), no IME env vars anywhere (manager env, repo, no ibus). The

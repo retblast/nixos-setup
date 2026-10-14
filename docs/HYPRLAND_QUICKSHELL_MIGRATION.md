@@ -296,7 +296,17 @@ UI, weather widget (geoclue2 present).
 - **PanelWindow has no `opacity` property**; animate a child instead.
 - **MoreWaita (active icon theme) does not inherit Adwaita**, so `Quickshell.iconPath()` fails for symbolic UI icons. Use `Theme.adwaitaIcon(name)` (direct file path).
 - A directory qmldir is authoritative: every root-level component must be declared in it.
-- Widgets one dir down need `import ".."` to see the Theme singleton.
+- **Widgets one dir down need `import ".."` to see the Theme singleton**
+  — including files that previously did not use Theme. A Tray.qml edit
+  added a Theme reference without the import and shipped a broken tray
+  ("ReferenceError: Theme is not defined" per delegate). Any widget edit
+  that touches Theme must add the import; run the /tmp-rig live load
+  before committing QML changes.
+- **fuzzel + fractional scaling**: with `dpi-aware = true` (default) at
+  scale 1.25, fuzzel's buffer width comes out fractional (e.g. 322
+  logical px -> 402.5 buffer px) and rounding clips the right border.
+  Fix: `dpi-aware = false` in the fuzzel config (compositor scales a
+  1x buffer).
 - Hyprland binds: bare keys need the empty modifier field (`, F12, ...`); colors are RRGGBBAA only.
 - greetd must launch `start-hyprland` (the package wrapper), not the raw compositor binary.
 - **`quickshell ipc` needs explicit instance selection with a named
@@ -440,14 +450,24 @@ UI, weather widget (geoclue2 present).
   gesture; overview-style swipes wait for an overview (batch 6) or a
   hyprgrass rebuild.
 - **Hyprland 0.56 removed the old `gestures {}` block entirely**
-  ("config option <gestures:workspace_swipe> does not exist"). Touchpad
-  gestures are plain binds now, with `swipe:<fingers>:<direction>` as the
-  key: `bind = , swipe:3:left, workspace, e+1`. No literal `dispatcher`
-  word (that was hyprgrass syntax). Reverse window cycling is
-  `cyclenext, prev` — a `cycleprev` dispatcher does not exist. Also note:
-  `hyprctl dispatchers` needs an argument in 0.56 and is not a reliable
-  list; probe candidate binds with `hyprctl keyword bind ...` (volatile,
-  validated at add time).
+  ("config option <gestures:workspace_swipe> does not exist"). Trackpad
+  gestures use a dedicated **`gesture` keyword** in the legacy (hyprlang)
+  config, parsed by `CConfigManager::handleGesture`:
+  `gesture = <fingers>, <direction>, [mod:<mods>] [scale:<f>], workspace|dispatcher|move|resize|special, <dispatcher>, <args>`.
+  Directions: left/right/up/down/horizontal/vertical/swipe/pinch*.
+  The `workspace` action is the 1:1 drag animation (GNOME-style);
+  `dispatcher` dispatches on the gesture. Reverse window cycling is
+  `dispatcher, cyclenext, prev` — a `cycleprev` dispatcher does not
+  exist.
+- **`bind = , swipe:...` is a silent trap**: the bind parser accepts
+  `swipe:3:left` as a "keysym", registers an ordinary bind that can
+  never fire, and reports "ok" (it even lists in `hyprctl binds`). If
+  gestures do not work, check that the config uses the `gesture`
+  keyword, not binds.
+- `hyprctl dispatchers` needs an argument in 0.56 and is not a reliable
+  list; probe candidate dispatchers with `hyprctl keyword bind ...`
+  (volatile, validated at add time) and full gesture lines with
+  `hyprctl keyword gesture ...`.
 - **`Hyprland --verify-config -c <file>`** parses a config without
   launching — use it as a gate on the generated config before switching.
 - **`Hyprland --verify-config`** checks a config file for errors without
