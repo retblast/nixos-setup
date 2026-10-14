@@ -75,6 +75,13 @@ Post-switch feedback, three fixes:
   child, and the subshell waits forever (the tool call timed out while
   quickshell itself detached fine and kept running). Background the
   launch statement alone.
+- **Nested Hyprland tested on Master's request**: 0.56.2 runs a second
+  instance in a window inside the session (`Hyprland -c scratch.conf`,
+  handover via --socket/--wayland-fd internally, window class
+  "aquamarine", second socket wayland-2, visible in `hyprctl
+  instances`). Confirmed hazard: it republishes WAYLAND_DISPLAY to the
+  systemd/D-Bus env (hijack restored manually; see the runbook gotcha).
+  Scratch instance needed SIGKILL.
 
 ### 2026-10-13 (evening) — batch 4 wave 2: bar polish, native wifi, caffeine toggle, toast root cause (agent session, Master at machine)
 

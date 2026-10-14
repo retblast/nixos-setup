@@ -408,6 +408,25 @@ UI, weather widget (geoclue2 present).
   org.blueman.Applet.service, so opening blueman-manager can respawn the
   applet. Nothing autostarts applets under this config (no XDG autostart
   machinery active, no systemd user units for them).
+- **Nested Hyprland works on 0.56** (Wayland socket handover): run
+  `Hyprland -c /tmp/scratch.conf` from a terminal inside the session and
+  the second instance renders in a window (toplevel class "aquamarine"),
+  registers under `hyprctl instances` with its own socket (wayland-2)
+  and its own HYPRLAND_INSTANCE_SIGNATURE. Poke it explicitly with
+  `HYPRLAND_INSTANCE_SIGNATURE=<sig> hyprctl ...`.
+- **A nested Hyprland hijacks the session env on startup**: it republishes
+  its own socket into the systemd user manager and the D-Bus activation
+  environment (verified: WAYLAND_DISPLAY flipped to wayland-2 while a
+  nested instance ran). Newly activated services would then bind to the
+  dead nested socket. Restore after every nested run:
+  `dbus-update-activation-environment --systemd WAYLAND_DISPLAY
+  HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE`
+  with the main session's values. A scratch nested instance also may not
+  die on SIGTERM within seconds — use SIGKILL.
+- **`Hyprland --verify-config`** checks a config file for errors without
+  launching anything; `hyprctl keyword <setting> <value>` changes
+  settings on the live session (lost on reload — by design, good for
+  experiments).
 
 ## References
 
