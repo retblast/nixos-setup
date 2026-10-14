@@ -12,7 +12,7 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 3 | Quickshell skeleton: theme, bar, dock, toasts | done | live: bar/dock render; notifications fixed (see journal) |
 | 4 | Shell completion | in-progress | waves 1-3 committed; wave 4 live-verified (hyprplayground sandbox, gestures, Ctrl+Alt binds, tray centering). Deploy gate pending |
 | 5 | Cleanup: dconf trim, package audit | done | trim + live DB reset + audit clean + cliphist/pointerCursor deprecations fixed; build warning-free |
-| 6 | Future: custom greeter, dynamic theming, overview | not started | |
+| 6 | Future: custom greeter, dynamic theming, overview | in-progress | greeter built + opt-in wired (customGreeter.enable, default off); login-flow test pending at Master's next logout |
 
 ## Decisions
 
@@ -34,6 +34,38 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 ## Journal
 
 Newest first.
+
+### 2026-10-14 (morning) — batch 6 started: custom Quickshell greeter built (agent session, Master awake)
+
+- **Greeter implemented** (`modules/quickshell-greeter/`): shell.qml +
+  Greeter.qml (fullscreen PanelWindow: clock, date, fixed user, password
+  field, status line) + Theme.qml (palette duplicated from retTheme —
+  the greeter runs as the "greeter" user and cannot read the user's
+  generated Theme.qml) + qmldir. Auth flow is Greetd-only: createSession
+  -> authMessage prompts (password AND fingerprint prompts arrive here) ->
+  respond -> readyToLaunch -> launch(["start-hyprland"]). No PamContext —
+  greetd owns the PAM stack. A test-mode status shows when the greetd
+  socket is absent, so the UI loads harmlessly outside the greeter
+  session.
+- **Wiring** (modules/hyprland.nix): new option
+  `localModule.hyprland.customGreeter.enable` (default FALSE — a broken
+  greeter means a locked-out login screen; tuigreet stays the deployed
+  default). When on: greetd runs `cage -s -- quickshell -p
+  <greeterConfig>` and `security.pam.services.greetd.fprintAuth = true`
+  (pam_fprintd asks for a finger, falls through to the password). The
+  gate keeps tuigreet's PAM stack byte-identical until Master opts in;
+  nix laziness keeps the greeter config out of the closure entirely
+  while off.
+- **Verified**: toplevel green; greeter QML loads in a live test instance
+  with zero errors (fullscreen layer renders; test-mode status shown).
+  First load caught two QML import bugs (Theme.qml needs BOTH QtQuick
+  for `color` and Quickshell for `Singleton`).
+- **Master gate (opt-in, with recovery)**: set
+  `localModule.hyprland.customGreeter.enable = true;` in
+  machines/Taihou/default.nix, switch, log out. Fingerprint scan or
+  password both log in. If the greeter ever fails to appear: Ctrl+Alt+F2,
+  log in on the TTY, flip the option back, rebuild. The real login-flow
+  test (fingerprint + session start under cage) happens at logout.
 
 ### 2026-10-14 (early morning) — batch 5 done: dconf trim, package audit, deprecations (agent session, Master awake)
 

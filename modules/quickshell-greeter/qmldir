@@ -1,0 +1,6 @@
+singleton Theme 1.0 Theme.qml
+
+# A qmldir in a directory becomes authoritative for its types: every
+# component referenced from shell.qml must be listed here, or QML fails
+# with "X is not a type" (in varying order per process).
+Greeter 1.0 Greeter.qml

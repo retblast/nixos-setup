@@ -473,6 +473,19 @@ UI, weather widget (geoclue2 present).
   list; probe candidate dispatchers with `hyprctl keyword bind ...`
   (volatile, validated at add time) and full gesture lines with
   `hyprctl keyword gesture ...`.
+- **Quickshell singletons may need two imports**: a singleton QML file
+  using `color` needs `import QtQuick` AND `import Quickshell` (for the
+  `Singleton` root type). Only-Quickshell works while every property is
+  string/int; the first `color` breaks it ("color is not a type"), and
+  swapping the import the other way breaks the root ("Singleton is not
+  a type").
+- **greetd greeter flow with Quickshell.Services.Greetd**: the greeter
+  drives the whole PAM conversation through the `Greetd` singleton
+  (createSession -> authMessage -> respond -> readyToLaunch -> launch).
+  No PamContext needed — greetd owns the PAM stack; fingerprint prompts
+  (pam_fprintd) arrive as non-response authMessages. `Greetd.available`
+  is false outside a greetd session — gate UI wiring on it so the
+  config loads harmlessly for testing.
 - **`Hyprland --verify-config -c <file>`** parses a config without
   launching — use it as a gate on the generated config before switching.
 - **A dconf settings trim does not clean the user DB**: `dconf.settings`

@@ -7,10 +7,23 @@
 }:
 let
   cfg = config.localModule;
+
+  # The greeter runs as the "greeter" user from this store path; it cannot
+  # read the user's generated Theme.qml, so the palette is duplicated in
+  # the copied sources (Theme.qml there, keep in sync with retTheme).
+  greeterConfig = pkgs.runCommand "quickshell-greeter-config" { } ''
+    mkdir -p "$out"
+    cp -r ${./quickshell-greeter}/. "$out/"
+  '';
 in
 {
   options.localModule = {
     hyprland.enable = lib.mkEnableOption "the Hyprland + Quickshell desktop";
+    # Off by default: the deployed tuigreet PAM stack stays exactly as-is
+    # until this is flipped, and a broken greeter means a locked-out login
+    # screen. Fallback: flip back to false.
+    hyprland.customGreeter.enable =
+      lib.mkEnableOption "the Quickshell greeter under cage (fingerprint login)";
   };
 
   config = lib.mkIf (cfg.hyprland.enable) {
@@ -24,14 +37,19 @@ in
     # the file chooser outside of Firefox.
     xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
 
-    # Login manager. Stock tuigreet for now; a custom Quickshell greeter is a
-    # future batch. Launch via the package's start-hyprland wrapper: it sets
+    # Login manager. Launch via the package's start-hyprland wrapper: it sets
     # up the session environment and the crash watchdog. Launching the
     # compositor binary directly makes Hyprland warn at startup.
     services.greetd = {
       enable = true;
       settings.default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd start-hyprland";
+        # Quickshell greeter under cage: fingerprint login via pam_fprintd,
+        # with the PAM conversation surfacing through Greetd's authMessage.
+        # Fallback: tuigreet.
+        command = if cfg.hyprland.customGreeter.enable then
+          "${pkgs.cage}/bin/cage -s -- ${pkgs.quickshell}/bin/quickshell -p ${greeterConfig}"
+        else
+          "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd start-hyprland";
         user = "greeter";
       };
     };
@@ -52,6 +70,11 @@ in
       services = {
         hyprlock = { };
         greetd.enableGnomeKeyring = true;
+        # Fingerprint at login, gated with the greeter: pam_fprintd asks
+        # for a finger and falls through to the password on failure or
+        # timeout. tuigreet's handling of non-response PAM prompts is
+        # unverified, so the default stack stays unchanged.
+        greetd.fprintAuth = cfg.hyprland.customGreeter.enable;
       };
     };
 
