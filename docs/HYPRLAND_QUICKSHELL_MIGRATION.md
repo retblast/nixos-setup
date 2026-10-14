@@ -422,7 +422,23 @@ UI, weather widget (geoclue2 present).
   `dbus-update-activation-environment --systemd WAYLAND_DISPLAY
   HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE`
   with the main session's values. A scratch nested instance also may not
-  die on SIGTERM within seconds — use SIGKILL.
+  die on SIGTERM within seconds — use SIGKILL. The `hyprplayground`
+  script (HM package) automates the whole flow including the restore.
+- **A SIGKILLed Hyprland leaves its runtime dir behind** in
+  /run/user/1000/hypr/, so `ls -t | head -1` then points at a dead
+  socket. Take the signature from the systemd manager env
+  (`systemctl --user show-environment`) or verify .socket.sock exists.
+- **`pkgs.writers.writeFishBin` produces a package directory** with the
+  script at `bin/<name>`, and the build runs `fish --no-execute` as a
+  syntax gate (a fish syntax error fails the toplevel build — useful).
+- **Fish 4 rejects a trailing `$` inside a double-quoted string**
+  (`":$"` — "Expected a variable name after this $"). Single-quote regex
+  patterns and replacement strings in `string replace -r`.
+- **hyprgrass does not build against Hyprland 0.56.2 in this nixpkgs
+  pin** (ninja failure, verified 2026-10-14). Native
+  `gestures.workspace_swipe` (3 fingers) is the working GNOME-parity
+  gesture; overview-style swipes wait for an overview (batch 6) or a
+  hyprgrass rebuild.
 - **`Hyprland --verify-config`** checks a config file for errors without
   launching anything; `hyprctl keyword <setting> <value>` changes
   settings on the live session (lost on reload — by design, good for

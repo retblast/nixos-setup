@@ -16,8 +16,10 @@ Row {
 
             required property var modelData
 
+            // Full bar height: the Row positioner top-aligns children, so a
+            // 20px delegate sat 8px above the centered widgets next to it.
             width: 20
-            height: 20
+            height: Theme.barHeight
 
             IconImage {
                 anchors.centerIn: parent

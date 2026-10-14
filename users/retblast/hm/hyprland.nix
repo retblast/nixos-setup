@@ -107,6 +107,145 @@ let
     end
     quickshell -c shell ipc call floatws set $ws_id $state >/dev/null 2>&1
   '';
+
+  # Sandbox launcher: writable copies of the deployed Hyprland + quickshell
+  # configs in /tmp/hyprplayground, booted as a nested Hyprland (0.56 socket
+  # handover). Edits in the sandbox never touch the real session; the
+  # sandbox quickshell reloads live on file changes. A terminal opens
+  # inside the sandbox with the README. On exit the systemd/D-Bus
+  # environment is restored — a nested Hyprland republishes its own
+  # WAYLAND_DISPLAY on startup, which otherwise leaves freshly activated
+  # services bound to a dead socket.
+  #
+  # Usage: hyprplayground [--reset]
+  hyprplayground = pkgs.writers.writeFishBin "hyprplayground" ''
+    set -l dir /tmp/hyprplayground
+
+    if not set -q WAYLAND_DISPLAY
+        echo "hyprplayground: run from a terminal inside the Hyprland session"
+        exit 1
+    end
+
+    # One playground at a time. The pattern matches only the nested
+    # instance's cmdline; this script's own argv never contains it.
+    if pgrep -f "Hyprland -c $dir/hypr/hyprland.conf" >/dev/null 2>&1
+        echo "hyprplayground: already running"
+        exit 1
+    end
+
+    if set -q argv[1]; and test "$argv[1]" = "--reset"
+        rm -rf $dir
+    end
+
+    if not test -d $dir/quickshell/shell
+        mkdir -p $dir/hypr $dir/quickshell
+        for f in hyprland.conf hypridle.conf hyprlock.conf
+            if test -e ~/.config/hypr/$f
+                cp -L ~/.config/hypr/$f $dir/hypr/$f
+            end
+        end
+        cp -rL ~/.config/quickshell/shell $dir/quickshell/shell
+        chmod -R u+w $dir
+        # The copies carry the main session's binds only; give the sandbox
+        # its own quit bind so it can be exited without SUPER+M ambiguity.
+        echo "" >> $dir/hypr/hyprland.conf
+        echo "# hyprplayground: quit the sandbox session" >> $dir/hypr/hyprland.conf
+        echo "bind = CTRL ALT, Q, exit" >> $dir/hypr/hyprland.conf
+        begin
+            echo "hyprplayground"
+            echo "=============="
+            echo ""
+            echo "A writable sandbox copy of the desktop config. Nothing here"
+            echo "affects the real session. Copies were taken from the deployed"
+            echo "generation at first launch; re-copy with:"
+            echo ""
+            echo "  hyprplayground --reset"
+            echo ""
+            echo "Layout:"
+            echo "  hypr/hyprland.conf    the config THIS instance runs; edits apply"
+            echo "                        live (Hyprland reloads on file change)"
+            echo "  hypr/hypridle.conf    reference copy, not running here"
+            echo "  hypr/hyprlock.conf    reference copy, not running here"
+            echo "  quickshell/shell/     quickshell config for THIS instance;"
+            echo "                        reloads live on file changes"
+            echo ""
+            echo "The terminal next to this one runs inside the sandbox:"
+            echo "  hyprctl keyword ...     try settings live"
+            echo "  hyprctl dispatch ...    try dispatchers"
+            echo "  hyprctl instances       both sessions are listed"
+            echo ""
+            echo "Notes:"
+            echo "  - Ctrl+Alt+Q exits this playground session."
+            echo "  - On exit the launcher restores WAYLAND_DISPLAY in the"
+            echo "    systemd/D-Bus environment (a nested Hyprland republishes"
+            echo "    its own socket on start). If something still binds to"
+            echo "    wayland-2 afterwards, restore manually with:"
+            echo "    dbus-update-activation-environment --systemd WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE"
+        end > $dir/README.txt
+    end
+
+    echo "Launching playground Hyprland ($dir/hypr/hyprland.conf)..."
+    Hyprland -c $dir/hypr/hyprland.conf >$dir/hyprland.log 2>&1 &
+    set -l hypr_pid $last_pid
+
+    # Wait for the nested instance to register, then read its signature and
+    # wayland socket from hyprctl instances (block layout: instance <sig>:
+    # / time / pid / wl socket: <name>).
+    set -l nested_sig ""
+    set -l nested_wl ""
+    for i in (seq 1 60)
+        sleep 0.25
+        set -l cur ""
+        set nested_sig ""
+        set nested_wl ""
+        for line in (hyprctl instances 2>/dev/null)
+            if string match -q "instance *" $line
+                set cur (string replace -r '^instance (\S+):$' '$1' $line)
+            end
+            if string match -q "*wl socket:*" $line; and test "$cur" != "$HYPRLAND_INSTANCE_SIGNATURE"
+                set nested_sig $cur
+                set nested_wl (string replace -r ".*wl socket: " "" $line)
+            end
+        end
+        if test -n "$nested_sig"
+            break
+        end
+    end
+
+    if test -z "$nested_sig"
+        echo "hyprplayground: nested instance did not come up (see $dir/hyprland.log)"
+        kill $hypr_pid 2>/dev/null
+        exit 1
+    end
+
+    echo "Playground instance: sig $nested_sig socket $nested_wl"
+
+    # Info terminal inside the sandbox; its shell targets the sandbox
+    # instance (the compositor exports its own signature to children).
+    env HYPRLAND_INSTANCE_SIGNATURE=$nested_sig hyprctl dispatch exec "ptyxis -- fish -C 'cat $dir/README.txt'"
+
+    # The sandbox shell instance, bound to the sandbox socket. Backgrounded
+    # as its own statement; it dies with the sandbox compositor.
+    env WAYLAND_DISPLAY=$nested_wl HYPRLAND_INSTANCE_SIGNATURE=$nested_sig setsid nohup quickshell -p $dir/quickshell/shell >$dir/quickshell.log 2>&1 &
+
+    function _pg_cleanup --description "restore the session env after the playground"
+        # This script's own environment still carries the main session's
+        # values; the nested compositor cannot change its parent's env.
+        dbus-update-activation-environment --systemd WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE 2>/dev/null
+        notify-send -a hyprplayground "Playground closed" "Session environment restored" 2>/dev/null
+    end
+
+    function _pg_on_signal --on-signal INT --on-signal TERM --on-signal HUP
+        _pg_cleanup
+        exit 0
+    end
+
+    # Block until the sandbox compositor exits.
+    wait $hypr_pid 2>/dev/null
+    _pg_cleanup
+    # Insurance: the sandbox quickshell normally dies with the compositor.
+    pkill -f "quickshell -p $dir/quickshell/shell" 2>/dev/null
+  '';
 in
 {
   wayland.windowManager.hyprland = lib.mkIf hyprlandEnabled {
@@ -117,7 +256,7 @@ in
     systemd.enable = true;
 
     settings = {
-      monitor = [ "eDP-1, preferred, auto, 1" ];
+      monitor = [ "eDP-1, preferred, auto, 1.25" ];
 
       env = [ ];
 
@@ -130,6 +269,15 @@ in
           natural_scroll = true;
           tap-to-click = true;
         };
+      };
+
+      # GNOME-parity gestures: a 3-finger horizontal swipe switches
+      # workspaces (built-in). The GNOME overview swipe has no Hyprland
+      # equivalent yet (batch 6); hyprgrass does not build against
+      # Hyprland 0.56.2 in this nixpkgs pin (verified 2026-10-14).
+      gestures = {
+        workspace_swipe = true;
+        workspace_swipe_fingers = 3;
       };
 
       cursor = {
@@ -207,6 +355,12 @@ in
         "SUPER, 0, workspace, 10"
         "SUPER, mouse_down, workspace, e+1"
         "SUPER, mouse_up, workspace, e-1"
+        # GNOME parity: Ctrl+Alt+Left/Right switches workspaces, +Shift
+        # moves the focused window along.
+        "CTRL ALT, left, workspace, e-1"
+        "CTRL ALT, right, workspace, e+1"
+        "CTRL ALT SHIFT, left, movetoworkspace, e-1"
+        "CTRL ALT SHIFT, right, movetoworkspace, e+1"
         # Media
         ", XF86AudioPlay, exec, playerctl play-pause"
         ", XF86AudioNext, exec, playerctl next"
@@ -376,5 +530,6 @@ in
     clipboard-pick
     wallpaper-rotate
     float-workspace
+    hyprplayground
   ];
 }

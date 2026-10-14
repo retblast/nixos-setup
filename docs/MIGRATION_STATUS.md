@@ -10,7 +10,7 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 1 | NixOS plumbing: greetd, services, GNOME off | done | switched + rebooted 2026-10-12; greetd cmd fixed to start-hyprland |
 | 2 | HM Hyprland: config, binds, idle/lock, daemons | done | runtime verified after re-switch (F12, gradient, keybinds) |
 | 3 | Quickshell skeleton: theme, bar, dock, toasts | done | live: bar/dock render; notifications fixed (see journal) |
-| 4 | Shell completion | in-progress | wave 1+2 committed; wave 3 live-verified (bluetooth widget, tray applets out, title alignment). Deploy gate pending |
+| 4 | Shell completion | in-progress | waves 1-3 committed; wave 4 live-verified (hyprplayground sandbox, gestures, Ctrl+Alt binds, tray centering). Deploy gate pending |
 | 5 | Cleanup: dconf trim, package audit | pending | |
 | 6 | Future: custom greeter, dynamic theming, overview | not started | |
 
@@ -34,6 +34,44 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 ## Journal
 
 Newest first.
+
+### 2026-10-13 (late night) — hyprplayground sandbox, gestures, GNOME-parity binds, tray centering (agent session, Master at machine)
+
+- **hyprplayground** (new fish script, on PATH after the next switch):
+  `hyprplayground` copies the deployed Hyprland + quickshell configs into
+  /tmp/hyprplayground as writable files (hypridle/hyprlock as inert
+  reference copies), appends a Ctrl+Alt+Q quit bind to the copy, boots a
+  nested Hyprland (0.56 socket handover), opens a ptyxis with the README
+  inside the sandbox, and starts a sandbox quickshell against the sandbox
+  socket. Edits there never touch the real session; quickshell reloads
+  live. On exit (including SIGKILL of the sandbox compositor) the script
+  restores WAYLAND_DISPLAY in the systemd/D-Bus env — verified live end
+  to end, env came back to wayland-1 and both sandbox processes died.
+  `--reset` re-copies from the deployed generation.
+- **Touchpad gestures à la GNOME**: native `gestures.workspace_swipe`
+  (3 fingers) covers the workspace swipe. The overview swipe has no
+  Hyprland equivalent yet (batch 6); **hyprgrass does not build against
+  Hyprland 0.56.2 in this nixpkgs pin** (ninja failure, verified) — retry
+  after an upstream sync. 4-finger app switching therefore waits too.
+- **Ctrl+Alt+Left/Right** now switch workspaces, **Ctrl+Alt+Shift+**
+  moves the focused window (GNOME parity).
+- **Tray icons were 8px high**: the Tray Row's delegates were 20px tall
+  while every other right-side widget is barHeight (36px), and the Row
+  positioner top-aligns children. Delegates are now barHeight with the
+  icon centered inside.
+- **Keyboard/accents — verified, not yet solved**: `kb_layout = es` is
+  applied (getoption set:true, active keymap "Spanish", deployed config
+  line 80), no IME env vars anywhere (manager env, repo, no ibus). The
+  accent failure must be mechanism-level; diagnostic question open to
+  Master: what is pressed and what appears (dead key ´ vs RightAlt — the
+  keyd remap turns a rightalt tap into `>`, which eats the US-intl style
+  RightAlt+letter habit). No fix applied without that observation.
+- Tooling gotchas: a killed (SIGKILL) instance leaves its runtime dir in
+  /run/user/1000/hypr/, which makes `ls -t | head -1` point at a dead
+  socket — use the manager env's HYPRLAND_INSTANCE_SIGNATURE or check
+  .socket.sock. writeFishBin produces a package directory with the binary
+  at bin/<name>. Fish 4 rejects a trailing `$` inside a double-quoted
+  regex (`":$"`); single-quote regexes.
 
 ### 2026-10-13 (night) — tray applets out: native bluetooth widget, title alignment (agent session, Master at machine)
 
@@ -457,8 +495,12 @@ the daemon keeps it until logout even without the switch.
 ## Next actions
 
 1. Master: switch + restart gate (above).
-2. Batch 5 cleanup (dconf trim, package audit).
-3. Session-keepalive: an 8h systemd-inhibit lock (idle+sleep+shutdown)
+2. Accents diagnostic (Master): what is pressed and what appears — dead
+   key ´ then vowel, or RightAlt+letter (keyd turns a rightalt tap into
+   `>`)? Fix follows from that: keyd tweak or kb_variant change.
+3. Batch 5 cleanup (dconf trim, package audit; includes the cliphist
+   systemdTarget rename deprecation warning from eval).
+4. Session-keepalive: an 8h systemd-inhibit lock (idle+sleep+shutdown)
    was started 2026-10-13 ~15:10 at Master's request; it expires on its
    own.
 
