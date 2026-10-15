@@ -35,6 +35,36 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 
 Newest first.
 
+### 2026-10-14 (night, part 2) — Lua config migration (0.57 removes .conf) (agent session, Master at machine)
+
+- **Migrated to the Lua configuration** (`users/retblast/hm/hyprland.lua`,
+  ~130 lines): monitor, input, cursor, general, decoration, misc via
+  `hl.config`; bezier + animations via `hl.curve`/`hl.animation` (the
+  hyprlang 4-number form maps to points pairs); all binds via
+  `hl.bind("MODS + KEY", hl.dsp.*)` (exec_cmd, window.close/float/
+  fullscreen/drag/resize/move, focus, exit); the workspace 1-10 binds
+  became a Lua for-loop; gestures via `hl.gesture` (workspace action +
+  Lua-closure actions for the overview toggle and cyclenext); the two
+  exec-once commands run in `hl.on("hyprland.start")` (no exec_once in
+  the Lua API; both commands are idempotent). HM's own systemd
+  start/shutdown hooks still render (session-target wiring preserved).
+  HM wiring: `configType = "lua"`, `settings = {}` removed, body via
+  `extraConfig = builtins.readFile ./hyprland.lua`.
+- **Verification journey** (each finding is a gotcha): `--verify-config`
+  reported "config ok" on a CORRUPTED file — it does not execute Lua
+  configs, so it is NOT a gate for Lua. The nested-run gate works but
+  the config error only shows on the ERROR OVERLAY (not in the
+  hyprland.log); Master read the overlay. Final state: live nested
+  0.56.2 session, no error overlay. Also: `hl.config` option keys are
+  dash-normalized to underscores (tap_to_click — ConfigManager.cpp:1139);
+  matugen-style nested tables not needed here; the first nested attempt
+  fought the real compositor for the eDP-1 output (libseat errors) —
+  strip `hl.monitor` for nested tests. The binds-registered count could
+  not be checked over IPC (nested instances get no socket under this
+  session's logind) — functional bind testing happens after the switch.
+- **Gate (Master)**: switch + relogin. Rollback: revert this commit
+  (configType back to hyprlang + the old settings attrset restored).
+
 ### 2026-10-14 (late night) — polish pass: login race, dock minimize (agent session, Master at machine)
 
 - **Login race fixed**: the 17:40 journal showed the old wl_display crash

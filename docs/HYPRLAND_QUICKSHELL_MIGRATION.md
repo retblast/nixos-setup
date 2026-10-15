@@ -526,8 +526,29 @@ UI, weather widget (geoclue2 present).
   anywhere in the same call, including IPC call lines
   (`quickshell -p <path> ipc call ...` contains the launch text). Any
   kill-by-pattern call must be a lone invocation.
+- **Lua config migration (0.56+, .conf dies in 0.57)**: HM
+  `configType = "lua"` renders `settings` as `hl.<name>(...)` calls, but
+  string binds (the hyprlang form) do not map to `hl.dsp` values — the
+  body is hand-written Lua via `extraConfig` instead, with `settings`
+  left empty. Key mappings: `hl.bind("MODS + KEY", hl.dsp.X(...))`
+  (mods join with " + "), `hl.config({ section = {...} })` for option
+  blocks, `hl.gesture({ fingers, direction, action })` (action may be a
+  Lua closure), `hl.on("hyprland.start", fn)` instead of exec-once (no
+  exec_once in the Lua API), `hl.curve`/`hl.animation` for bezier blocks.
+  Option keys are dash-normalized to underscores
+  (tap_to_click — ConfigManager.cpp:1139). HM's systemd start/shutdown
+  hooks render regardless of settings.
+- **`Hyprland --verify-config` does NOT execute Lua configs** — it
+  reported "config ok" on a file with a hard Lua syntax error. For Lua
+  configs the gate is a live nested run (`Hyprland -c file` with the
+  `hl.monitor` line stripped — otherwise the nested instance fights the
+  real compositor for the DRM output) and READING THE ERROR OVERLAY:
+  config errors show only there, not in hyprland.log. Nested instances
+  get no IPC socket under a logind session, so binds cannot be counted
+  remotely.
 - **`Hyprland --verify-config -c <file>`** parses a config without
-  launching — use it as a gate on the generated config before switching.
+  launching — use it as a gate on the generated config before switching
+  (hyprlang configs only — see above).
 - **A dconf settings trim does not clean the user DB**: `dconf.settings`
   changes only what future `dconf load` runs SET; previously-written keys
   persist in `~/.config/dconf/user` until explicitly removed. Clean dead
