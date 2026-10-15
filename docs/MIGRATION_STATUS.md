@@ -35,6 +35,32 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 
 Newest first.
 
+### 2026-10-14 (late night) — polish pass: login race, dock minimize (agent session, Master at machine)
+
+- **Login race fixed**: the 17:40 journal showed the old wl_display crash
+  return — the quickshell unit started before Hyprland created its socket
+  (graphical-session.target races the compositor), hit quickshell's
+  crash-loop guard, and the desktop spent part of the login without a
+  shell (recovered at 17:40:47, recovery path unclear). Fix: an
+  ExecStartPre script waits up to 20s for the WAYLAND_DISPLAY socket
+  before exec. Unit verified in the generated files.
+- **Dock minimize fixed**: `Hyprland.dispatch("minimize")` — the dock's
+  click-on-focused-app action — has no dispatcher in 0.56 (zero hits in
+  the 0.56.2 source), so the click silently did nothing. The dock now
+  uses the wlr-foreign toplevel: focused click sets `t.minimized = true`
+  (writable, protocol-level), non-focused click unminimizes then
+  `activate()`s.
+- **Lua config migration: recommended DEFER.** The legacy hyprlang path
+  is fully working and verified (including the new gesture keyword); the
+  format is invisible in daily use; the migration costs a full config
+  re-verification pass for zero daily-use gain. Revisit when upstream
+  signals hyprlang deprecation or a Lua-only feature (the hl.gesture
+  live API) becomes wanted; schedule as its own task with the
+  hyprplayground for verification.
+- Untracked repo files left as-is (Master's notes: SF stem-darkening
+  investigation, thermald/DPTF analysis, thermal-conf.xml).
+- Hyprland log this boot: zero warnings or errors.
+
 ### 2026-10-14 (night) — palette reaches Hyprland borders; dock dots fixed (agent session, Master at machine)
 
 - **Window borders follow the palette**: Theme.qml's palette reader now

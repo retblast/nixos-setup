@@ -164,5 +164,22 @@ in
   # the general case, this pins the service itself.
   systemd.user.services.quickshell = lib.mkIf hyprlandEnabled {
     Service.Environment = [ "WAYLAND_DISPLAY=wayland-1" ];
+    # The unit can start before the compositor has created its socket
+    # (graphical-session.target races Hyprland's startup); the crash then
+    # hits quickshell's own crash-loop guard and the desktop loses its
+    # shell for the whole session (seen live 2026-10-14 17:40). Wait for
+    # the socket before exec.
+    Service.ExecStartPre =
+      let
+        waitScript = pkgs.writeShellScript "wait-for-wayland-socket" ''
+          for i in $(seq 1 100); do
+            [ -S "''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$WAYLAND_DISPLAY" ] && exit 0
+            sleep 0.2
+          done
+          echo "wayland socket $WAYLAND_DISPLAY never appeared" >&2
+          exit 1
+        '';
+      in
+      "+${waitScript}";
   };
 }

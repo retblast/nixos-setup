@@ -199,22 +199,33 @@ PanelWindow {
                         visible: appBtn.running.length > 0
                     }
 
-                    MouseArea {
-                        id: mouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (appBtn.running.length > 0) {
-                                if (appBtn.focused)
-                                    Hyprland.dispatch("minimize");
-                                else
-                                    Hyprland.dispatch("focuswindow class:" + appBtn.modelData.match);
-                            } else {
-                                Quickshell.execDetached(appBtn.modelData.command);
-                            }
-                        }
-                    }
+                        MouseArea {
+                            id: mouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (appBtn.running.length > 0) {
+                                    if (appBtn.focused) {
+                                        // 0.56 has no minimize dispatcher; the
+                                        // wlr-foreign toplevel takes the request.
+                                        appBtn.running.forEach(t => {
+                                            if (t.activated)
+                                                t.minimized = true;
+                                        });
+                                    } else {
+                                        // Unminimize first: plain activate() may
+                                        // not restore a minimized window.
+                                        appBtn.running.forEach(t => {
+                                            t.minimized = false;
+                                        });
+                                        appBtn.running[0].activate();
+                                    }
+                                } else {
+								Quickshell.execDetached(appBtn.modelData.command);
+							}
+						}
+					}
                 }
             }
         }
