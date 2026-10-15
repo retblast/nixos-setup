@@ -9,6 +9,10 @@ hl.monitor({
 })
 
 hl.config({
+    xwayland = {
+        force_zero_scaling = true
+    },
+
 	input = {
 		kb_layout = "es",
 		follow_mouse = 1,
@@ -130,3 +134,15 @@ hl.gesture({
 		hl.exec_cmd("hyprctl dispatch cyclenext")
 	end,
 })
+
+-- Fullscreened windows get their own workspace: on entering fullscreen
+-- the window moves to the next workspace (created if empty), so the
+-- fullscreen app sits isolated from the tiled windows. Leaving
+-- fullscreen keeps it where it is. The event covers every fullscreen
+-- path — the SUPER+F bind, video players, games. Verified in the
+-- playground: the fullscreen state survives the move.
+hl.on("window.fullscreen", function(w)
+	if w.fullscreen then
+		hl.dispatch(hl.dsp.window.move({ workspace = "+1" }))
+	end
+end)
