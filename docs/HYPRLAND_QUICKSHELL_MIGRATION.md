@@ -505,6 +505,12 @@ UI, weather widget (geoclue2 present).
   `image` subcommand needs `--prefer`
   (darkness|lightness|saturation|less-saturation|value|
   closest-to-fallback) when stdout is not a terminal.
+- **`FileView.text` is a method, not a property** (verified live:
+  `fileView.text` returns the function object; `function.length === 0`
+  makes length checks silently lie). Read content with
+  `fileView.text()`; write with `setText(...)` + `writeAdapter()`; the
+  `loaded`/`saved`/`loadFailed` signals fire on bare filesystem paths
+  (no URL scheme needed). Verified by a full open/save round-trip.
 - **greetd greeter flow with Quickshell.Services.Greetd**: the greeter
   drives the whole PAM conversation through the `Greetd` singleton
   (createSession -> authMessage -> respond -> readyToLaunch -> launch).
