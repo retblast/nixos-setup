@@ -12,8 +12,10 @@ import ".."
 Item {
 	id: root
 
-	// Set a city name to pin the location; empty = IP-based.
-	readonly property string location: ""
+	// Pinned to Lima: the IP-based guess resolves to the ISP hub in
+	// Virú, La Libertad (~450 km away), which reported a different
+	// climate entirely. Set to "" to fall back to IP geolocation.
+	readonly property string location: "Lima"
 
 	property string cond: ""
 	property string temp: ""
