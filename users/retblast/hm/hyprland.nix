@@ -32,6 +32,12 @@ let
   # Regenerate the quickshell wallpaper palette from the currently
   # displayed wallpaper (awww query). matugen emits the Material You dark
   # scheme as JSON; Theme.qml watches that file and falls back to the
+  # fix-geoclue-position: correct BeaconDB's knowledge of the WiFi APs
+  # visible from here, so geoclue fixes land where the user actually is.
+  # Usage: fix-geoclue-position <lat> <lon>   (submit ground truth)
+  #        fix-geoclue-position --check       (query BeaconDB now)
+  fix-geoclue-position = pkgs.writers.writePython3Bin "fix-geoclue-position" {} (builtins.readFile ./fix-geoclue-position.py);
+
   # static retTheme values while it is absent. --prefer keeps the source
   # color choice deterministic without a terminal.
   update-palette = pkgs.writers.writeFishBin "update-palette" ''
@@ -425,5 +431,6 @@ in
     # Palette generation for the dynamic shell theme (called by
     # update-palette).
     pkgs.matugen
+    fix-geoclue-position
   ];
 }
