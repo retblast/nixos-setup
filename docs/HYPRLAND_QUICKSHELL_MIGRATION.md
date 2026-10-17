@@ -544,6 +544,21 @@ UI, weather widget (geoclue2 present).
   Option keys are dash-normalized to underscores
   (tap_to_click — ConfigManager.cpp:1139). HM's systemd start/shutdown
   hooks render regardless of settings.
+- **In Lua config mode, `hyprctl dispatch` wraps its argument as Lua**:
+  `hyprctl dispatch movetoworkspace 14` becomes
+  `hl.dispatch(movetoworkspace 14)` — a syntax error. The form is
+  `hyprctl dispatch 'hl.dsp.window.move({ workspace = "14" })'` (any Lua
+  expression that evaluates to a dispatch value). Every script calling
+  `hyprctl dispatch` needed this fix: float-workspace
+  (`hl.focus({ window = "address:..." })`,
+  `hl.dsp.window.float({ action = "toggle" })`), hypridle's dpms
+  commands (`hl.dsp.dpms({ action = "off" })`), and gesture closures
+  (which should call `hl.dispatch(hl.dsp....)` directly — no hyprctl
+  round-trip). `hyprctl keyword` is NOT wrapped and works as before.
+  Builder notes: `hl.dsp.window.cycle_next({ next = false })` replaces
+  `cyclenext prev`; `hl.dsp.focus` handles direction/monitor/workspace/
+  window selectors (`{ window = "address:0x..." }`); a fresh workspace
+  created by a move lands on the focused monitor.
 - **`Hyprland --verify-config` does NOT execute Lua configs** — it
   reported "config ok" on a file with a hard Lua syntax error. For Lua
   configs the gate is a live nested run (`Hyprland -c file` with the
