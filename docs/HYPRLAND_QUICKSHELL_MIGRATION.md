@@ -559,6 +559,19 @@ UI, weather widget (geoclue2 present).
   `cyclenext prev`; `hl.dsp.focus` handles direction/monitor/workspace/
   window selectors (`{ window = "address:0x..." }`); a fresh workspace
   created by a move lands on the focused monitor.
+- **Lua event gotchas for `hl.on("window.fullscreen")`-style handlers**:
+  - `w.fullscreen` is the mode enum, not a flag: FSMODE_NONE=0,
+    FSMODE_MAXIMIZED=1, FSMODE_FULLSCREEN=2. A truthiness check fires
+    on maximize too; check `== 2` for fullscreen.
+  - `window.destroy` hands the handler an already-expiring ref —
+    `w.address` can read as nil. Use `window.close` (live window) for
+    cleanup keyed by address.
+  - The query API is mounted on `hl` directly: `hl.get_workspaces()`,
+    `hl.get_windows()`, `hl.get_active_window()`, etc. Workspace
+    objects expose `.id`.
+  - `hl.dsp.window.move({ workspace = "...", window = w })` accepts the
+    window object as the target, so handlers can move a specific
+    window instead of the active one.
 - **`Hyprland --verify-config` does NOT execute Lua configs** — it
   reported "config ok" on a file with a hard Lua syntax error. For Lua
   configs the gate is a live nested run (`Hyprland -c file` with the
