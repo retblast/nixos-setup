@@ -135,14 +135,37 @@ hl.gesture({
 	end,
 })
 
--- Fullscreened windows get their own workspace: on entering fullscreen
--- the window moves to the next workspace (created if empty), so the
--- fullscreen app sits isolated from the tiled windows. Leaving
--- fullscreen keeps it where it is. The event covers every fullscreen
--- path — the SUPER+F bind, video players, games. Verified in the
--- playground: the fullscreen state survives the move.
+-- Fullscreened windows get their own workspace. Entering fullscreen
+-- moves the window to a fresh workspace id (highest existing + 1): a
+-- fresh id cannot name an existing workspace on the other monitor, and
+-- Hyprland creates new ids on the focused monitor, so the window never
+-- changes screens. The origin workspace is remembered per window and
+-- restored on leaving fullscreen. The memory is dropped on close, so a
+-- recycled address can never inherit a stale entry. FSMODE_NONE=0,
+-- FSMODE_MAXIMIZED=1, FSMODE_FULLSCREEN=2 — maximize must not isolate.
+-- The event covers every fullscreen path — the SUPER+F bind, video
+-- players, games. Verified: fresh-id moves land on the focused
+-- monitor; window objects are accepted as the move target.
+local fullscreenOrigins = {}
+
 hl.on("window.fullscreen", function(w)
-	if w.fullscreen then
-		hl.dispatch(hl.dsp.window.move({ workspace = "+1" }))
+	local mode = w.fullscreen
+	local origin = fullscreenOrigins[w.address]
+	if mode == 2 and not origin then
+		local maxId = 0
+		for _, ws in ipairs(hl.get_workspaces()) do
+			if ws.id > maxId then
+				maxId = ws.id
+			end
+		end
+		fullscreenOrigins[w.address] = w.workspace.id
+		hl.dispatch(hl.dsp.window.move({ workspace = tostring(maxId + 1), window = w }))
+	elseif mode == 0 and origin then
+		fullscreenOrigins[w.address] = nil
+		hl.dispatch(hl.dsp.window.move({ workspace = tostring(origin), window = w }))
 	end
+end)
+
+hl.on("window.close", function(w)
+	fullscreenOrigins[w.address] = nil
 end)
