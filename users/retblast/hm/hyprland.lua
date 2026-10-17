@@ -124,14 +124,14 @@ hl.gesture({
 	fingers = 4,
 	direction = "left",
 	action = function()
-		hl.exec_cmd("hyprctl dispatch cyclenext prev")
+		hl.dispatch(hl.dsp.window.cycle_next({ next = false }))
 	end,
 })
 hl.gesture({
 	fingers = 4,
 	direction = "right",
 	action = function()
-		hl.exec_cmd("hyprctl dispatch cyclenext")
+		hl.dispatch(hl.dsp.window.cycle_next({ next = true }))
 	end,
 })
 

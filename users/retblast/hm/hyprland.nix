@@ -108,11 +108,14 @@ let
         string match -q '*"floating":true*' $chunk
         and set floating true
         if test "$floating" != "$want_on"
-            hyprctl dispatch focuswindow address:$addr >/dev/null 2>&1
+            # Lua config mode: hyprctl dispatch wraps its argument as Lua
+            # (hl.dispatch(...)), so the actions are hl.* expressions — the
+            # legacy dispatcher names are syntax errors in this mode.
+            hyprctl dispatch "hl.focus({ window = \"address:$addr\" })" >/dev/null 2>&1
             # setfloating is a no-op in 0.56 (answers ok, does nothing);
-            # togglefloating is the dispatcher that actually works. The
+            # window.float is the dispatcher that actually works. The
             # pre-read state makes it deterministic.
-            hyprctl dispatch togglefloating >/dev/null 2>&1
+            hyprctl dispatch "hl.dsp.window.float({ action = \"toggle\" })" >/dev/null 2>&1
         end
     end
 
@@ -194,7 +197,7 @@ let
             echo ""
             echo "The terminal next to this one runs inside the sandbox:"
             echo "  hyprctl keyword ...     try settings live"
-            echo "  hyprctl dispatch ...    try dispatchers"
+            echo "  hyprctl dispatch 'hl.dsp...'    try dispatchers (lua form)"
             echo "  hyprctl instances       both sessions are listed"
             echo ""
             echo "Notes:"
@@ -245,7 +248,7 @@ let
 
     # Info terminal inside the sandbox; its shell targets the sandbox
     # instance (the compositor exports its own signature to children).
-    env HYPRLAND_INSTANCE_SIGNATURE=$nested_sig hyprctl dispatch exec "ptyxis -- fish -C 'cat $dir/README.txt'"
+    env HYPRLAND_INSTANCE_SIGNATURE=$nested_sig hyprctl dispatch "hl.dsp.exec_cmd(\"ptyxis -- fish -C 'cat $dir/README.txt'\")"
 
     # The sandbox shell instance, bound to the sandbox socket. Backgrounded
     # as its own statement; it dies with the sandbox compositor.
@@ -294,7 +297,7 @@ in
     enable = true;
     settings = {
       general = {
-        after_sleep_cmd = "hyprctl dispatch dpms on";
+        after_sleep_cmd = "hyprctl dispatch 'hl.dsp.dpms({ action = \"on\" })'";
         ignore_dbus_inhibit = false;
         lock_cmd = "pidof hyprlock || hyprlock";
       };
@@ -305,8 +308,8 @@ in
         }
         {
           timeout = 600;
-          on-timeout = "hyprctl dispatch dpms off";
-          on-resume = "hyprctl dispatch dpms on";
+          on-timeout = "hyprctl dispatch 'hl.dsp.dpms({ action = \"off\" })'";
+          on-resume = "hyprctl dispatch 'hl.dsp.dpms({ action = \"on\" })'";
         }
       ];
     };
