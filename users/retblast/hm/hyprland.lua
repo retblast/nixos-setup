@@ -167,7 +167,7 @@ local function settleMonitor(mon, targetId)
 		hl.dispatch(hl.dsp.focus({ monitor = mon.name }))
 		hl.dispatch(hl.dsp.focus({ workspace = tid }))
 	end
-	hl.dispatch(hl.workspace.move({ workspace = tid, monitor = mon.name }))
+	hl.dispatch(hl.dsp.workspace.move({ workspace = tid, monitor = mon.name }))
 	hl.dispatch(hl.dsp.focus({ monitor = mon.name }))
 	hl.dispatch(hl.dsp.focus({ workspace = tid }))
 end
@@ -200,7 +200,7 @@ local function slideUnit(delta)
 				-- the id if so
 				local passId = base + i - 1
 				if hl.get_workspace(tostring(passId)) then
-					hl.dispatch(hl.workspace.move({ workspace = tostring(passId), monitor = mons[i + 1].name }))
+					hl.dispatch(hl.dsp.workspace.move({ workspace = tostring(passId), monitor = mons[i + 1].name }))
 				end
 			end
 		end
