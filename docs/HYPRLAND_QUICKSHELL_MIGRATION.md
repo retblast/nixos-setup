@@ -586,7 +586,9 @@ UI, weather widget (geoclue2 present).
   move the whole window and may push the right edge one empty
   workspace past the last populated one, no further. Key primitives
   and traps:
-  - `hl.workspace.move({ workspace, monitor })` transfers ownership.
+  - `hl.dsp.workspace.move({ workspace, monitor })` transfers
+    ownership. The workspace dispatchers are nested under `dsp` like
+    the window ones — `hl.workspace` is nil and indexing it throws.
     Moving a monitor's ACTIVE ws makes it "plug the gap": another ws
     on that monitor is activated, else the first free id is created —
     but a dormant ws on it may be picked instead of creating, so
