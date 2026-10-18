@@ -118,15 +118,17 @@ local function monitorsByPosition()
 	return mons
 end
 
+-- The base anchors to the leftmost monitor's active workspace — the
+-- left monitor IS the base by definition. Taking the minimum active id
+-- instead mis-anchors when the monitors' actives are inverted (e.g.
+-- left on 3, right on 2): the first swipe would move the wrong
+-- monitor. A special workspace on the left monitor bails the step.
 local function stripBase(mons)
-	local base = nil
-	for _, mon in ipairs(mons) do
-		local ws = mon.active_workspace
-		if ws and ws.id > 0 and (not base or ws.id < base) then
-			base = ws.id
-		end
+	local ws = mons[1].active_workspace
+	if ws and ws.id > 0 then
+		return ws.id
 	end
-	return base
+	return nil
 end
 
 local function maxPopulatedId()
@@ -310,9 +312,23 @@ hl.bind("SHIFT + Print", hl.dsp.exec_cmd("screenshot-full"))
 hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
--- Trackpad gestures. The workspace action is the 1:1 drag; the overview
--- toggle and focus cycling run their commands.
-hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
+-- Trackpad gestures. The 3-finger horizontal swipe slides the
+-- workspace window: fingers right = forward, per the strip model.
+-- The overview toggle and focus cycling run their commands.
+hl.gesture({
+	fingers = 3,
+	direction = "right",
+	action = function()
+		slideStrip(1)
+	end,
+})
+hl.gesture({
+	fingers = 3,
+	direction = "left",
+	action = function()
+		slideStrip(-1)
+	end,
+})
 hl.gesture({
 	fingers = 3,
 	direction = "up",
