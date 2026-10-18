@@ -581,6 +581,15 @@ UI, weather widget (geoclue2 present).
   is no Lua API to remove a workspace — removal cannot be forced, only
   prevented at these sites. The bar renders one pill per existing
   workspace (no numbers).
+- **Cross-monitor workspace strip**: the cycle binds (SUPER+scroll,
+  CTRL+ALT+arrows) walk the global id strip, not one monitor's
+  workspaces. `hl.dsp.focus({ workspace = id })` on a workspace owned
+  by another monitor moves the monitor focus with it
+  (`Actions::changeWorkspace` -> `rawMonitorFocus` on the owner).
+  Next past the strip end creates max+1 on the focused monitor; prev
+  at the start stops; special workspaces (id <= 0) make the step
+  inert. This relies on packed numbering (see above) so the strip has
+  no holes.
 - **QML `Hyprland.dispatch` strings must be Lua-form** in Lua config
   mode — the IPC dispatch wraps its argument as Lua
   (`hl.dispatch(<arg>)`), so `"workspace 3"` is a syntax error. Send
