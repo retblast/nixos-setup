@@ -97,71 +97,199 @@ local function maxWorkspaceId()
 	return maxId
 end
 
--- The workspace strip spans monitors: existing ids in ascending order,
--- which flows left monitor -> right monitor (main display left of
--- external by default). The cycle binds walk this strip instead of
--- cycling within one monitor, so scrolling past the last workspace of
--- the laptop screen continues on the external screen and back.
--- Focusing a workspace owned by another monitor moves the focus to it
--- (verified in Actions::changeWorkspace). At the strip end, next
--- creates the following id on the current monitor; at the start, prev
--- stops. Special workspaces (id <= 0) are outside the strip and
--- deactivate the step.
-local function sortedWsIds()
-	local ids = {}
+-- Sliding workspace window across monitors. The strip is the packed
+-- id sequence; monitor i (physical left-to-right order) shows
+-- base+i-1, so with two displays the visible pair is (base, base+1).
+-- A swipe moves the whole window: (1,2) -> (2,3) -> (3,4) -> (4,5),
+-- where 5 is created as the new right edge; swiping back retracts it
+-- and the empty edge dies. The right edge may sit one empty workspace
+-- past the last populated one, no further.
+local function monitorsByPosition()
+	local mons = {}
+	for _, mon in ipairs(hl.get_monitors()) do
+		table.insert(mons, mon)
+	end
+	table.sort(mons, function(a, b)
+		if a.x ~= b.x then
+			return a.x < b.x
+		end
+		return a.y < b.y
+	end)
+	return mons
+end
+
+local function stripBase(mons)
+	local base = nil
+	for _, mon in ipairs(mons) do
+		local ws = mon.active_workspace
+		if ws and ws.id > 0 and (not base or ws.id < base) then
+			base = ws.id
+		end
+	end
+	return base
+end
+
+local function maxPopulatedId()
+	local maxId = 0
 	for _, ws in ipairs(hl.get_workspaces()) do
-		if ws.id > 0 then
-			table.insert(ids, ws.id)
+		if ws.id > 0 and ws.windows > 0 and ws.id > maxId then
+			maxId = ws.id
 		end
 	end
-	table.sort(ids)
-	return ids
+	return maxId
 end
 
-local function wsStripStep(forward)
-	local active = hl.get_active_workspace()
-	if not active or active.id <= 0 then
-		return
-	end
-	local ids = sortedWsIds()
-	local pos = nil
-	for idx, id in ipairs(ids) do
-		if id == active.id then
-			pos = idx
-			break
-		end
-	end
-	if not pos then
-		return
-	end
-	if forward then
-		if pos < #ids then
-			hl.dispatch(hl.dsp.focus({ workspace = tostring(ids[pos + 1]) }))
-		else
-			hl.dispatch(hl.dsp.focus({ workspace = tostring(maxWorkspaceId() + 1) }))
-		end
-	elseif pos > 1 then
-		hl.dispatch(hl.dsp.focus({ workspace = tostring(ids[pos - 1]) }))
+local function restoreFocus(name)
+	if name then
+		hl.dispatch(hl.dsp.focus({ monitor = name }))
 	end
 end
 
+-- One unit slide. Every monitor shows base+i-1 before the call and
+-- base+delta+i-1 after. Each monitor's pass: create the target id if
+-- it died as an empty workspace (focus creates on the focused
+-- monitor), claim ownership if another monitor holds it, then settle
+-- the monitor on the target. The compositor's gap-plug fallback can
+-- activate a dormant workspace instead of creating the expected id,
+-- so ownership is never assumed — it is claimed. Right-slide passes
+-- run right to left: a claim steals the source monitor's active
+-- workspace, whose monitor is settled later in the loop. Left-slide
+-- passes run left to right: the claimed workspace is dormant on the
+-- already-settled left neighbour, so the claim is silent, and the
+-- just-deactivated workspace is then passed to the right neighbour.
+-- The user's focused monitor is restored last; focus churn inside
+-- the sequence never renders a frame.
+local function settleMonitor(mon, targetId)
+	local tid = tostring(targetId)
+	if not hl.get_workspace(tid) then
+		hl.dispatch(hl.dsp.focus({ monitor = mon.name }))
+		hl.dispatch(hl.dsp.focus({ workspace = tid }))
+	end
+	hl.dispatch(hl.workspace.move({ workspace = tid, monitor = mon.name }))
+	hl.dispatch(hl.dsp.focus({ monitor = mon.name }))
+	hl.dispatch(hl.dsp.focus({ workspace = tid }))
+end
+
+local function slideUnit(delta)
+	local mons = monitorsByPosition()
+	local n = #mons
+	local base = stripBase(mons)
+	if not base or n == 0 then
+		return
+	end
+	if n == 1 then
+		local target = base + delta
+		if target >= 1 then
+			hl.dispatch(hl.dsp.focus({ workspace = tostring(target) }))
+		end
+		return
+	end
+	local focused = hl.get_active_monitor()
+	if delta > 0 then
+		for i = n, 1, -1 do
+			settleMonitor(mons[i], base + i)
+		end
+	else
+		for i = 1, n do
+			settleMonitor(mons[i], base + i - 2)
+			if i < n then
+				-- pass the just-deactivated workspace right; it may have
+				-- died as an empty workspace, the next settle re-creates
+				-- the id if so
+				local passId = base + i - 1
+				if hl.get_workspace(tostring(passId)) then
+					hl.dispatch(hl.workspace.move({ workspace = tostring(passId), monitor = mons[i + 1].name }))
+				end
+			end
+		end
+	end
+	restoreFocus(focused and focused.name or nil)
+end
+
+-- The strip may push one empty workspace past the last populated one,
+-- but not two: block the right slide when the current right edge is
+-- already an empty workspace beyond every populated one.
+local function edgeBlocked(base, n)
+	local edge = base + n - 1
+	local maxPop = maxPopulatedId()
+	if maxPop == 0 or edge <= maxPop then
+		return false
+	end
+	for _, ws in ipairs(hl.get_workspaces()) do
+		if ws.id == edge then
+			return ws.windows == 0
+		end
+	end
+	return true
+end
+
+local function slideStrip(delta)
+	local mons = monitorsByPosition()
+	local base = stripBase(mons)
+	if not base then
+		return
+	end
+	if delta > 0 and edgeBlocked(base, #mons) then
+		return
+	end
+	if delta < 0 and base <= 1 then
+		return
+	end
+	slideUnit(delta)
+end
+
+-- Numeric binds slide the window until the focused monitor shows the
+-- requested workspace. Deliberate navigation, so the empty-edge limit
+-- does not apply; the loop stops if a unit slide stops making
+-- progress.
 for i = 1, 10 do
 	hl.bind("SUPER + " .. (i % 10), function()
-		local target = math.min(i, maxWorkspaceId() + 1)
-		hl.dispatch(hl.dsp.focus({ workspace = tostring(target) }))
+		local mons = monitorsByPosition()
+		local focused = hl.get_active_monitor()
+		if not focused then
+			return
+		end
+		local k = nil
+		for idx, mon in ipairs(mons) do
+			if mon.name == focused.name then
+				k = idx
+				break
+			end
+		end
+		if not k then
+			return
+		end
+		local target = i - (k - 1)
+		local cur = stripBase(mons)
+		while cur and cur < target do
+			local before = cur
+			slideUnit(1)
+			cur = stripBase(monitorsByPosition())
+			if not cur or cur <= before then
+				break
+			end
+		end
+		while cur and cur > target and cur > 1 do
+			local before = cur
+			slideUnit(-1)
+			cur = stripBase(monitorsByPosition())
+			if not cur or cur >= before then
+				break
+			end
+		end
 	end)
 end
 hl.bind("SUPER + mouse_down", function()
-	wsStripStep(true)
+	slideStrip(1)
 end)
 hl.bind("SUPER + mouse_up", function()
-	wsStripStep(false)
+	slideStrip(-1)
 end)
 hl.bind("CTRL + ALT + left", function()
-	wsStripStep(false)
+	slideStrip(-1)
 end)
 hl.bind("CTRL + ALT + right", function()
-	wsStripStep(true)
+	slideStrip(1)
 end)
 hl.bind("CTRL + ALT + SHIFT + left", hl.dsp.window.move({ workspace = "e-1" }))
 hl.bind("CTRL + ALT + SHIFT + right", hl.dsp.window.move({ workspace = "e+1" }))
