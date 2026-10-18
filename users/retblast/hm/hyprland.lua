@@ -97,16 +97,72 @@ local function maxWorkspaceId()
 	return maxId
 end
 
+-- The workspace strip spans monitors: existing ids in ascending order,
+-- which flows left monitor -> right monitor (main display left of
+-- external by default). The cycle binds walk this strip instead of
+-- cycling within one monitor, so scrolling past the last workspace of
+-- the laptop screen continues on the external screen and back.
+-- Focusing a workspace owned by another monitor moves the focus to it
+-- (verified in Actions::changeWorkspace). At the strip end, next
+-- creates the following id on the current monitor; at the start, prev
+-- stops. Special workspaces (id <= 0) are outside the strip and
+-- deactivate the step.
+local function sortedWsIds()
+	local ids = {}
+	for _, ws in ipairs(hl.get_workspaces()) do
+		if ws.id > 0 then
+			table.insert(ids, ws.id)
+		end
+	end
+	table.sort(ids)
+	return ids
+end
+
+local function wsStripStep(forward)
+	local active = hl.get_active_workspace()
+	if not active or active.id <= 0 then
+		return
+	end
+	local ids = sortedWsIds()
+	local pos = nil
+	for idx, id in ipairs(ids) do
+		if id == active.id then
+			pos = idx
+			break
+		end
+	end
+	if not pos then
+		return
+	end
+	if forward then
+		if pos < #ids then
+			hl.dispatch(hl.dsp.focus({ workspace = tostring(ids[pos + 1]) }))
+		else
+			hl.dispatch(hl.dsp.focus({ workspace = tostring(maxWorkspaceId() + 1) }))
+		end
+	elseif pos > 1 then
+		hl.dispatch(hl.dsp.focus({ workspace = tostring(ids[pos - 1]) }))
+	end
+end
+
 for i = 1, 10 do
 	hl.bind("SUPER + " .. (i % 10), function()
 		local target = math.min(i, maxWorkspaceId() + 1)
 		hl.dispatch(hl.dsp.focus({ workspace = tostring(target) }))
 	end)
 end
-hl.bind("SUPER + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
-hl.bind("SUPER + mouse_up", hl.dsp.focus({ workspace = "e-1" }))
-hl.bind("CTRL + ALT + left", hl.dsp.focus({ workspace = "e-1" }))
-hl.bind("CTRL + ALT + right", hl.dsp.focus({ workspace = "e+1" }))
+hl.bind("SUPER + mouse_down", function()
+	wsStripStep(true)
+end)
+hl.bind("SUPER + mouse_up", function()
+	wsStripStep(false)
+end)
+hl.bind("CTRL + ALT + left", function()
+	wsStripStep(false)
+end)
+hl.bind("CTRL + ALT + right", function()
+	wsStripStep(true)
+end)
 hl.bind("CTRL + ALT + SHIFT + left", hl.dsp.window.move({ workspace = "e-1" }))
 hl.bind("CTRL + ALT + SHIFT + right", hl.dsp.window.move({ workspace = "e+1" }))
 
