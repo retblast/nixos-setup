@@ -572,6 +572,23 @@ UI, weather widget (geoclue2 present).
   - `hl.dsp.window.move({ workspace = "...", window = w })` accepts the
     window object as the target, so handlers can move a specific
     window instead of the active one.
+- **Workspace continuity (packed numbering)**: empty unfocused
+  workspaces are destroyed by the compositor automatically (the state
+  tracker holds weak refs), so gaps only come from windows sitting on
+  stacked ids or far jumps. Enforced at the creation sites:
+  SUPER+1..0 binds clamp to `max existing id + 1` (closures in
+  hyprland.lua), and the fullscreen handler moves to `max + 1`. There
+  is no Lua API to remove a workspace — removal cannot be forced, only
+  prevented at these sites. The bar renders one pill per existing
+  workspace (no numbers).
+- **QML `Hyprland.dispatch` strings must be Lua-form** in Lua config
+  mode — the IPC dispatch wraps its argument as Lua
+  (`hl.dispatch(<arg>)`), so `"workspace 3"` is a syntax error. Send
+  `` `hl.dsp.focus({ workspace = ${id} })` `` instead. This applies to
+  every QML call site and script, same as the hyprctl dispatch rule.
+- **`hl.bind` accepts plain Lua closures** as the action (the
+  dispatcher builders are just pre-bound closures) — needed for binds
+  that compute their target at press time.
 - **`Hyprland --verify-config` does NOT execute Lua configs** — it
   reported "config ok" on a file with a hard Lua syntax error. For Lua
   configs the gate is a live nested run (`Hyprland -c file` with the
