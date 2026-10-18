@@ -9,34 +9,42 @@ Row {
 
     spacing: 4
 
+    // One pill per existing workspace, ordered by id. No numbers: the
+    // compositor keeps the numbering packed (see hyprland.lua numeric
+    // binds) and destroys empty unfocused workspaces, so the pill
+    // count and order follow the real layout. A click focuses by id
+    // through the Lua-form dispatch (Lua config mode wraps raw IPC
+    // dispatch arguments as Lua code, so legacy dispatcher strings
+    // are syntax errors).
+    readonly property var workspaces: {
+        const list = Hyprland.workspaces.values.filter(w => w.id > 0);
+        list.sort((a, b) => a.id - b.id);
+        return list;
+    }
+
     Repeater {
-        model: 10
+        model: root.workspaces
 
         delegate: Rectangle {
             id: wsItem
 
-            required property int index
-            readonly property int wsId: index + 1
-            // Show all 10 slots (GNOME-like); a slot is filled once the
-            // workspace exists in the compositor.
-            readonly property var ws: Hyprland.workspaces.values.find(w => w.id === wsId) ?? null
+            required property var modelData
+            readonly property bool focused: modelData.focused
 
-            width: 20
-            height: 20
-            radius: 5
-            color: ws && ws.focused ? Theme.accent : (ws ? Theme.bgAlt : "transparent")
-
-            Text {
-                anchors.centerIn: parent
-                text: wsItem.wsId
-                color: wsItem.ws && wsItem.ws.focused ? "#ffffff" : Theme.fgDim
-                font.family: Theme.sans
-                font.pointSize: 8
+            width: focused ? 18 : 8
+            height: 8
+            radius: 4
+            color: focused ? Theme.accent : Theme.bgAlt
+            Behavior on width {
+                NumberAnimation {
+                    duration: 120
+                    easing.type: Easing.OutCubic
+                }
             }
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: Hyprland.dispatch("workspace " + wsItem.wsId)
+                onClicked: Hyprland.dispatch(`hl.dsp.focus({ workspace = ${modelData.id} })`)
             }
         }
     }

@@ -84,8 +84,24 @@ hl.bind("SUPER + F", hl.dsp.window.fullscreen())
 hl.bind("SUPER + Space", hl.dsp.window.float({ action = "toggle" }))
 
 -- Workspaces
+-- Numeric binds never focus beyond the highest existing id + 1, so a
+-- far jump cannot create holes in the numbering: workspaces stay
+-- packed. Empty unfocused workspaces are destroyed by the compositor.
+local function maxWorkspaceId()
+	local maxId = 0
+	for _, ws in ipairs(hl.get_workspaces()) do
+		if ws.id > maxId then
+			maxId = ws.id
+		end
+	end
+	return maxId
+end
+
 for i = 1, 10 do
-	hl.bind("SUPER + " .. (i % 10), hl.dsp.focus({ workspace = i }))
+	hl.bind("SUPER + " .. (i % 10), function()
+		local target = math.min(i, maxWorkspaceId() + 1)
+		hl.dispatch(hl.dsp.focus({ workspace = tostring(target) }))
+	end)
 end
 hl.bind("SUPER + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
 hl.bind("SUPER + mouse_up", hl.dsp.focus({ workspace = "e-1" }))
@@ -152,14 +168,8 @@ hl.on("window.fullscreen", function(w)
 	local mode = w.fullscreen
 	local origin = fullscreenOrigins[w.address]
 	if mode == 2 and not origin then
-		local maxId = 0
-		for _, ws in ipairs(hl.get_workspaces()) do
-			if ws.id > maxId then
-				maxId = ws.id
-			end
-		end
 		fullscreenOrigins[w.address] = w.workspace.id
-		hl.dispatch(hl.dsp.window.move({ workspace = tostring(maxId + 1), window = w }))
+		hl.dispatch(hl.dsp.window.move({ workspace = tostring(maxWorkspaceId() + 1), window = w }))
 	elseif mode == 0 and origin then
 		fullscreenOrigins[w.address] = nil
 		hl.dispatch(hl.dsp.window.move({ workspace = tostring(origin), window = w }))
