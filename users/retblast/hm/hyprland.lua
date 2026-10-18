@@ -313,20 +313,21 @@ hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
 -- Trackpad gestures. The 3-finger horizontal swipe slides the
--- workspace window: fingers right = forward, per the strip model.
+-- workspace window, content following the fingers: fingers right
+-- pulls the view one step back, fingers left pushes one forward.
 -- The overview toggle and focus cycling run their commands.
 hl.gesture({
 	fingers = 3,
 	direction = "right",
 	action = function()
-		slideStrip(1)
+		slideStrip(-1)
 	end,
 })
 hl.gesture({
 	fingers = 3,
 	direction = "left",
 	action = function()
-		slideStrip(-1)
+		slideStrip(1)
 	end,
 })
 hl.gesture({
