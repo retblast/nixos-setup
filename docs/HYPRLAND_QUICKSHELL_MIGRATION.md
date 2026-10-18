@@ -581,15 +581,24 @@ UI, weather widget (geoclue2 present).
   is no Lua API to remove a workspace — removal cannot be forced, only
   prevented at these sites. The bar renders one pill per existing
   workspace (no numbers).
-- **Cross-monitor workspace strip**: the cycle binds (SUPER+scroll,
-  CTRL+ALT+arrows) walk the global id strip, not one monitor's
-  workspaces. `hl.dsp.focus({ workspace = id })` on a workspace owned
-  by another monitor moves the monitor focus with it
-  (`Actions::changeWorkspace` -> `rawMonitorFocus` on the owner).
-  Next past the strip end creates max+1 on the focused monitor; prev
-  at the start stops; special workspaces (id <= 0) make the step
-  inert. This relies on packed numbering (see above) so the strip has
-  no holes.
+- **Sliding workspace window (the workspace model)**: monitors are
+  ordered by physical position; monitor i shows `base+i-1`. Swipes
+  move the whole window and may push the right edge one empty
+  workspace past the last populated one, no further. Key primitives
+  and traps:
+  - `hl.workspace.move({ workspace, monitor })` transfers ownership.
+    Moving a monitor's ACTIVE ws makes it "plug the gap": another ws
+    on that monitor is activated, else the first free id is created —
+    but a dormant ws on it may be picked instead of creating, so
+    slide code must claim ownership and re-activate, never assume.
+  - `hl.dsp.focus({ workspace = id })` activates the ws on its OWNER
+    and focuses that monitor; a missing id is created on the FOCUSED
+    monitor (focus a monitor first to place the creation).
+  - Empty non-active workspaces die at once (weak-ref tracker) —
+    a workspace can vanish mid-slide; guard existence before moving
+    it and let a later settle re-create the id.
+  - Monitor objects expose `.name/.x/.y/.active_workspace`; workspaces
+    expose `.id/.windows/.monitor`.
 - **QML `Hyprland.dispatch` strings must be Lua-form** in Lua config
   mode — the IPC dispatch wraps its argument as Lua
   (`hl.dispatch(<arg>)`), so `"workspace 3"` is a syntax error. Send
