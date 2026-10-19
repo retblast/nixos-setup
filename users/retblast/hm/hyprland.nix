@@ -319,11 +319,24 @@ in
     enable = true;
     settings = {
       general = {
-        disable_loading_bar = true;
-        grace = 2;
+        # hyprlock 0.9.x: disable_loading_bar, grace and no_fade_in no
+        # longer exist (loading bar removed in 0.8.0; grace and the
+        # fade-in are CLI flags now: --grace, --no-fade-in).
         hide_cursor = true;
-        no_fade_in = false;
       };
+
+      # Fingerprint at the lock screen through hyprlock's own handling:
+      # it shows the ready message, manages the reader, and cancels
+      # the verify when the user starts typing. Without this, the raw
+      # pam_fprintd prompt blocks the stack until the reader times
+      # out (~30s), which made post-failure unlocks take up to a
+      # minute (journal 2026-10-18).
+      auth = {
+        fingerprint = {
+          enabled = true;
+        };
+      };
+
       background = [
         {
           path = "screenshot";
@@ -337,7 +350,6 @@ in
           outline_thickness = 2;
           dots_size = 0.2;
           font_family = "SF Pro Text";
-          font_size = 12;
           placeholder_text = "Password...";
           position = "0, 0";
           halign = "center";
