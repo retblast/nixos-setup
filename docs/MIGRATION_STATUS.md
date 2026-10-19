@@ -32,10 +32,57 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 2026-10-13 | native wifi widget (Quickshell.Networking) replaces nm-applet | full NM bindings ship in quickshell 0.3.1; nm-applet's fallback pixmaps were misaligned and off-theme; SSID + signal strength now render in the bar |
 | 2026-10-18 | hyprlock fingerprint via hyprlock-native auth.fingerprint, PAM stack untouched | raw pam_fprintd prompts block password retries for the reader timeout (~30s, journal-verified) when the native manager is off; fallback is Option A: fprintAuth = false (password-only lock screen) |
 | 2026-10-18 | border palette via hyprctl eval + hl.config | hyprctl keyword is refused under the 0.57 Lua config; eval is the supported runtime override (verified live before applying) |
+| 2026-10-18 | restore empty-workspace reaping via a Hyprland overlay patch | 0.56.2 dropped the explicit reap (markInert has zero callers in the tree) and has no delete dispatcher in the Lua API; query-level inert filtering already existed, so calling markInert at the canonical sites restores the semantics the slide design and pill assume |
 
 ## Journal
 
 Newest first.
+
+### 2026-10-18 (night) — workspace zombies: patched Hyprland's missing empty-workspace reap (agent session, Master at machine)
+
+- **Bug**: emptied workspaces never truly closed on moving away; the
+  bar pill then showed phantom pills and holes. Root cause found in
+  the 0.56.2 source: destruction became refcounted in the 0.56
+  rewrite, and `CWorkspace::markInert()` — the logical-death
+  primitive, with inert-filtering already wired into every workspace
+  query — has zero callers in the entire tree. The old explicit reap
+  was dropped, the Lua API has no delete dispatcher
+  (workspace.*: rename, change_id, move, swap_monitors,
+  toggle_special), and emptied workspaces linger indefinitely
+  (verified live: a created-empty ws survived focus-away,
+  monitor-focus events and minutes of idle; swipe-away deaths came
+  only from gesture-state refs dropping, which is why swipes
+  sometimes reaped and numeric/pill moves never did).
+- **Fix — Hyprland overlay patch**
+  (`overlay/patches/hyprland-0.56.2-reap-empty-workspaces.patch`,
+  +25 lines): a new `CWorkspace::tryReap()` — markInert when empty,
+  non-special, non-persistent, id > 0 and not any monitor's active —
+  called at the canonical sites: `CMonitor::changeWorkspace` (the
+  demoted old active) and `CWindow::onUnmap` / `moveToWorkspace`
+  (deferred via doLater once the window's target drains). Wired via
+  overlay/fixes.nix on prev.hyprland. An interim pill-filter approach
+  was implemented first and reverted in favor of the patch.
+- **Verification**: patched 0.56.2 built from the exact nixpkgs
+  source + patch (clean compile). Nested self-test (in-config
+  hl.timer script — nested instances get no IPC socket): focus ws 2,
+  dump, focus back, dump. First dump showed the demoted empty ws 1
+  already reaped; second dump showed ws 2 gone, with a fresh ws 1 on
+  focus-back. PASS.
+- **Nested-test gotcha**: the test instance ignored hl.dsp.exit()
+  and kept running (orphaned when the nix wrapper returned), owned
+  wayland-2, and its startup exported that socket into the systemd
+  user activation environment — so systemd-launched apps targeted a
+  dead display. Cleanup: kill the process, remove its
+  $XDG_RUNTIME_DIR/hypr/<sig> dir, then
+  dbus-update-activation-environment --systemd with the real
+  session's WAYLAND_DISPLAY + HYPRLAND_INSTANCE_SIGNATURE (read off
+  the real compositor via /proc). Future nested runs must not be
+  allowed to outlive the test, and the real env should be re-imported
+  afterwards regardless.
+- **Gate (Master)**: rebuild + relog (the running session keeps its
+  existing zombies until then), then: close the last window on a
+  workspace and move away — gone from `hyprctl workspaces` and the
+  pill immediately; swipe back — a fresh empty ws; ids stay packed.
 
 ### 2026-10-18 (evening) — hyprlock unlock stall + frozen border palette, both fixed (agent session, Master at machine)
 

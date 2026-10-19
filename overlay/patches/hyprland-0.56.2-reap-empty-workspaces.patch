@@ -1,0 +1,77 @@
+diff --git a/src/desktop/Workspace.cpp b/src/desktop/Workspace.cpp
+index 16e1909..b20bf14 100644
+--- a/src/desktop/Workspace.cpp
++++ b/src/desktop/Workspace.cpp
+@@ -403,6 +403,21 @@ void CWorkspace::markInert() {
+     m_monitor.reset();
+ }
+ 
++void CWorkspace::tryReap() {
++    if (m_inert || m_isSpecialWorkspace || m_persistent || m_id <= 0)
++        return;
++
++    const auto PMONITOR = m_monitor.lock();
++    if (PMONITOR && (PMONITOR->m_activeWorkspace == m_self.lock() || PMONITOR->m_activeSpecialWorkspace == m_self.lock()))
++        return;
++
++    if (getWindowCount() > 0)
++        return;
++
++    Log::logger->log(Log::DEBUG, "reaping empty workspace id {}", m_id);
++    markInert();
++}
++
+ bool CWorkspace::inert() {
+     return m_inert;
+ }
+diff --git a/src/desktop/Workspace.hpp b/src/desktop/Workspace.hpp
+index 63f2196..b4fc9d5 100644
+--- a/src/desktop/Workspace.hpp
++++ b/src/desktop/Workspace.hpp
+@@ -56,6 +56,7 @@ class CWorkspace {
+     std::string getConfigName();
+     bool        matchesStaticSelector(const std::string& selector);
+     void        markInert();
++    void        tryReap();
+     void        updateWindowDecos();
+     void        updateWindowData();
+     int         getWindowCount(std::optional<bool> onlyTiled = {}, std::optional<bool> onlyPinned = {}, std::optional<bool> onlyVisible = {});
+diff --git a/src/desktop/view/Window.cpp b/src/desktop/view/Window.cpp
+index 8836f73..ed9cd7b 100644
+--- a/src/desktop/view/Window.cpp
++++ b/src/desktop/view/Window.cpp
+@@ -581,6 +581,9 @@ void CWindow::moveToWorkspace(PHLWORKSPACE pWorkspace) {
+         Event::bus()->m_events.window.moveToWorkspace.emit(m_self.lock(), pWorkspace);
+     }
+ 
++    if (OLDWORKSPACE)
++        g_pEventLoopManager->doLater([OLDWORKSPACE] { OLDWORKSPACE->tryReap(); });
++
+     if (const auto SWALLOWEE = m_swallowee.lock()) {
+         if (SWALLOWEE->m_currentlySwallowed) {
+             SWALLOWEE->moveToWorkspace(pWorkspace);
+@@ -747,7 +750,10 @@ void CWindow::onUnmap() {
+ 
+     Desktop::globalWindowController()->updateAllWindowsDecorations();
+ 
++    const auto POLDWS = m_workspace;
+     m_workspace.reset();
++    if (POLDWS)
++        g_pEventLoopManager->doLater([POLDWS] { POLDWS->tryReap(); });
+ 
+     if (m_isX11)
+         return;
+diff --git a/src/output/Monitor.cpp b/src/output/Monitor.cpp
+index e69d8dd..059deed 100644
+--- a/src/output/Monitor.cpp
++++ b/src/output/Monitor.cpp
+@@ -1465,6 +1465,9 @@ void CMonitor::changeWorkspace(const PHLWORKSPACE& pWorkspace, bool internal, bo
+         POLDWORKSPACE->m_events.activeChanged.emit();
+     }
+ 
++    if (POLDWORKSPACE)
++        POLDWORKSPACE->tryReap();
++
+     pWorkspace->m_visible = true;
+ 
+     if (!internal) {

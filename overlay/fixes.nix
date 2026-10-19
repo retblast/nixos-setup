@@ -23,6 +23,17 @@ let
           ./patches/thermald-2.5.12-rapl-dual-path-sync.patch
         ];
       });
+      # 0.56.2 lost the empty-workspace reap: markInert() exists but
+      # nothing calls it, so emptied workspaces linger after focus-away
+      # and confuse the shell's workspace pill (no delete dispatcher
+      # exists in the Lua API). Restore the reap at the canonical
+      # sites: on deactivation (changeWorkspace) and after a window
+      # leaves a workspace (unmap / moveToWorkspace).
+      hyprland = prev.hyprland.overrideAttrs (old: {
+        patches = (old.patches or []) ++ [
+          ./patches/hyprland-0.56.2-reap-empty-workspaces.patch
+        ];
+      });
       # TODO: apply this as overlay somehow on flake.nix
       kwin-effects-better-blur-dx =
         inputs.kwin-effects-better-blur-dx.packages.${prev.stdenv.hostPlatform.system}.default;
