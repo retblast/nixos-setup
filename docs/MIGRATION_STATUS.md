@@ -30,10 +30,53 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 2026-10-13 | dock visible only on floating workspaces | Master's call: tiling = no dock; dock returns on float-mode workspaces (SUPER SHIFT F) |
 | 2026-10-13 | track active workspace via Hyprland.rawEvent, not focusedWorkspace | quickshell 0.3.1 focusedWorkspace never updates after startup (empirically stale); the event socket is reliable |
 | 2026-10-13 | native wifi widget (Quickshell.Networking) replaces nm-applet | full NM bindings ship in quickshell 0.3.1; nm-applet's fallback pixmaps were misaligned and off-theme; SSID + signal strength now render in the bar |
+| 2026-10-18 | hyprlock fingerprint via hyprlock-native auth.fingerprint, PAM stack untouched | raw pam_fprintd prompts block password retries for the reader timeout (~30s, journal-verified) when the native manager is off; fallback is Option A: fprintAuth = false (password-only lock screen) |
+| 2026-10-18 | border palette via hyprctl eval + hl.config | hyprctl keyword is refused under the 0.57 Lua config; eval is the supported runtime override (verified live before applying) |
 
 ## Journal
 
 Newest first.
+
+### 2026-10-18 (evening) — hyprlock unlock stall + frozen border palette, both fixed (agent session, Master at machine)
+
+- **hyprlock post-failure unlock stall (Option B applied)**: after one
+  wrong password, later attempts took 30–56s (journal 12:50–12:52),
+  and hyprlock 0.9.6 aborted its auth thread once (coredump
+  2026-10-16: assert in a CHyprlock::run lambda on a worker thread).
+  pam_fprintd sits first in the hyprlock PAM stack (injected because
+  services.fprintd is on; the service was left at `{ }` defaults) and
+  its finger-wait leaked into password retries, because hyprlock's
+  native fingerprint manager — which cancels the verify on typing —
+  was off. Fix in programs.hyprlock: `auth.fingerprint.enabled = true`
+  plus removal of four dead options the 0.7-era config still set
+  (disable_loading_bar, grace, no_fade_in, font_size — loading bar
+  removed in 0.8.0; grace and fade-in are --grace/--no-fade-in CLI
+  now). PAM stack untouched. Fallback if the native path misbehaves:
+  Option A — security.pam.services.hyprlock.fprintAuth = false
+  (password-only at the lock screen; fingerprint stays at the
+  greeter).
+- **Window border palette frozen**: the quickshell palette reader
+  still called `hyprctl keyword`, which 0.57 refuses under the Lua
+  config ("keyword can't work with non-legacy parsers. Use eval.",
+  HyprCtl.cpp dispatchKeyword). The bar (in-process JSON) kept
+  updating; the border silently never did — same migration class as
+  the hyprlock options. Fix: the two calls became `hyprctl eval
+  hl.config({ general = { col = { ... } } })`. Verified live on the
+  running session before applying (red flash test, then the palette
+  applied via eval: getoption shows b2faba73 / aa19120c). The 10s
+  poll re-apply stays, so borders self-heal after Hyprland reloads.
+  hyprland.lua header comment corrected to match reality (the
+  palette reader does it, not update-palette, and via eval).
+- **Verification state**: nix eval of the full HM activation package
+  passes with all edits (no build: flake.lock is modified mid-update,
+  so building/switching is Master's call against whatever the lock
+  says at switch time). The live session already carries the palette
+  borders via eval; they persist until the next config reload.
+- **Gate (Master)**: rebuild + relog, then: wrong-password retry at
+  hyprlock reports in ~2–3s and the lock screen shows the
+  fingerprint ready message; `hyprctl getoption
+  general:col.active_border` follows palette.json within 10s of a
+  wallpaper change. Watch coredumpctl for hyprlock for a few days.
 
 ### 2026-10-14 (night, part 2) — Lua config migration (0.57 removes .conf) (agent session, Master at machine)
 
