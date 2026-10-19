@@ -1,7 +1,8 @@
 -- Hyprland configuration, Lua format (0.57 removes the hyprlang .conf
 -- format). Hand-written body, injected by home-manager's extraConfig.
 -- The dynamic border palette is applied at runtime by the shell's
--- update-palette flow via hyprctl keyword.
+-- palette reader via hyprctl eval (hyprctl keyword is refused under
+-- the 0.57 Lua config).
 
 hl.monitor({
 	output = "eDP-1",

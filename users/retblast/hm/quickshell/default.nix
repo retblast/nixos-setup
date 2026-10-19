@@ -73,23 +73,24 @@ let
                         root.palette = parsed;
                         // Carry the palette into Hyprland's window borders:
                         // the generated config only has the static retTheme
-                        // colors, so this keyword override re-applies on
-                        // every read (10s poll) and self-heals after
-                        // reloads. Active = primary at the same ~70% alpha
-                        // as the static config; inactive follows the
-                        // background.
+                        // colors, so this override re-applies on every read
+                        // (10s poll) and self-heals after reloads. Active =
+                        // primary at the same ~70% alpha as the static
+                        // config; inactive follows the background.
+                        //
+                        // 0.57: hyprctl keyword is refused under the Lua
+                        // config. hyprctl eval runs hl.config dynamically,
+                        // which parses the keys and schedules the border
+                        // refresh (verified live 2026-10-18).
                         const p = parsed.colors?.primary?.dark?.color;
                         const b = parsed.colors?.background?.dark?.color;
                         if (p && b) {
-                            // One option per keyword call: extra args become
-                            // gradient stops (verified — the combined call
-                            // parsed the second option as a color).
-                            Quickshell.execDetached(["hyprctl", "keyword",
-                                "general:col.active_border",
-                                "rgba(" + p.replace("#", "") + "b2)"]);
-                            Quickshell.execDetached(["hyprctl", "keyword",
-                                "general:col.inactive_border",
-                                "rgba(" + b.replace("#", "") + "aa)"]);
+                            Quickshell.execDetached(["hyprctl", "eval",
+                                'hl.config({ general = { col = { ' +
+                                'active_border = "rgba(' + p.replace("#", "") + 'b2)" } } })']);
+                            Quickshell.execDetached(["hyprctl", "eval",
+                                'hl.config({ general = { col = { ' +
+                                'inactive_border = "rgba(' + b.replace("#", "") + 'aa)" } } })']);
                         }
                     } catch (e) {
                         root.palette = {};
