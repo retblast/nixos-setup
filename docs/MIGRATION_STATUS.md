@@ -38,6 +38,54 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 
 Newest first.
 
+### 2026-10-19 (evening) — reap v2 (animation-safe debounce) + quickshell env-race fix (agent session, Master at machine)
+
+- **v1 live regression**: with the first reap running, swiping left
+  through an empty workspace made the incoming animation arrive from
+  the wrong side on the right monitor. Root cause: v1 reaped in
+  changeWorkspace's demotion block, BEFORE the ANIMTOLEFT
+  computation — markInert sets WORKSPACE_INVALID (-1), so the
+  `new > old` term flips and the direction inverts whenever the
+  demoted workspace is empty. The slides' pass choreography (demote
+  on eDP → pass right → settle on HDMI) also had the empty workspace
+  reaped under its feet mid-slide.
+- **v2**: the switch itself never reaps. A 750ms debounced sweep,
+  re-armed on every changeWorkspace, calls tryReap across all
+  workspaces once the switch burst (slides, animations, passes)
+  settles. The window hooks (onUnmap / moveToWorkspace, deferred)
+  stay. Patch updated in place; the overlay comment documents why
+  the switch must not reap.
+- **Test-methodology retraction**: the nested self-test used to
+  "verify" v1 (and re-run for v2) is invalid for this bug — a bare
+  nested session has none of the reference holders that keep
+  emptied workspaces alive on the real desktop (no gesture state,
+  no animation config, no windows), so demoted empties
+  self-destruct through the refcount instantly, natively, in any
+  build. Both nested runs measured the environment, not the patch;
+  v1's "PASS" was vacuous. Verification for v2 is the live gate
+  below.
+- **Compositor exit crash (pre-existing)**: 2026-10-19 20:04
+  SIGSEGV in Aquamarine's DRM-backend destructors inside
+  __run_exit_handlers — a shutdown-time crash on logout, same
+  lineage as the Oct 14/17 dumps, on the pre-patch binary; not the
+  reap patch. Watch for upstream Aquamarine fixes.
+- **Quickshell env race (the dead pill)**: after the compositor
+  restart, quickshell spawned before Hyprland's start hook
+  exported HYPRLAND_INSTANCE_SIGNATURE; the unit env is frozen at
+  spawn, so every Hyprland-backed widget (the workspace pill
+  included) stayed dead. Immediate fix: the signature was already
+  in the user manager env — restarting quickshell restored the
+  widgets (done 2026-10-19 22:53). Permanent fix: the quickshell
+  unit ExecStart now waits for the signature and pulls the live
+  activation environment at exec time — replaces the wayland-1 pin
+  and the socket-only wait, and also covers the 2026-10-14
+  start-limit crash path.
+- **Gate (Master)**: rebuild + relog onto v2, then live: swipe left
+  through an empty mid-strip workspace — animation direction must
+  be correct on both monitors; close the last window on a workspace
+  and move away — `hyprctl workspaces` drops it within ~1s; the
+  pill follows.
+
 ### 2026-10-18 (night) — workspace zombies: patched Hyprland's missing empty-workspace reap (agent session, Master at machine)
 
 - **Bug**: emptied workspaces never truly closed on moving away; the
