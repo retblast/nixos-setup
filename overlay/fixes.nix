@@ -26,9 +26,14 @@ let
       # 0.56.2 lost the empty-workspace reap: markInert() exists but
       # nothing calls it, so emptied workspaces linger after focus-away
       # and confuse the shell's workspace pill (no delete dispatcher
-      # exists in the Lua API). Restore the reap at the canonical
-      # sites: on deactivation (changeWorkspace) and after a window
-      # leaves a workspace (unmap / moveToWorkspace).
+      # exists in the Lua API). Restore it: tryReap() marks empty,
+      # non-special, non-persistent, non-active workspaces inert,
+      # called after a window leaves a workspace (unmap /
+      # moveToWorkspace, deferred) and by a debounced sweep on every
+      # workspace switch. The switch itself must not reap: the OUT
+      # animation and the user's slide pass still read the demoted
+      # workspace's id, and invalidating it mid-flight flips the
+      # animation direction (verified live 2026-10-19).
       hyprland = prev.hyprland.overrideAttrs (old: {
         patches = (old.patches or []) ++ [
           ./patches/hyprland-0.56.2-reap-empty-workspaces.patch

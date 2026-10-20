@@ -62,16 +62,42 @@ index 8836f73..ed9cd7b 100644
      if (m_isX11)
          return;
 diff --git a/src/output/Monitor.cpp b/src/output/Monitor.cpp
-index e69d8dd..059deed 100644
+index e69d8dd..ddbf7de 100644
 --- a/src/output/Monitor.cpp
 +++ b/src/output/Monitor.cpp
-@@ -1465,6 +1465,9 @@ void CMonitor::changeWorkspace(const PHLWORKSPACE& pWorkspace, bool internal, bo
-         POLDWORKSPACE->m_events.activeChanged.emit();
-     }
+@@ -1436,6 +1436,15 @@ static bool shouldWraparound(const WORKSPACEID id1, const WORKSPACEID id2) {
+     return std::min(id1, id2) == lowestID && std::max(id1, id2) == highestID;
+ }
  
-+    if (POLDWORKSPACE)
-+        POLDWORKSPACE->tryReap();
++// Debounced reaper for empty workspaces. The switch itself must not
++// reap: the slides in the user config pass just-demoted workspaces
++// between monitors, and the OUT animation still reads the old
++// workspace's id — an immediate markInert invalidates it and flips
++// the animation direction. One timer, re-armed on every switch;
++// when it finally fires, tryReap re-checks activity, so workspaces
++// re-settled in the meantime are left alone.
++static SP<CEventLoopTimer> g_pEmptyWsReapTimer = nullptr;
 +
-     pWorkspace->m_visible = true;
+ void CMonitor::changeWorkspace(const PHLWORKSPACE& pWorkspace, bool internal, bool noMouseMove, bool noFocus) {
+     if (!pWorkspace)
+         return;
+@@ -1528,6 +1537,19 @@ void CMonitor::changeWorkspace(const PHLWORKSPACE& pWorkspace, bool internal, bo
+         Animation::Workspace::setFullscreenFadeAnimation(m_activeSpecialWorkspace,
+                                                          Fullscreen::controller()->hasFullscreen(m_activeSpecialWorkspace) ? Animation::Workspace::ANIMATION_TYPE_IN :
+                                                                                                                              Animation::Workspace::ANIMATION_TYPE_OUT);
++
++    if (g_pEmptyWsReapTimer)
++        g_pEventLoopManager->removeTimer(g_pEmptyWsReapTimer);
++    g_pEmptyWsReapTimer = makeShared<CEventLoopTimer>(
++        std::chrono::milliseconds(750), [](SP<CEventLoopTimer> self, void* data) {
++            g_pEmptyWsReapTimer.reset();
++            for (auto const& ws : State::workspaceState()->workspacesCopy()) {
++                if (valid(ws))
++                    ws->tryReap();
++            }
++        },
++        nullptr);
++    g_pEventLoopManager->addTimer(g_pEmptyWsReapTimer);
+ }
  
-     if (!internal) {
+ void CMonitor::changeWorkspace(const WORKSPACEID& id, bool internal, bool noMouseMove, bool noFocus) {
