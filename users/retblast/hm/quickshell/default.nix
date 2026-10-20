@@ -157,30 +157,38 @@ in
     systemd.enable = true;
   };
 
-  # The generated unit starts before the Wayland socket is visible to it:
-  # the user manager lacks WAYLAND_DISPLAY at login, Qt cannot load the
-  # wayland platform plugin ("Failed to create wl_display") and the unit
-  # hits its start limit. This machine always runs one compositor whose
-  # socket is wayland-1; the env import in hyprland.nix exec-once covers
-  # the general case, this pins the service itself.
+  # The generated unit races the compositor twice: its environment is
+  # frozen at spawn (the user manager lacks WAYLAND_DISPLAY at login,
+  # the "Failed to create wl_display" start-limit crash, 2026-10-14
+  # 17:40), and it can spawn before Hyprland's start hook exports
+  # HYPRLAND_INSTANCE_SIGNATURE to the activation environment — seen
+  # live 2026-10-19 20:04 after a compositor restart: quickshell ran
+  # without the signature and every Hyprland-backed widget (the
+  # workspace pill included) stayed dead until a manual restart.
+  # ExecStart therefore waits for the signature and pulls the live
+  # activation environment at exec time: no pins, no races.
   systemd.user.services.quickshell = lib.mkIf hyprlandEnabled {
-    Service.Environment = [ "WAYLAND_DISPLAY=wayland-1" ];
-    # The unit can start before the compositor has created its socket
-    # (graphical-session.target races Hyprland's startup); the crash then
-    # hits quickshell's own crash-loop guard and the desktop loses its
-    # shell for the whole session (seen live 2026-10-14 17:40). Wait for
-    # the socket before exec.
-    Service.ExecStartPre =
-      let
-        waitScript = pkgs.writeShellScript "wait-for-wayland-socket" ''
+    Service.ExecStart = lib.mkForce
+      (let
+        startScript = pkgs.writeShellScript "quickshell-with-session-env" ''
+          sig=""
           for i in $(seq 1 100); do
-            [ -S "''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$WAYLAND_DISPLAY" ] && exit 0
+            sig=$(systemctl --user show-environment | grep -E '^HYPRLAND_INSTANCE_SIGNATURE=' | cut -d= -f2-)
+            [ -n "$sig" ] && break
             sleep 0.2
           done
-          echo "wayland socket $WAYLAND_DISPLAY never appeared" >&2
-          exit 1
+          if [ -z "$sig" ]; then
+            echo "compositor instance signature never appeared" >&2
+            exit 1
+          fi
+          eval "$(systemctl --user show-environment | grep -E '^(WAYLAND_DISPLAY|HYPRLAND_INSTANCE_SIGNATURE|XDG_CURRENT_DESKTOP|XDG_SESSION_TYPE)=' | sed 's/^/export /')"
+          for i in $(seq 1 100); do
+            [ -S "''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$WAYLAND_DISPLAY" ] && break
+            sleep 0.2
+          done
+          exec ${pkgs.quickshell}/bin/quickshell --config shell
         '';
       in
-      "+${waitScript}";
+      "${startScript}");
   };
 }
