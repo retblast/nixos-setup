@@ -16,4 +16,10 @@ ShellRoot {
 
     Overview {
     }
+
+    NotifCenter {
+    }
+
+    QuickSettings {
+    }
 }

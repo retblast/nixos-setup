@@ -106,6 +106,10 @@ in
         pamixer
         brightnessctl
         libnotify
+        # powerprofilesctl CLI: the bar widget and the quick settings
+        # panel read/cycle the profile through it (the daemon itself is
+        # enabled as a service below; this guarantees the client on PATH).
+        power-profiles-daemon
 
         # blueman stays for the pairing/manager UI (blueman-manager). The
         # tray status icons are native quickshell widgets now, so the

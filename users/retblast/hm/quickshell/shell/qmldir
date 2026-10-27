@@ -1,4 +1,5 @@
 singleton Theme 1.0 Theme.qml
+singleton NotifStore 1.0 NotifStore.qml
 
 # A qmldir in a directory becomes authoritative for its types: every
 # component referenced from shell.qml must be listed here, or QML fails
@@ -8,3 +9,5 @@ Dock 1.0 Dock.qml
 OSD 1.0 OSD.qml
 Toasts 1.0 Toasts.qml
 Overview 1.0 Overview.qml
+NotifCenter 1.0 NotifCenter.qml
+QuickSettings 1.0 QuickSettings.qml

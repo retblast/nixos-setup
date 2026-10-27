@@ -25,6 +25,9 @@ NotificationServer {
         // access (Timer's expire(), click handlers) hitting a dangling
         // QML wrapper ("Property 'expire' ... is not a function").
         toast.tracked = true;
+        // Feed the shared history: plain copied fields only, never the
+        // wrapper (same dangling-object rule).
+        NotifStore.push(toast.appName, toast.summary, toast.body, toast.urgency === 2);
         toastCardComp.createObject(cardColumn, { toast: toast });
     }
 
