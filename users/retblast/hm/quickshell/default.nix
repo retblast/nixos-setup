@@ -121,21 +121,28 @@ let
     }
   '';
 
-  # Mirror Adwaita's monochrome symbolic sets (status + devices) and swap
-  # every fill for the theme foreground. Symbolic icons are monochrome by
-  # design, so a blanket fill swap is safe. Colors in style attributes are
-  # covered too; opacity attributes survive and keep faint shapes faint.
+  # Mirror Adwaita's monochrome symbolic sets (status + devices +
+  # actions) and swap every fill for the theme foreground. Symbolic
+  # icons are monochrome by design, so a blanket fill swap is safe.
+  # Colors in style attributes are covered too; opacity attributes
+  # survive and keep faint shapes faint.
   iconRecolor = pkgs.runCommand "adwaita-symbolic-recolored" { } ''
     src="${pkgs.adwaita-icon-theme}/share/icons/Adwaita"
     fg="${t.colors.fg}"
     install -d "$out"
     cp -r "$src/symbolic/status" "$out/status"
+    cp -r "$src/symbolic/actions" "$out/actions" 2>/dev/null || true
     cp -r "$src/symbolic/devices" "$out/devices" 2>/dev/null || true
-    # status wins on name collisions.
-    mv -n "$out/devices"/* "$out/status/" 2>/dev/null || true
-    rmdir "$out/devices" 2>/dev/null || true
-    # The copied SVGs are read-only (store permissions); sed -i needs write.
+    # cp -r preserves the store's read-only modes on the copied
+    # directories; the flatten below needs to write into them. chmod
+    # FIRST: with it after the mv (as before), the mv silently failed
+    # behind 2>/dev/null and the devices set never landed in status/
+    # (found while live-testing the quick settings + media icons).
     chmod -R u+w "$out"
+    # status wins on name collisions.
+    mv -n "$out/actions"/* "$out/status/" 2>/dev/null || true
+    mv -n "$out/devices"/* "$out/status/" 2>/dev/null || true
+    rmdir "$out/actions" "$out/devices" 2>/dev/null || true
     find "$out" -name '*.svg' -exec sed -i -E \
       -e "s/fill=\"#[0-9a-fA-F]{3,8}\"/fill=\"$fg\"/g" \
       -e "s/fill:#[0-9a-fA-F]{3,8}/fill:$fg/g" \
