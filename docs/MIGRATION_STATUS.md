@@ -38,6 +38,87 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 
 Newest first.
 
+### 2026-10-27 — GNOME interlude: dual-desktop fix, notification center, quick settings, media + power-profile widgets (agent session, Master on GNOME)
+
+- **Context**: Master switched Taihou back to GNOME (toggles flipped
+  in the working tree, his call; also restored the pre-migration
+  deskEnv-config.nix with the gnome-shell extensions). This session
+  prepared the stack for going back.
+- **Dual-desktop fix (critical pre-flip bug)**: the restored
+  deskEnv-config.nix gated gtk/qt/dconf/xresources on the GNOME
+  desktop option — the exact trap the runbook warns about — so the
+  next Hyprland flip would have silently killed GTK theming, icons,
+  fonts and prefer-dark for the surviving apps. App-facing blocks are
+  now unconditional; only the gnome-shell extensions and their
+  support packages stay GNOME-gated. The qt style returns to
+  adwaita-qt (locked decision 8; the restored file had breeze, which
+  pulls KDE Frameworks). The GNOME Shell dconf keys stay for the
+  GNOME side; they are inert under Hyprland.
+- **Notification center** (GNOME parity): NotifStore singleton (a
+  real ListModel — safe against the 0.3.1 Repeater-crash; entries are
+  plain copied fields, never the Notification wrapper) + NotifCenter
+  popover (clock click, SUPER+N, ipc target `notifcenter`), unread dot
+  on the clock, Clear button, click-a-card-to-drop, 20-entry cap.
+- **Quick settings panel** (SUPER+S, ipc `quicksettings`): volume
+  slider (Pipewire volume is writable per the 0.3.2 qmltypes —
+  `setAverageVolume`), brightness slider (brightnessctl, debounced
+  writes), wifi (nmcli radio), bluetooth (adapter.enabled), night
+  light, power profile and caffeine toggles, lock + logout actions.
+  State is re-probed on every open. Panels arbitrate through
+  NotifStore.openPanel — notifcenter and quicksettings can never be
+  mapped at the same time. Sliders are hand-built (the shell
+  deliberately avoids QtQuick.Controls).
+- **Bar widgets**: Media (Quickshell.Services.Mpris, first playing
+  player wins, click toggles, hidden with no player) and PowerProfile
+  (powerprofilesctl probe + optimistic cycle + 60s re-probe).
+  power-profiles-daemon added to modules/hyprland.nix systemPackages
+  so powerprofilesctl is guaranteed on PATH.
+- **Night light** (GNOME parity): Hyprland 0.56.2 has no built-in
+  (source-checked), so a gammastep user service (hyprland-gated)
+  runs on the sun schedule at the weather-pinned location (Lima,
+  6500:4000K), WantedBy graphical-session — auto-on per session, the
+  quick settings toggle stops/starts it. Opt-out: drop the WantedBy.
+- **Screenshots save to disk** (GNOME parity): both screenshot
+  scripts write ~/Pictures/Screenshots/Screenshot from <ts>.png AND
+  copy to the clipboard; notify carries the path.
+- **Icon flatten bug found + fixed (latent since batch 4)**: the
+  adwaita recolor script ran `chmod -R u+w` AFTER the devices→status
+  flatten, but `cp -r` preserves the store's read-only modes on the
+  copied DIRECTORIES, so the mv silently failed behind `2>/dev/null`
+  and the devices set never merged (nothing noticed — every icon used
+  until now lived in status). The media/quick-settings icons exposed
+  it. Now: chmod first, flatten second, and the actions set joins the
+  copy (media-playback-*, system-log-out live there). Verified: the
+  rebuilt recolored set contains all six previously-missing icon
+  names.
+- **quickshell is 0.3.2 in the current lock** (was 0.3.1): qmltypes
+  re-verified for every new surface used (Mpris players/values,
+  isPlaying, togglePlaying; Pipewire volume write). The old
+  workarounds (tracked notifications, imperative toast creation,
+  rawEvent workspace tracking, palette fish-loop) are still in place
+  and still valid until the live gate says otherwise.
+- **Flake gotcha (bit us here)**: a dirty git tree only feeds the
+  flake source from the git INDEX — new files must be staged before
+  eval/build or they are silently absent. First live-load test failed
+  purely on this (new QML files missing from the built shell dir).
+- **Verification**: hyprland.lua passes a luajit -bl syntax parse;
+  HM activation package evals with the GNOME toggles AND builds with
+  the Hyprland toggles; built shell live-loaded under GNOME
+  (quickshell -p): "Configuration Loaded", zero QML type errors, zero
+  icon warns, only the expected environment artifacts (notification
+  bus owned by GNOME Shell, layershell/mutter warnings,
+  test-env PATH misses brightnessctl — on PATH in the real session).
+  Data paths that need the real compositor (panel probes, media,
+  notifications) ride the switch gate below.
+- **Gate (Master, when switching back)**: flip the toggles, rebuild,
+  relog; then the consolidated checklist: reap v2 (empty-ws slide
+  direction + ws gone ≤1s), quickshell up at login with the pill
+  (env-race fix), overview, palette borders, weather, hyprlock ~3s
+  retry, clock click + SUPER+N (center, dot, clear), SUPER+S
+  (sliders + toggles live-apply), media widget with a player, power
+  profile cycles, night light follows schedule + toggle works,
+  screenshots land in ~/Pictures/Screenshots.
+
 ### 2026-10-19 (evening) — reap v2 (animation-safe debounce) + quickshell env-race fix (agent session, Master at machine)
 
 - **v1 live regression**: with the first reap running, swiping left
