@@ -7,19 +7,29 @@
 let
   hyprlandEnabled = taihouConfig.localModule.hyprland.enable;
 
-  # Volume: keybinds go through pamixer; use unmarked args so the percentage
-  # limit matches GNOME's allow-volume-above-100-percent setting.
+  # Screenshots: captured to the clipboard AND saved to disk (GNOME
+  # parity: ~/Pictures/Screenshots, timestamped filename).
   screenshot-region = pkgs.writers.writeFishBin "screenshot-region" ''
     set -l geo (slurp)
     if test -n "$geo"
-        grim -g "$geo" - | wl-copy
-        notify-send -a Screenshot "Region captured" "Copied to clipboard"
+        set -l dir ~/Pictures/Screenshots
+        mkdir -p $dir
+        set -l f "$dir/Screenshot from "(date +"%Y-%m-%d %H-%M-%S")".png"
+        if grim -g "$geo" -t png "$f"
+            wl-copy < "$f"
+            notify-send -a Screenshot "Region captured" "Saved to $f and copied to clipboard"
+        end
     end
   '';
 
   screenshot-full = pkgs.writers.writeFishBin "screenshot-full" ''
-    grim - | wl-copy
-    notify-send -a Screenshot "Screen captured" "Copied to clipboard"
+    set -l dir ~/Pictures/Screenshots
+    mkdir -p $dir
+    set -l f "$dir/Screenshot from "(date +"%Y-%m-%d %H-%M-%S")".png"
+    if grim -t png "$f"
+        wl-copy < "$f"
+        notify-send -a Screenshot "Screen captured" "Saved to $f and copied to clipboard"
+    end
   '';
 
   clipboard-pick = pkgs.writers.writeFishBin "clipboard-pick" ''
@@ -32,12 +42,6 @@ let
   # Regenerate the quickshell wallpaper palette from the currently
   # displayed wallpaper (awww query). matugen emits the Material You dark
   # scheme as JSON; Theme.qml watches that file and falls back to the
-  # fix-geoclue-position: correct BeaconDB's knowledge of the WiFi APs
-  # visible from here, so geoclue fixes land where the user actually is.
-  # Usage: fix-geoclue-position <lat> <lon>   (submit ground truth)
-  #        fix-geoclue-position --check       (query BeaconDB now)
-  fix-geoclue-position = pkgs.writers.writePython3Bin "fix-geoclue-position" {} (builtins.readFile ./fix-geoclue-position.py);
-
   # static retTheme values while it is absent. --prefer keeps the source
   # color choice deterministic without a terminal.
   update-palette = pkgs.writers.writeFishBin "update-palette" ''
@@ -50,6 +54,12 @@ let
     matugen image "$wp" -m dark -q -j hex --prefer saturation \
         > "$cachedir/quickshell/palette.json" 2>/dev/null
   '';
+
+  # fix-geoclue-position: correct BeaconDB's knowledge of the WiFi APs
+  # visible from here, so geoclue fixes land where the user actually is.
+  # Usage: fix-geoclue-position <lat> <lon>   (submit ground truth)
+  #        fix-geoclue-position --check       (query BeaconDB now)
+  fix-geoclue-position = pkgs.writers.writePython3Bin "fix-geoclue-position" {} (builtins.readFile ./fix-geoclue-position.py);
 
   # Random wallpaper rotation (GNOME parity: ~/Pictures/Wallpapers, 1h).
   # The daemon is awww (swww was renamed upstream).
@@ -422,6 +432,26 @@ in
           Type = "oneshot";
           ExecStart = "${wallpaper-rotate}/bin/wallpaper-rotate";
         };
+      };
+
+      # Night light (GNOME parity): color temperature follows the sun
+      # schedule at the same location the weather widget is pinned to
+      # (Lima). Hyprland 0.56.2 has no built-in night light, so this uses
+      # wlr-gamma-control through gammastep. The quick settings panel
+      # toggles the unit; it re-enables at the next login (delete the
+      # WantedBy line to make it opt-in instead).
+      gammastep = {
+        Unit = {
+          Description = "Night light (color temperature schedule)";
+          PartOf = [ "graphical-session.target" ];
+          After = [ "graphical-session.target" ];
+        };
+        Service = {
+          ExecStart = "${pkgs.gammastep}/bin/gammastep -l -12.05:-77.04 -t 6500:4000";
+          Restart = "on-failure";
+          RestartSec = 3;
+        };
+        Install.WantedBy = [ "graphical-session.target" ];
       };
     };
     timers.wallpaper-rotate = {
