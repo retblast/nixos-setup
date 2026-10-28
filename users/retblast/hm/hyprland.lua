@@ -4,9 +4,26 @@
 -- palette reader via hyprctl eval (hyprctl keyword is refused under
 -- the 0.57 Lua config).
 
+-- Laptop panel: 133% — the same fraction GNOME applies on this
+-- machine (monitors.xml stores its float32 rounding: 1.3333333730697632).
 hl.monitor({
 	output = "eDP-1",
-	scale = 1.25,
+	scale = 4/3,
+})
+
+-- External screen, matched by EDID instead of port: vendor code "CRT"
+-- (unregistered in the PNP table, so it stays literal) + product name
+-- "HDMI" from the EDID 0xFC descriptor. Port-independent; a different
+-- screen with a different EDID falls through to the catch-all below.
+hl.monitor({
+	output = "desc:CRT HDMI",
+	scale = 5/3,
+})
+
+-- Catch-all: any other screen (projectors, new docks) at 100%.
+hl.monitor({
+	output = "",
+	scale = 1,
 })
 
 hl.config({
