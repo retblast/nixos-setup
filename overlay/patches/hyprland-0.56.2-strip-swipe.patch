@@ -1,0 +1,242 @@
+diff -urN a/src/config/lua/bindings/LuaBindingsConfigRules.cpp b/src/config/lua/bindings/LuaBindingsConfigRules.cpp
+--- a/src/config/lua/bindings/LuaBindingsConfigRules.cpp	2026-10-28 13:10:29.921983481 -0500
++++ b/src/config/lua/bindings/LuaBindingsConfigRules.cpp	2026-10-28 13:17:41.912952540 -0500
+@@ -1407,4 +1407,8 @@
+     Internal::setFn(L, "gesture", hlGesture);
+     Internal::setFn(L, "curve", hlCurve);
+     Internal::setFn(L, "animation", hlAnimation);
++
++    // Strip swipe helpers: the render offsets of the workspaces in the
++    // strip and the touchpad resolution.
++    Internal::registerStripBindings(L);
+ }
+diff -urN a/src/config/lua/bindings/LuaBindingsInternal.hpp b/src/config/lua/bindings/LuaBindingsInternal.hpp
+--- a/src/config/lua/bindings/LuaBindingsInternal.hpp	2026-10-28 13:10:29.921983481 -0500
++++ b/src/config/lua/bindings/LuaBindingsInternal.hpp	2026-10-28 13:17:35.516797742 -0500
+@@ -208,6 +208,7 @@
+     void registerQueryBindings(lua_State* L);
+     void registerNotificationBindings(lua_State* L);
+     void registerConfigRuleBindings(lua_State* L, CConfigManager* mgr);
++    void registerStripBindings(lua_State* L);
+     void registerBindingsImpl(lua_State* L, CConfigManager* mgr);
+     void registerDispatcherBindings(lua_State* L);
+ }
+diff -urN a/src/config/lua/bindings/LuaBindingsStrip.cpp b/src/config/lua/bindings/LuaBindingsStrip.cpp
+--- a/src/config/lua/bindings/LuaBindingsStrip.cpp	1969-12-31 19:00:00.000000000 -0500
++++ b/src/config/lua/bindings/LuaBindingsStrip.cpp	2026-10-28 14:07:43.647913806 -0500
+@@ -0,0 +1,145 @@
++#include "LuaBindingsInternal.hpp"
++#include "Check.hpp"
++
++#include "../../../managers/input/InputManager.hpp"
++#include "../../../render/Renderer.hpp"
++#include "../../../state/MonitorState.hpp"
++#include "../../../state/WorkspaceState.hpp"
++
++using namespace Config;
++using namespace Config::Lua;
++using namespace Config::Lua::Bindings;
++
++// Strip swipe support.
++//
++// The built-in unified swipe gesture slides the workspace of one
++// monitor, and the renderer draws a workspace only on the monitor that
++// owns it. A strip that slides across monitors needs both halves: Lua
++// drives the render offsets of the workspaces in the strip, and the
++// renderer draws a force-rendered workspace on every monitor that its
++// offset box touches. This file exposes the knobs, the geometry lives
++// in the config.
++//
++// The offsets are global pixels. A workspace on the right monitor has
++// its windows at the right monitor's position, so a negative offset
++// moves that content onto the left monitor.
++
++namespace {
++    PHLWORKSPACE stripWorkspace(lua_State* L, int idx, const char* fn) {
++        if (lua_isnumber(L, idx)) {
++            const auto ws = State::workspaceState()->query().id(WORKSPACEID(lua_tointeger(L, idx))).run();
++            if (ws)
++                return ws;
++        } else if (lua_isstring(L, idx)) {
++            const auto ws = State::workspaceState()->query().string(lua_tostring(L, idx)).run();
++            if (ws)
++                return ws;
++        }
++
++        Internal::configError(L, std::format("{}: no workspace matches the given id", fn));
++        return nullptr;
++    }
++
++    // The strip moves content between monitors, so every monitor that
++    // can show the moved content needs a repaint.
++    void stripDamage() {
++        for (const auto& monitor : State::monitorState()->monitors())
++            g_pHyprRenderer->damageMonitor(monitor);
++    }
++
++    void stripRefresh(PHLWORKSPACE ws) {
++        ws->updateWindowDecos();
++        stripDamage();
++    }
++}
++
++static int hlWsSetRenderOffset(lua_State* L) {
++    const auto ws = stripWorkspace(L, 1, "hl.ws.set_render_offset");
++    if (!ws)
++        return 0;
++
++    const auto x = Check::number(L, 2);
++    if (!x)
++        return Internal::configError(L, std::format("hl.ws.set_render_offset: bad type for arg 2, {}", x.error()));
++
++    const auto y = Check::number(L, 3);
++    if (!y)
++        return Internal::configError(L, std::format("hl.ws.set_render_offset: bad type for arg 3, {}", y.error()));
++
++    ws->m_renderOffset->setValueAndWarp(Vector2D(*x, *y));
++    stripRefresh(ws);
++    return 0;
++}
++
++// Moves the workspace with an animation instead of a hard set. The
++// animation follows the animation style of the workspace, so a release
++// that does not commit slides the content back into place.
++static int hlWsAnimateRenderOffset(lua_State* L) {
++    const auto ws = stripWorkspace(L, 1, "hl.ws.animate_render_offset");
++    if (!ws)
++        return 0;
++
++    const auto x = Check::number(L, 2);
++    if (!x)
++        return Internal::configError(L, std::format("hl.ws.animate_render_offset: bad type for arg 2, {}", x.error()));
++
++    const auto y = Check::number(L, 3);
++    if (!y)
++        return Internal::configError(L, std::format("hl.ws.animate_render_offset: bad type for arg 3, {}", y.error()));
++
++    *ws->m_renderOffset = Vector2D(*x, *y);
++    stripRefresh(ws);
++    return 0;
++}
++
++static int hlWsSetAlpha(lua_State* L) {
++    const auto ws = stripWorkspace(L, 1, "hl.ws.set_alpha");
++    if (!ws)
++        return 0;
++
++    const auto alpha = Check::number(L, 2);
++    if (!alpha)
++        return Internal::configError(L, std::format("hl.ws.set_alpha: bad type for arg 2, {}", alpha.error()));
++
++    ws->m_alpha->setValueAndWarp((float)*alpha);
++    stripRefresh(ws);
++    return 0;
++}
++
++static int hlWsForceRender(lua_State* L) {
++    const auto ws = stripWorkspace(L, 1, "hl.ws.force_render");
++    if (!ws)
++        return 0;
++
++    const auto force = Check::boolean(L, 2);
++    if (!force)
++        return Internal::configError(L, std::format("hl.ws.force_render: bad type for arg 2, {}", force.error()));
++
++    ws->m_forceRendering = *force;
++    stripRefresh(ws);
++    return 0;
++}
++
++// Puts a workspace back into its resting state: no offset, full alpha,
++// no forced rendering.
++static int hlWsReset(lua_State* L) {
++    const auto ws = stripWorkspace(L, 1, "hl.ws.reset");
++    if (!ws)
++        return 0;
++
++    ws->m_renderOffset->setValueAndWarp(Vector2D(0, 0));
++    ws->m_alpha->setValueAndWarp(1.f);
++    ws->m_forceRendering = false;
++    stripRefresh(ws);
++    return 0;
++}
++
++void Internal::registerStripBindings(lua_State* L) {
++    lua_newtable(L);
++    Internal::setFn(L, "set_render_offset", hlWsSetRenderOffset);
++    Internal::setFn(L, "set_alpha", hlWsSetAlpha);
++    Internal::setFn(L, "force_render", hlWsForceRender);
++    Internal::setFn(L, "reset", hlWsReset);
++    Internal::setFn(L, "animate_render_offset", hlWsAnimateRenderOffset);
++    lua_setfield(L, -2, "ws");
++}
+diff -urN a/src/render/Renderer.cpp b/src/render/Renderer.cpp
+--- a/src/render/Renderer.cpp	2026-10-28 13:10:29.951624062 -0500
++++ b/src/render/Renderer.cpp	2026-10-28 13:22:34.066530671 -0500
+@@ -259,6 +259,29 @@
+     if (pWindow->m_monitor == pMonitor)
+         return true;
+ 
++    // Strip swipe: a workspace can be drawn on a monitor that does not
++    // own it. The strip drag moves the render offset of the workspaces
++    // in the strip, so a workspace that slides far enough overlaps the
++    // neighbour monitor and has to be rendered there. Without this the
++    // strip stops at the monitor border.
++    if (PWINDOWWORKSPACE && PWINDOWWORKSPACE->m_forceRendering) {
++        const auto offset = PWINDOWWORKSPACE->m_renderOffset->value();
++
++        if (offset.x != 0 || offset.y != 0) {
++            // A fullscreen window belongs to its own monitor only.
++            if (Fullscreen::controller()->isFullscreen(pWindow))
++                return false;
++
++            auto windowBox = pWindow->getFullWindowBoundingBox();
++            windowBox.translate(offset);
++            windowBox.translate(pWindow->m_floatingOffset);
++
++            const CBox monitorBox = {pMonitor->m_position, pMonitor->m_size};
++            if (!windowBox.intersection(monitorBox).empty())
++                return true;
++        }
++    }
++
+     if ((!pWindow->m_workspace || !pWindow->m_workspace->isVisible()) && pWindow->m_monitor != pMonitor)
+         return false;
+ 
+@@ -1183,6 +1206,36 @@
+     else
+         renderWorkspaceWindows(pMonitor, pWorkspace, time);
+ 
++    // Strip swipe: a workspace of another monitor can slide over this
++    // monitor. The strip drag moves the render offsets of the
++    // workspaces, so the content of a neighbour workspace can overlap
++    // this monitor and has to be drawn here.
++    for (auto const& ws : State::workspaceState()->workspaces()) {
++        const auto PWS = ws.lock();
++        if (!PWS || PWS == pWorkspace)
++            continue;
++
++        if (!PWS->m_forceRendering || PWS->m_alpha->value() <= 0.F)
++            continue;
++
++        const auto owner = PWS->m_monitor.lock();
++        if (!owner || owner == pMonitor)
++            continue;
++
++        const auto offset = PWS->m_renderOffset->value();
++        if (offset.x == 0 && offset.y == 0)
++            continue;
++
++        const CBox contentBox = {owner->m_position + offset, owner->m_size};
++        if (contentBox.intersection({pMonitor->m_position, pMonitor->m_size}).empty())
++            continue;
++
++        if UNLIKELY (Fullscreen::controller()->hasFullscreen(PWS))
++            renderWorkspaceWindowsFullscreen(pMonitor, PWS, time);
++        else
++            renderWorkspaceWindows(pMonitor, PWS, time);
++    }
++
+     // and then special
+     if UNLIKELY (pMonitor->m_specialDim->value() != 0.F) {
+         CRectPassElement::SRectData data;

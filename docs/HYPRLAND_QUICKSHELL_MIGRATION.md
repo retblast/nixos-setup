@@ -617,6 +617,16 @@ UI, weather widget (geoclue2 present).
   config errors show only there, not in hyprland.log. Nested instances
   get no IPC socket under a logind session, so binds cannot be counted
   remotely.
+  - **Do not run the nested gate while a session is live.** The live
+    compositor holds the Wayland socket, so the nested instance falls
+    back to the X11 backend, opens the DRM and brings up its error
+    overlay on the live session. Its Lua errors are then reported on
+    the user's screen ("Lua error (unknown): ..."), and the instance
+    ignores SIGTERM — it needs SIGKILL and leaves a log directory
+    behind under `/run/user/<uid>/hypr/`. While a session is live, the
+    Lua gate is the `luajit -bl` parse plus the live session itself.
+    Never trigger a deliberate error in a nested instance either: it
+    surfaces on the live screen.
 - **`Hyprland --verify-config -c <file>`** parses a config without
   launching — use it as a gate on the generated config before switching
   (hyprlang configs only — see above).

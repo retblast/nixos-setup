@@ -35,10 +35,72 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 2026-10-18 | restore empty-workspace reaping via a Hyprland overlay patch | 0.56.2 dropped the explicit reap (markInert has zero callers in the tree) and has no delete dispatcher in the Lua API; query-level inert filtering already existed, so calling markInert at the canonical sites restores the semantics the slide design and pill assume |
 | 2026-10-28 | fullscreen isolation focuses the window's monitor before the move | a workspace id that does not exist yet is created on the FOCUSED monitor (resolveWorkspaceStr), so the fresh fullscreen id would land on the wrong screen |
 | 2026-10-28 | overview click goes through the compositor focus dispatcher | the generic wlr activate() needs a pointer device and does nothing when the pointer never moved, which is the normal case for a keyboard-opened overview |
+| 2026-10-28 | workspace swipe is a Lua-driven continuous gesture, the strip straddle comes from a compositor patch | the built-in gesture slides one monitor only and the renderer draws a workspace only on its own monitor, so a strip across monitors needs both halves patched |
 
 ## Journal
 
 Newest first.
+
+### 2026-10-28 — finger-tracked workspace strip: compositor patch + 1:1 gesture (agent session, Master live)
+
+- **Context**: Master wanted the GNOME-style workspace swipe - the
+  content follows the finger one to one, and the strip moves across the
+  monitors as one band.
+- **Why a patch was needed**: the built-in unified swipe gesture slides
+  the workspace of ONE monitor (m_monitor is the focused monitor), and
+  the renderer draws a workspace only on the monitor that owns it
+  (shouldRenderWindow: PWINDOWWORKSPACE->m_monitor == pMonitor). A
+  strip that slides across monitors needs both halves.
+- **The patch** (overlay/patches/hyprland-0.56.2-strip-swipe.patch):
+  Lua bindings hl.ws.set_render_offset / set_alpha / force_render /
+  reset / animate_render_offset, plus two renderer rules - one that
+  lets a force-rendered workspace be drawn on a monitor that does not
+  own it when its offset box touches that monitor, and one that renders
+  such a foreign workspace in the monitor's pass. The reap patch stays
+  a separate file.
+- **The 1:1 factor**: px_per_unit = 25.4 * monitor.width / (dpi *
+  monitor.physical_width), computed at runtime from the physical size
+  of the monitor (the Lua monitor exposes the logical width in pixels
+  and physical_width in millimetres). The dpi is the one input the
+  session cannot read:
+  - libinput has no public API for the resolution (checked the 1.31.3
+    header: libinput_device_get_dpi does not exist)
+  - the device reports none either - the kernel properties blob of the
+    ASUE1305 touchpad is 2 bytes, so there is no axis resolution
+  - libinput assumes a 69 mm wide touchpad in that case
+    (tp_init_default_resolution), which for a typical raw range lands
+    on about 1000 dots per inch
+  The config therefore uses 1000 dpi, and a monitor without a physical
+  size falls back to the compositor's own convention (a swipe distance
+  of one full screen). The planned Aquamarine patch was dropped: there
+  is no value for it to read, and one pinned patch less is one risk
+  less.
+- **The gesture**: the 3-finger horizontal gesture is continuous now
+  (start/update/finish). The gesture delta is cumulative, the offset of
+  every workspace of the strip is delta.x * px_per_unit (a rigid band),
+  and the release commits the step through the existing slideStrip path
+  when the travel passes 15 % of the screen or the finger flicked
+  (150 ms). Below the threshold the content slides back through
+  animate_render_offset.
+- **Known limits**: the commit re-assigns the workspaces between the
+  monitors and the compositor animates that move, but the window layout
+  of a moved workspace is recalculated at the switch - so the drag
+  previews the strip position, not the window layout. The incoming
+  workspace is not previewed either: it usually does not exist yet, so
+  the drag shows the strip's own content moving.
+- **Verification**: luajit -bl gate on the config; the patched
+  compositor builds (the reap marker and the new bindings are both in
+  the binary); the toplevel build is green; a nested run of the new
+  binary with the generated config loaded the Lua config with no
+  config errors, and a scratch probe in it called all five new
+  bindings. The nested gate is unsafe while a session is live - it
+  falls back to the X11 backend, opens the DRM and shows its error
+  overlay on the live screen; the runbook now says so.
+- **Gate (Master)**: rebuild and relog - the config needs the patched
+  compositor, hl.ws does not exist in the old binary. Then: a 3-finger
+  horizontal swipe moves the strip with the finger, crosses the
+  monitor border, commits on a long stroke and slides back on a short
+  one.
 
 ### 2026-10-28 — fullscreen isolation: stay on the window's monitor, release the temp workspace (agent session, Master live)
 

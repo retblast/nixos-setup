@@ -34,9 +34,18 @@ let
       # animation and the user's slide pass still read the demoted
       # workspace's id, and invalidating it mid-flight flips the
       # animation direction (verified live 2026-10-19).
+      #
+      # The strip-swipe patch adds what a 1:1 workspace swipe across
+      # monitors needs: Lua bindings for the render offset, the alpha
+      # and the forced rendering of a workspace, plus the renderer rule
+      # that draws a force-rendered workspace on every monitor its
+      # offset box touches. Without the renderer rule the strip stops
+      # at the monitor border, because 0.56.2 draws a workspace only on
+      # the monitor that owns it.
       hyprland = prev.hyprland.overrideAttrs (old: {
         patches = (old.patches or []) ++ [
           ./patches/hyprland-0.56.2-reap-empty-workspaces.patch
+          ./patches/hyprland-0.56.2-strip-swipe.patch
         ];
       });
       # TODO: apply this as overlay somehow on flake.nix

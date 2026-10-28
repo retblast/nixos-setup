@@ -359,23 +359,202 @@ hl.bind("SHIFT + Print", hl.dsp.exec_cmd("screenshot-full"))
 hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
--- Trackpad gestures. The 3-finger horizontal swipe slides the
--- workspace window, content following the fingers: fingers right
--- pulls the view one step back, fingers left pushes one forward.
--- The overview toggle and focus cycling run their commands.
+-- Trackpad gestures. The 3-finger horizontal swipe drags the
+-- workspace strip with the finger; the 3-finger up swipe opens the
+-- overview. Focus cycling runs its command.
+--
+-- The swipe is finger tracked: the content of the strip follows the
+-- fingers one to one, so a millimetre of finger travel moves a
+-- millimetre of screen. The factor between the gesture delta (touchpad
+-- units) and the pixels is computed at runtime from the physical size
+-- of the monitor, so the same gesture feels the same on every screen.
+--
+-- The touchpad reports no resolution and libinput has no public API
+-- for one, so the resolution is a config value. 1000 dots per inch is
+-- what libinput itself assumes for a device without one: its fallback
+-- size of 69mm for a typical raw range lands on about 1000 dots per
+-- inch.
+--
+-- The strip keeps its layout while it moves: the leftmost monitor
+-- shows the base workspace, the next monitor the next id. The drag
+-- moves the whole band, so the content of the right monitor slides
+-- across the border onto the left one while the left monitor's
+-- content leaves the screen. The release commits the step through the
+-- same path the keyboard binds use.
+local STRIP_TOUCHPAD_DPI = 1000
+local STRIP_COMMIT_RATIO = 0.15
+local STRIP_FLICK_MS = 150
+
+-- Pixels per touchpad unit on this monitor. The screen decides the
+-- factor: a finger travel of one inch moves the content by one inch
+-- of the screen.
+local function stripPixelsPerUnit(mon)
+	local width = mon.width
+	if not width or width <= 0 then
+		return nil
+	end
+	local physical = mon.physical_width
+	if physical and physical > 0 then
+		return 25.4 * width / (STRIP_TOUCHPAD_DPI * physical)
+	end
+	-- No physical size reported: fall back to the compositor's own
+	-- convention, where the swipe distance spans a full screen.
+	return width / 300
+end
+
+-- The workspaces of the strip: one per monitor, the ids counting up
+-- from the base of the leftmost monitor.
+local function stripIds(base, count)
+	local ids = {}
+	for i = 1, count do
+		ids[i] = base + i - 1
+	end
+	return ids
+end
+
+local stripDrag = nil
+
+-- Moves the whole strip by the travelled distance. Every workspace
+-- gets the same offset, so the band keeps its shape.
+local function stripApply(drag)
+	for i = 1, #drag.ids do
+		local id = tostring(drag.ids[i])
+		hl.ws.force_render(id, true)
+		hl.ws.set_render_offset(id, drag.travel, 0)
+	end
+end
+
+-- Puts the workspaces back into their resting state. The animated
+-- variant slides the content home, which is what a release below the
+-- threshold does.
+local function stripRelease(drag, animate)
+	for i = 1, #drag.ids do
+		local id = tostring(drag.ids[i])
+		if animate then
+			hl.ws.animate_render_offset(id, 0, 0)
+		else
+			hl.ws.reset(id)
+		end
+		hl.ws.force_render(id, false)
+	end
+end
+
+-- The commit hands the workspaces over to the compositor: the step
+-- moves them between the monitors and the compositor animates it. A
+-- workspace that changed its monitor keeps its offset, so the
+-- animation starts where the finger left the content. A workspace that
+-- stayed or left the strip is put back at rest.
+local function stripCommit(drag)
+	local before = drag.monitors
+	slideStrip(drag.step)
+	for i = 1, #drag.ids do
+		local id = drag.ids[i]
+		local ws = hl.get_workspace(tostring(id))
+		local now = ws and ws.monitor and ws.monitor.name or nil
+		if now and now ~= before[id] then
+			-- Changed its monitor: the compositor animates the move, and
+			-- the offset it starts from is where the finger left it.
+			hl.ws.force_render(tostring(id), false)
+		else
+			-- Stayed in place or left the strip: back at rest.
+			hl.ws.reset(tostring(id))
+		end
+	end
+end
+
 hl.gesture({
 	fingers = 3,
-	direction = "right",
-	action = function()
-		slideStrip(-1)
-	end,
-})
-hl.gesture({
-	fingers = 3,
-	direction = "left",
-	action = function()
-		slideStrip(1)
-	end,
+	direction = "horizontal",
+	action = {
+		start = function(event)
+			local mons = monitorsByPosition()
+			local base = stripBase(mons)
+			if not base or #mons == 0 then
+				return
+			end
+			local focused = hl.get_active_monitor()
+			local reference = focused and focused.name or mons[1].name
+			local mon = nil
+			for _, candidate in ipairs(mons) do
+				if candidate.name == reference then
+					mon = candidate
+					break
+				end
+			end
+			if not mon then
+				return
+			end
+			local units = stripPixelsPerUnit(mon)
+			if not units then
+				return
+			end
+			local ids = stripIds(base, #mons)
+			local monitors = {}
+			for i = 1, #mons do
+				monitors[ids[i]] = mons[i].name
+			end
+			stripDrag = {
+				ids = ids,
+				monitors = monitors,
+				units = units,
+				limit = mon.width,
+				threshold = STRIP_COMMIT_RATIO * mon.width,
+				travel = 0,
+				previous = 0,
+				time = event.time_ms,
+				previousTime = event.time_ms,
+				step = 0,
+			}
+		end,
+		update = function(event)
+			local drag = stripDrag
+			if not drag then
+				return
+			end
+			-- The gesture delta is cumulative since the gesture began.
+			local travel = event.delta.x * drag.units
+			if travel > drag.limit then
+				travel = drag.limit
+			elseif travel < -drag.limit then
+				travel = -drag.limit
+			end
+			if drag.step == 0 and math.abs(travel) > 4 then
+				-- Fingers left push the strip forward, fingers right pull
+				-- it back.
+				drag.step = travel < 0 and 1 or -1
+			end
+			drag.previous = drag.travel
+			drag.previousTime = drag.time
+			drag.travel = travel
+			drag.time = event.time_ms
+			stripApply(drag)
+		end,
+		finish = function(event)
+			local drag = stripDrag
+			stripDrag = nil
+			if not drag or drag.step == 0 then
+				if drag then
+					stripRelease(drag, true)
+				end
+				return
+			end
+			local committed = math.abs(drag.travel) >= drag.threshold
+			if not committed then
+				-- A flick commits as well: the finger moved far enough
+				-- in a short time to cover the threshold.
+				local elapsed = event.time_ms - drag.previousTime
+				if elapsed > 0 then
+					local speed = math.abs(drag.travel - drag.previous) / elapsed
+					committed = speed * STRIP_FLICK_MS >= drag.threshold
+				end
+			end
+			if committed then
+				stripCommit(drag)
+			else
+				stripRelease(drag, true)
+			end
+		end,
+	},
 })
 hl.gesture({
 	fingers = 3,
