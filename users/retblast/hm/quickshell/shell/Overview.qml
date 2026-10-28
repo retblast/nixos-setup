@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 // GNOME-style app overview: a fullscreen overlay grid of all toplevels
 // with live screencopy thumbnails. Toggle via IPC (SUPER+TAB or the
@@ -38,6 +39,23 @@ PanelWindow {
 
 	function close() {
 		root.visible = false;
+	}
+
+	// The generic toplevel carries no address, so the Hyprland address is
+	// resolved through the compositor namespace: a Hyprland toplevel
+	// points at the same wayland handle as the generic one, and that
+	// handle identity is the join key. The handle address is hex without
+	// the 0x prefix, the selector wants it with the prefix.
+	function hyprAddress(toplevel): string {
+		if (!Hyprland.usingLua)
+			return "";
+		const list = Hyprland.toplevels.values;
+		for (let i = 0; i < list.length; i++) {
+			const candidate = list[i];
+			if (candidate.wayland === toplevel)
+				return candidate.address;
+		}
+		return "";
 	}
 
 	// Dim backdrop; click-through closes.
@@ -103,7 +121,17 @@ PanelWindow {
 				MouseArea {
 					anchors.fill: parent
 					onClicked: {
-						card.modelData.activate();
+						// The generic activate() goes through wlr and needs
+						// a pointer device: it does nothing when the
+						// pointer never moved, which is the normal case
+						// for a keyboard-opened overview. The compositor
+						// focus dispatcher always works and also moves
+						// the workspace, which is what a click means.
+						const address = root.hyprAddress(card.modelData);
+						if (address !== "")
+							Hyprland.dispatch(`hl.dsp.focus({ window = "address:0x${address}" })`);
+						else
+							card.modelData.activate();
 						root.close();
 					}
 				}

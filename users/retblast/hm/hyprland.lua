@@ -410,17 +410,40 @@ hl.gesture({
 -- The event covers every fullscreen path — the SUPER+F bind, video
 -- players, games. Verified: fresh-id moves land on the focused
 -- monitor; window objects are accepted as the move target.
+--
+-- Two compositor rules shape the rest of the implementation:
+--
+-- 1. A workspace id that does not exist yet is created on the FOCUSED
+--    monitor (resolveWorkspaceStr). The window's own monitor is focused
+--    first, so a fullscreen stays on that screen instead of jumping to
+--    whichever screen held the keyboard focus.
+--
+-- 2. The reaper skips a workspace that is still a monitor's active one
+--    (tryReap in the reap patch). The temporary workspace is released by
+--    moving the window back: the move follows the window, so that
+--    monitor switches to the origin workspace. The origin id is
+--    recreated on the focused monitor, so it is focused first as well.
+--    The empty temporary workspace then dies in the debounced sweep.
 local fullscreenOrigins = {}
+
+local function focusMonitorByName(name)
+	if name then
+		hl.dispatch(hl.dsp.focus({ monitor = name }))
+	end
+end
 
 hl.on("window.fullscreen", function(w)
 	local mode = w.fullscreen
 	local origin = fullscreenOrigins[w.address]
 	if mode == 2 and not origin then
-		fullscreenOrigins[w.address] = w.workspace.id
+		local monitor = w.monitor and w.monitor.name or nil
+		fullscreenOrigins[w.address] = { workspace = w.workspace.id, monitor = monitor }
+		focusMonitorByName(monitor)
 		hl.dispatch(hl.dsp.window.move({ workspace = tostring(maxWorkspaceId() + 1), window = w }))
 	elseif mode == 0 and origin then
 		fullscreenOrigins[w.address] = nil
-		hl.dispatch(hl.dsp.window.move({ workspace = tostring(origin), window = w }))
+		focusMonitorByName(origin.monitor)
+		hl.dispatch(hl.dsp.window.move({ workspace = tostring(origin.workspace), window = w }))
 	end
 end)
 

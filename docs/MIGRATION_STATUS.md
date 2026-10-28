@@ -33,10 +33,74 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 2026-10-18 | hyprlock fingerprint via hyprlock-native auth.fingerprint, PAM stack untouched | raw pam_fprintd prompts block password retries for the reader timeout (~30s, journal-verified) when the native manager is off; fallback is Option A: fprintAuth = false (password-only lock screen) |
 | 2026-10-18 | border palette via hyprctl eval + hl.config | hyprctl keyword is refused under the 0.57 Lua config; eval is the supported runtime override (verified live before applying) |
 | 2026-10-18 | restore empty-workspace reaping via a Hyprland overlay patch | 0.56.2 dropped the explicit reap (markInert has zero callers in the tree) and has no delete dispatcher in the Lua API; query-level inert filtering already existed, so calling markInert at the canonical sites restores the semantics the slide design and pill assume |
+| 2026-10-28 | fullscreen isolation focuses the window's monitor before the move | a workspace id that does not exist yet is created on the FOCUSED monitor (resolveWorkspaceStr), so the fresh fullscreen id would land on the wrong screen |
+| 2026-10-28 | overview click goes through the compositor focus dispatcher | the generic wlr activate() needs a pointer device and does nothing when the pointer never moved, which is the normal case for a keyboard-opened overview |
 
 ## Journal
 
 Newest first.
+
+### 2026-10-28 — fullscreen isolation: stay on the window's monitor, release the temp workspace (agent session, Master live)
+
+- **Context**: Master reported an empty workspace that lingered after
+  leaving fullscreen, and a fullscreen that could land on the wrong
+  screen. Two compositor rules explain both.
+- **Rule 1 (focused monitor)**: a workspace id that does not exist yet
+  is created on the FOCUSED monitor (resolveWorkspaceStr). The fresh id
+  used by the fullscreen isolation was therefore created on whichever
+  screen held the keyboard focus, not on the window's screen.
+- **Rule 2 (reaper skip)**: the reap patch never reaps a workspace that
+  is still a monitor's active one (tryReap returns early when
+  PMONITOR->m_activeWorkspace == m_self). The temporary workspace was
+  left active by the fullscreen window, so the debounced sweep could
+  never kill it — that was the lingering empty workspace.
+- **Fix**: the fullscreen handler now records the origin workspace AND
+  the window's monitor, focuses that monitor before the move (so the
+  fresh id is created there), and on exit focuses the origin monitor
+  and moves the window back. The move follows the window, so that
+  monitor switches to the origin workspace and the temporary workspace
+  stops being active — the 750 ms sweep then reaps it.
+- **Verification**: the luajit -bl syntax gate passes and the toplevel
+  build is green (HM generation rebuilt). The Lua API used was checked
+  in the 0.56.2 source (window.monitor gives a CLuaMonitor with .name;
+  the focus dispatcher takes a monitor selector, the same idiom
+  settleMonitor already uses). The live fullscreen round trip rides
+  Master's gate.
+- **Still open**: the 1:1 finger-tracked workspace swipe with the
+  cross-monitor strip (Master's option 4b: a compositor patch plus a
+  gesture-driven drag). The runtime factor is derived:
+  px_per_unit = 25.4 * monitor.width / (dpi * monitor.physical_width),
+  with the touchpad dpi as the only input the session cannot reach on
+  its own (libinput cannot open the devices while the compositor holds
+  them, and udev exposes no resolution).
+
+### 2026-10-28 — overview click: focus through the compositor, not through wlr (agent session, Master live)
+
+- **Context**: clicking an overview card did nothing under Hyprland.
+- **Root cause**: the card click called the generic toplevel
+  activate(), which goes through wlr_toplevel.cpp:85 and returns early
+  when display->lastInputDevice() is null — the normal case for a
+  keyboard-opened overview, where the pointer never moved.
+- **Fix**: under Hyprland's Lua config the card click now dispatches
+  hl.dsp.focus({ window = "address:0x<addr>" }) over the IPC. The
+  compositor focus action explicitly changes the workspace
+  (ConfigActions.cpp), which is what a click means. The generic
+  activate() stays as the fallback for GNOME and for a legacy Hyprland
+  config.
+- **Address lookup**: the generic toplevel carries no address (checked
+  in the quickshell source), so the address is resolved through the
+  Hyprland namespace: a Hyprland toplevel points at the same wayland
+  handle as the generic one, and that handle identity is the join key.
+  The handle address is hex without the 0x prefix while the selector
+  wants the prefix, so the Overview adds it.
+- **Discriminator**: Hyprland.usingLua comes from the IPC status
+  (configProvider == "lua"), so it is false under GNOME and under a
+  legacy Hyprland config.
+- **Verification**: the built Overview loads in a live quickshell
+  instance against the running compositor with zero warnings; a scratch
+  test proved the join key against the live session — 7 of 7 toplevels
+  matched and usingLua was true; the Lua-form dispatch returns ok over
+  the IPC while the legacy form fails with the documented syntax error.
 
 ### 2026-10-27 — GNOME interlude: dual-desktop fix, notification center, quick settings, media + power-profile widgets (agent session, Master on GNOME)
 
