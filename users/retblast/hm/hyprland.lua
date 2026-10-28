@@ -15,6 +15,8 @@ hl.config({
     },
 
 	input = {
+		-- es is the boot default; SUPER+K and the bar's layout widget
+		-- toggle es <-> us at runtime through hl.config (see below).
 		kb_layout = "es",
 		follow_mouse = 1,
 		touchpad = {
@@ -85,6 +87,31 @@ hl.bind("SUPER + M", hl.dsp.exit())
 hl.bind("SUPER + Q", hl.dsp.window.close())
 hl.bind("SUPER + F", hl.dsp.window.fullscreen())
 hl.bind("SUPER + Space", hl.dsp.window.float({ action = "toggle" }))
+
+-- Keyboard layout toggle (es <-> us). hl.config called from a bind
+-- closure is a dynamic parse (isDynamicParse = not parsing config), so
+-- the input:kb_layout refresh bit schedules setKeyboardLayout and the
+-- keyboards reconfigure live. Runtime flips do not persist: a reload
+-- or relog returns to the es boot default above.
+local function currentLayout()
+	local v = hl.get_config("input:kb_layout")
+	if type(v) == "string" and #v > 0 then
+		return v
+	end
+	return "es"
+end
+
+local function toggleLayout()
+	hl.config({
+		input = {
+			kb_layout = currentLayout() == "us" and "es" or "us",
+		},
+	})
+end
+
+hl.bind("SUPER + K", function()
+	toggleLayout()
+end)
 
 -- Workspaces
 -- Numeric binds never focus beyond the highest existing id + 1, so a

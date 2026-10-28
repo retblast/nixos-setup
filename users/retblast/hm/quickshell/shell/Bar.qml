@@ -49,7 +49,7 @@ PanelWindow {
     }
 
     // Right: media, weather, volume, battery, power profile, network,
-    // caffeine, bluetooth, tray
+    // caffeine, bluetooth, layout, tray
     Row {
         id: rightSide
         anchors.right: parent.right
@@ -79,6 +79,9 @@ PanelWindow {
         }
 
         Widgets.Bluetooth {
+        }
+
+        Widgets.Layout {
         }
 
         Widgets.Tray {

@@ -110,6 +110,21 @@ Newest first.
   test-env PATH misses brightnessctl — on PATH in the real session).
   Data paths that need the real compositor (panel probes, media,
   notifications) ride the switch gate below.
+- **Keyboard layout switcher (es <-> us)**: the 0.56.2 Lua API does
+  not expose the legacy switchxkblayout dispatcher (source-checked),
+  so the toggle flips `input:kb_layout` wholesale through a runtime
+  `hl.config` — the option carries the REFRESH_INPUT_DEVICES bit,
+  which schedules `setKeyboardLayout()` and reconfigures keyboards
+  live (chain verified in the source: isDynamicParse() is true from
+  bind closures and from hyprctl eval). SUPER+K toggles in-process
+  (hl.get_config reads the live value, so no drift); the new bar
+  widget (ES/EN, click to toggle) drives the same flip via
+  `hyprctl eval` and tracks state through the activelayout rawEvent
+  (posted by setKeyboardLayout with the layout display name) plus a
+  getoption probe at shell start. Runtime flips do not persist: a
+  reload or relog returns to the es boot default. The luajit -bl
+  syntax gate earned its keep during the edit (caught a # comment in
+  the Lua input block before anything built).
 - **Gate (Master, when switching back)**: flip the toggles, rebuild,
   relog; then the consolidated checklist: reap v2 (empty-ws slide
   direction + ws gone ≤1s), quickshell up at login with the pill
@@ -117,7 +132,8 @@ Newest first.
   retry, clock click + SUPER+N (center, dot, clear), SUPER+S
   (sliders + toggles live-apply), media widget with a player, power
   profile cycles, night light follows schedule + toggle works,
-  screenshots land in ~/Pictures/Screenshots.
+  screenshots land in ~/Pictures/Screenshots, SUPER+K and the bar's
+  ES/EN pill flip the keyboard layout live (typing follows).
 
 ### 2026-10-19 (evening) — reap v2 (animation-safe debounce) + quickshell env-race fix (agent session, Master at machine)
 
