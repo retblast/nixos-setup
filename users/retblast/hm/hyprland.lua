@@ -7,24 +7,27 @@
 -- Laptop panel: 133% — the same fraction GNOME applies on this
 -- machine (monitors.xml stores its float32 rounding: 1.3333333730697632).
 --
--- The panel is the right screen: the external screen stands to its
--- left. The external screen is 2560 wide at 166%, so it takes 1536
--- logical pixels.
+-- The panel has no fixed position: the automatic layout puts it to the
+-- right of the screens that are placed explicitly, so it follows the
+-- external screen wherever that one stands. Alone, it sits at the
+-- origin.
 hl.monitor({
 	output = "eDP-1",
 	scale = 4/3,
-	position = "1536,0",
 })
 
 -- External screen, matched by EDID instead of port: vendor code "CRT"
 -- (unregistered in the PNP table, so it stays literal) + product name
 -- "HDMI" from the EDID 0xFC descriptor. Port-independent; a different
 -- screen with a different EDID falls through to the catch-all below.
--- It is the left screen and the main display.
+--
+-- It is the left screen and the main display. The position is explicit
+-- and the offset is written with an "x" between the coordinates — the
+-- parser only accepts that separator.
 hl.monitor({
 	output = "desc:CRT HDMI",
 	scale = 5/3,
-	position = "0,0",
+	position = "0x0",
 })
 
 -- Catch-all: any other screen (projectors, new docks) at 100%.

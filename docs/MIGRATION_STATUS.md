@@ -88,10 +88,18 @@ Newest first.
   still the active one, still holds windows). The reason shows up in the
   log after the next switch; the fix follows from it.
 - **The monitors**: the CRT reports the EDID description "CRT HDMI". It
-  now sits at position 0,0 with scale 5/3 and the laptop panel at
-  1536,0 with scale 4/3, which puts the CRT left of the laptop. The CRT
-  takes the focus when it appears (monitor.added). Hyprland has no
-  "preferred monitor" rule in Lua, so this is the available mechanism.
+  now sits at the left edge with scale 5/3, and the laptop panel keeps
+  scale 4/3. The panel has no fixed position: the automatic layout puts
+  it to the right of the screens that are placed explicitly, so it
+  follows the CRT and sits at the origin when the CRT is unplugged.
+  The CRT takes the focus when it appears (monitor.added). Hyprland has
+  no "preferred monitor" rule in Lua, so this is the available
+  mechanism.
+  - Trap: the offset of a monitor rule wants an "x" between the
+    coordinates ("0x0"), not a comma ("0,0"). A comma fails to parse
+    and the rule reports "error applying field position"; the other
+    fields of the rule are still applied, so the screen keeps its
+    automatic position.
 - **Verification**: the luajit -bl syntax gate passes; the patched
   compositor builds; the toplevel build is green. The reap patch was
   regenerated in the same format as its sibling and applies cleanly to

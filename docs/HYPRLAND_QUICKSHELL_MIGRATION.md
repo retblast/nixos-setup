@@ -609,11 +609,17 @@ UI, weather widget (geoclue2 present).
   the connector (`HDMI-A-1`) depends on the port, the description does
   not — `desc:CRT HDMI` identifies the same screen everywhere. The
   automatic layout ordered the screens by connector, which put the CRT
-  on the wrong side, so the positions are explicit (the CRT at 0,0 with
-  scale 5/3, the laptop panel at 1536,0 with scale 4/3 — the laptop
-  starts where the CRT ends). Hyprland has no "preferred monitor" rule
-  in Lua: the main display is made by focusing the CRT when it appears
-  (`monitor.added`).
+  on the wrong side, so the CRT is placed explicitly at the left edge
+  (scale 5/3) and the laptop panel keeps no position: the automatic
+  layout puts it to the right of the screens that are placed explicitly,
+  and at the origin when the CRT is unplugged. Hyprland has no
+  "preferred monitor" rule in Lua: the main display is made by focusing
+  the CRT when it appears (`monitor.added`).
+  - The offset of a monitor rule wants an **"x"** between the
+    coordinates (`position = "0x0"`), not a comma. A comma does not
+    parse: the rule reports "error applying field position" and the
+    screen keeps its automatic position. The other fields of the rule
+    are applied anyway — one bad field does not drop the whole rule.
 - **Sliding workspace window (the workspace model)**: monitors are
   ordered by physical position; monitor i shows `base+i-1`. Swipes
   move the whole window and may push the right edge one empty
