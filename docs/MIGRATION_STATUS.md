@@ -39,10 +39,65 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 2026-10-28 | the strip swipe uses the GNOME 50 model: 400 touchpad units per full screen | the Lua gesture delta is per event, not cumulative, so the old code moved the strip in jerks and never reached the commit threshold |
 | 2026-10-28 | a fullscreen window moves to the workspace right after its own and pushes the list | the list is positional, so the content above the origin moves one place up and the origin is recreated in place on exit |
 | 2026-10-28 | the CRT is the main display: it sits left of the laptop panel and takes the focus when it appears | the physical layout is CRT left, laptop right, and the automatic layout put the CRT on the wrong side |
+| 2026-10-29 | the strip swipe commits at 40 % of a workspace or on a flick, and the neighbours slide in | the old rule asked for a whole screen of travel, and with one screen the strip had no neighbour to show, so the drag ended on the wallpaper |
+| 2026-10-29 | the quickshell bar and dock follow the main display, the transient windows follow the focus | quickshell binds a window to its screen when it is created, so the bar stayed on the external screen after it was unplugged |
 
 ## Journal
 
 Newest first.
+
+### 2026-10-29 — the strip swipe follows GNOME's commit rules, the panel follows the main display (agent session, Master live)
+
+- **Context**: Master swiped with the external screen unplugged: the
+  content of the workspace slid away, the wallpaper showed, and the
+  workspace only changed after a very long swipe. The quickshell panel
+  also stayed on the external screen when it was unplugged, and the
+  service had to be restarted to get it back.
+- **The commit rules** (gnome-shell 50, js/ui/workspaceAnimation.js and
+  js/ui/swipeTracker.js): the drag follows the finger, the release snaps
+  to the nearest workspace, and the snap point is half a workspace away.
+  A flick commits on its own: the velocity of the last 150 ms projects
+  the end position past the snap point (the deceleration curve of the
+  shell, DECELERATION_TOUCHPAD = 0.997).
+  - The old rule asked for a whole screen of travel. Now a slow drag
+    commits at 40 % of a workspace and a flick commits on its velocity.
+    The velocity comes from the samples of the last 150 ms, the same
+    history the shell keeps.
+- **The neighbour**: with one screen the strip holds one workspace, so
+  the drag slid the content into the wallpaper - there was nothing next
+  to it. The drag now forces the workspaces before and after the strip
+  to render and slides them in from the outside, so the workspace that
+  comes next is visible. The compositor patch draws a forced workspace
+  on the monitor that owns it, shifted by the render offset, so the
+  offset of a neighbour is the travel plus the distance from the edge
+  of the strip to the position of its own monitor. The patch had to be
+  extended: the renderer skipped every forced workspace that belonged
+  to the monitor it was drawn on, which is exactly the neighbour of a
+  single screen.
+  - The strip bindings need the workspace to exist: an empty workspace
+    that is not active dies on its own, so the neighbour of the strip
+    can be gone before the drag ends. Every call looks the workspace up
+    first, which removes the "hl.ws.reset: no workspace matches the
+    given id" error Master saw.
+- **The panel**: quickshell binds a window to a screen when it is
+  created and keeps it there. The bar and the dock now follow the main
+  display - the external screen with the EDID description "CRT HDMI"
+  when it is connected, the focused monitor otherwise - and the
+  transient windows (OSD, toasts, overview, notifications, quick
+  settings) follow the focused monitor. The screen of the shell root is
+  a binding, so unplugging the external screen moves the bar back to
+  the laptop without a restart.
+- **Verification**: the luajit -bl gate passes; qmllint reports no new
+  warnings for the changed files (the "PanelWindow is not creatable"
+  and the Theme warnings come from the version mismatch of the lint
+  tool and are pre-existing); the patched compositor builds; the
+  toplevel build is green.
+- **Gate (Master)**: rebuild and relog (the compositor patch changed).
+  Then: a 3-finger swipe of about half a screen switches the workspace,
+  a flick switches it from a short movement, and the workspace that
+  comes next slides in while the finger moves. Unplug the external
+  screen: the bar and the dock move back to the laptop without a
+  restart.
 
 ### 2026-10-28 — strip swipe fixed, fullscreen shifts the list, CRT becomes the main display (agent session, Master live)
 

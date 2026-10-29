@@ -387,12 +387,14 @@ hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
 -- fingers, and the gesture decides how far the content travels.
 --
 -- The factor follows the model GNOME uses for its own workspace swipe
--- (js/ui/swipeTracker.js in gnome-shell): a full horizontal swipe is
--- TOUCHPAD_BASE_WIDTH touchpad units, and the swipe is normalized
--- against it. The screen width is therefore STRIP_SWIPE_UNITS units of
--- finger travel. This is normalized, so it does not depend on the
--- resolution of the touchpad: the touchpad reports no resolution and
--- libinput has no public API for one, so nothing better is available.
+-- (js/ui/swipeTracker.js and js/ui/workspaceAnimation.js in
+-- gnome-shell): the drag follows the finger one to one, a full
+-- horizontal swipe is TOUCHPAD_BASE_WIDTH touchpad units, and the
+-- release snaps to the nearest workspace. The screen width is
+-- therefore STRIP_SWIPE_UNITS units of finger travel. This is
+-- normalized, so it does not depend on the resolution of the touchpad:
+-- the touchpad reports no resolution and libinput has no public API for
+-- one, so nothing better is available.
 --
 -- The strip keeps its layout while it moves: the leftmost monitor
 -- shows the base workspace, the next monitor the next id. The drag
@@ -400,8 +402,19 @@ hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
 -- across the border onto the left one while the left monitor's
 -- content leaves the screen. The release commits the step through the
 -- same path the keyboard binds use.
+--
+-- The commit rules of GNOME:
+-- - a slow drag commits when it has covered half a workspace. Here it
+--   is 40 %, a little less than GNOME, so a single finger movement is
+--   enough to move on.
+-- - a flick commits on its own: the velocity of the last 150 ms
+--   projects the end position past the snap point (the deceleration
+--   curve of the shell).
 local STRIP_SWIPE_UNITS = 400
 local STRIP_FLICK_MS = 150
+local STRIP_COMMIT_RATIO = 0.4
+local STRIP_FLICK_VELOCITY = 0.6
+local STRIP_FLICK_PROJECTION = 0.997 / (1 - 0.997) / 1000
 
 -- Pixels per touchpad unit on this monitor. A full screen width is a
 -- full swipe of STRIP_SWIPE_UNITS units.
@@ -425,13 +438,93 @@ end
 
 local stripDrag = nil
 
+-- The velocity of the gesture, in touchpad units per millisecond. The
+-- samples of the last STRIP_FLICK_MS are used, the same history the
+-- shell keeps for its own swipes.
+local function stripVelocity(drag)
+	local samples = drag.samples
+	if #samples < 2 then
+		return 0
+	end
+	local first = samples[1]
+	local last = samples[#samples]
+	local period = last.time - first.time
+	if period <= 0 then
+		return 0
+	end
+	local total = 0
+	for i = 2, #samples do
+		total = total + samples[i].delta
+	end
+	return total / period
+end
+
+-- The neighbours of the strip: the workspace before the base and the
+-- workspace after the last one. They slide in from the outside while
+-- the strip moves, so the workspace that comes next is visible during
+-- the drag instead of the wallpaper.
+--
+-- The ids are kept, not the workspaces: an empty workspace that is not
+-- active dies on its own, so the neighbour can be gone before the drag
+-- ends. Every use of it looks it up again.
+local function stripNeighbours(ids)
+	local out = {}
+	local before = ids[1] - 1
+	local after = ids[#ids] + 1
+	if before >= 1 and hl.get_workspace(tostring(before)) then
+		table.insert(out, { id = before, side = -1 })
+	end
+	if hl.get_workspace(tostring(after)) then
+		table.insert(out, { id = after, side = 1 })
+	end
+	return out
+end
+
+-- Where a neighbour has to be drawn. The compositor draws a forced
+-- workspace on the monitor that owns it, shifted by the render offset,
+-- so the offset has to place the neighbour exactly one band to the
+-- left or to the right of the strip.
+local function stripNeighbourOffset(drag, nb)
+	local ws = hl.get_workspace(tostring(nb.id))
+	if not ws then
+		return nil
+	end
+	local owner = ws.monitor
+	if not owner then
+		return nil
+	end
+	local left = nil
+	local right = nil
+	for _, mon in ipairs(drag.monitorList) do
+		if left == nil or mon.x < left then
+			left = mon.x
+		end
+		local edge = mon.x + mon.width
+		if right == nil or edge > right then
+			right = edge
+		end
+	end
+	local edge = nb.side < 0 and left or right
+	return drag.travel + edge - owner.x
+end
+
 -- Moves the whole strip by the travelled distance. Every workspace
 -- gets the same offset, so the band keeps its shape.
 local function stripApply(drag)
 	for i = 1, #drag.ids do
 		local id = tostring(drag.ids[i])
-		hl.ws.force_render(id, true)
-		hl.ws.set_render_offset(id, drag.travel, 0)
+		if hl.get_workspace(id) then
+			hl.ws.force_render(id, true)
+			hl.ws.set_render_offset(id, drag.travel, 0)
+		end
+	end
+	for _, nb in ipairs(drag.neighbours) do
+		local offset = stripNeighbourOffset(drag, nb)
+		local id = tostring(nb.id)
+		if offset and hl.get_workspace(id) then
+			hl.ws.force_render(id, true)
+			hl.ws.set_render_offset(id, offset, 0)
+		end
 	end
 end
 
@@ -439,14 +532,22 @@ end
 -- variant slides the content home, which is what a release below the
 -- threshold does.
 local function stripRelease(drag, animate)
-	for i = 1, #drag.ids do
-		local id = tostring(drag.ids[i])
+	local function home(id)
+		if not hl.get_workspace(id) then
+			return
+		end
 		if animate then
 			hl.ws.animate_render_offset(id, 0, 0)
 		else
 			hl.ws.reset(id)
 		end
 		hl.ws.force_render(id, false)
+	end
+	for i = 1, #drag.ids do
+		home(tostring(drag.ids[i]))
+	end
+	for _, nb in ipairs(drag.neighbours) do
+		home(tostring(nb.id))
 	end
 end
 
@@ -457,18 +558,30 @@ end
 -- stayed or left the strip is put back at rest.
 local function stripCommit(drag)
 	local before = drag.monitors
+	-- The neighbours leave the drag before the strip moves: one of them
+	-- can become part of the strip, and it has to be at rest.
+	for _, nb in ipairs(drag.neighbours) do
+		local id = tostring(nb.id)
+		if hl.get_workspace(id) then
+			hl.ws.reset(id)
+		end
+	end
 	slideStrip(drag.step)
 	for i = 1, #drag.ids do
 		local id = drag.ids[i]
 		local ws = hl.get_workspace(tostring(id))
-		local now = ws and ws.monitor and ws.monitor.name or nil
-		if now and now ~= before[id] then
-			-- Changed its monitor: the compositor animates the move, and
-			-- the offset it starts from is where the finger left it.
-			hl.ws.force_render(tostring(id), false)
-		else
-			-- Stayed in place or left the strip: back at rest.
-			hl.ws.reset(tostring(id))
+		-- The workspace can die while the strip moves.
+		if ws then
+			local now = ws.monitor and ws.monitor.name or nil
+			if now and now ~= before[id] then
+				-- Changed its monitor: the compositor animates the move,
+				-- and the offset it starts from is where the finger left
+				-- the content.
+				hl.ws.force_render(tostring(id), false)
+			else
+				-- Stayed in place or left the strip: back at rest.
+				hl.ws.reset(tostring(id))
+			end
 		end
 	end
 end
@@ -507,16 +620,21 @@ hl.gesture({
 			stripDrag = {
 				ids = ids,
 				monitors = monitors,
+				-- The monitor objects, in position order: the edges of
+				-- the band are read from them.
+				monitorList = mons,
+				neighbours = stripNeighbours(ids),
 				units = units,
+				-- The width of one workspace of the strip.
+				width = mon.width,
 				limit = mon.width,
-				-- The swipe completes when it covers a whole screen,
-				-- the same normalization GNOME uses.
-				threshold = mon.width,
 				travel = 0,
 				previous = 0,
 				time = event.time_ms,
 				previousTime = event.time_ms,
 				step = 0,
+				-- The history of the gesture, for the velocity.
+				samples = { { time = event.time_ms, delta = 0 } },
 			}
 		end,
 		update = function(event)
@@ -542,6 +660,12 @@ hl.gesture({
 			drag.previousTime = drag.time
 			drag.travel = travel
 			drag.time = event.time_ms
+			-- The velocity history: the samples of the last
+			-- STRIP_FLICK_MS, the same window the shell keeps.
+			table.insert(drag.samples, { time = event.time_ms, delta = event.delta.x })
+			while #drag.samples > 1 and event.time_ms - drag.samples[1].time > STRIP_FLICK_MS do
+				table.remove(drag.samples, 1)
+			end
 			stripApply(drag)
 		end,
 		finish = function(event)
@@ -553,17 +677,18 @@ hl.gesture({
 				end
 				return
 			end
-			local committed = math.abs(drag.travel) >= drag.threshold
-			if not committed then
-				-- A flick commits as well: the finger moved far enough
-				-- in a short time to cover the threshold.
-				local elapsed = event.time_ms - drag.previousTime
-				if elapsed > 0 then
-					local speed = math.abs(drag.travel - drag.previous) / elapsed
-					committed = speed * STRIP_FLICK_MS >= drag.threshold
-				end
+			-- The commit follows the shell: a slow drag commits when it
+			-- has covered 40 % of a workspace, a flick commits on its own
+			-- because the velocity projects the end position past the
+			-- snap point.
+			local progress = drag.travel / drag.width
+			local velocity = stripVelocity(drag)
+			local projected = progress
+			if math.abs(velocity) >= STRIP_FLICK_VELOCITY then
+				local sign = velocity > 0 and 1 or -1
+				projected = progress + sign * math.abs(velocity) * STRIP_FLICK_PROJECTION
 			end
-			if committed then
+			if math.abs(projected) >= STRIP_COMMIT_RATIO then
 				stripCommit(drag)
 			else
 				stripRelease(drag, true)

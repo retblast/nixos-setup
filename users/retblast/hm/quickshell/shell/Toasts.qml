@@ -33,8 +33,16 @@ NotificationServer {
 
     // NotificationServer has no default property, so the window must be a
     // property value (quickshell instantiates it like a Variants delegate).
+    //
+    // The screen the toasts appear on is set by the shell root: the
+    // toasts follow the focused monitor, so they never end up on a
+    // screen that is gone.
+    property var targetScreen: null
+
     property PanelWindow window: PanelWindow {
         id: window
+
+        screen: server.targetScreen
 
         anchors {
             top: true

@@ -1,7 +1,8 @@
-diff -urN a/src/config/lua/bindings/LuaBindingsConfigRules.cpp b/src/config/lua/bindings/LuaBindingsConfigRules.cpp
---- a/src/config/lua/bindings/LuaBindingsConfigRules.cpp	2026-10-28 13:10:29.921983481 -0500
-+++ b/src/config/lua/bindings/LuaBindingsConfigRules.cpp	2026-10-28 13:17:41.912952540 -0500
-@@ -1407,4 +1407,8 @@
+diff --git a/src/config/lua/bindings/LuaBindingsConfigRules.cpp b/src/config/lua/bindings/LuaBindingsConfigRules.cpp
+index 8095b17..1b7ffd5 100644
+--- a/src/config/lua/bindings/LuaBindingsConfigRules.cpp
++++ b/src/config/lua/bindings/LuaBindingsConfigRules.cpp
+@@ -1407,4 +1407,8 @@ void Internal::registerConfigRuleBindings(lua_State* L, CConfigManager* mgr) {
      Internal::setFn(L, "gesture", hlGesture);
      Internal::setFn(L, "curve", hlCurve);
      Internal::setFn(L, "animation", hlAnimation);
@@ -10,10 +11,11 @@ diff -urN a/src/config/lua/bindings/LuaBindingsConfigRules.cpp b/src/config/lua/
 +    // strip and the touchpad resolution.
 +    Internal::registerStripBindings(L);
  }
-diff -urN a/src/config/lua/bindings/LuaBindingsInternal.hpp b/src/config/lua/bindings/LuaBindingsInternal.hpp
---- a/src/config/lua/bindings/LuaBindingsInternal.hpp	2026-10-28 13:10:29.921983481 -0500
-+++ b/src/config/lua/bindings/LuaBindingsInternal.hpp	2026-10-28 13:17:35.516797742 -0500
-@@ -208,6 +208,7 @@
+diff --git a/src/config/lua/bindings/LuaBindingsInternal.hpp b/src/config/lua/bindings/LuaBindingsInternal.hpp
+index 102ed7f..1c1bf80 100644
+--- a/src/config/lua/bindings/LuaBindingsInternal.hpp
++++ b/src/config/lua/bindings/LuaBindingsInternal.hpp
+@@ -208,6 +208,7 @@ namespace Config::Lua::Bindings::Internal {
      void registerQueryBindings(lua_State* L);
      void registerNotificationBindings(lua_State* L);
      void registerConfigRuleBindings(lua_State* L, CConfigManager* mgr);
@@ -21,9 +23,11 @@ diff -urN a/src/config/lua/bindings/LuaBindingsInternal.hpp b/src/config/lua/bin
      void registerBindingsImpl(lua_State* L, CConfigManager* mgr);
      void registerDispatcherBindings(lua_State* L);
  }
-diff -urN a/src/config/lua/bindings/LuaBindingsStrip.cpp b/src/config/lua/bindings/LuaBindingsStrip.cpp
---- a/src/config/lua/bindings/LuaBindingsStrip.cpp	1969-12-31 19:00:00.000000000 -0500
-+++ b/src/config/lua/bindings/LuaBindingsStrip.cpp	2026-10-28 14:07:43.647913806 -0500
+diff --git a/src/config/lua/bindings/LuaBindingsStrip.cpp b/src/config/lua/bindings/LuaBindingsStrip.cpp
+new file mode 100644
+index 0000000..58ebbb3
+--- /dev/null
++++ b/src/config/lua/bindings/LuaBindingsStrip.cpp
 @@ -0,0 +1,145 @@
 +#include "LuaBindingsInternal.hpp"
 +#include "Check.hpp"
@@ -170,10 +174,11 @@ diff -urN a/src/config/lua/bindings/LuaBindingsStrip.cpp b/src/config/lua/bindin
 +    Internal::setFn(L, "animate_render_offset", hlWsAnimateRenderOffset);
 +    lua_setfield(L, -2, "ws");
 +}
-diff -urN a/src/render/Renderer.cpp b/src/render/Renderer.cpp
---- a/src/render/Renderer.cpp	2026-10-28 13:10:29.951624062 -0500
-+++ b/src/render/Renderer.cpp	2026-10-28 13:22:34.066530671 -0500
-@@ -259,6 +259,29 @@
+diff --git a/src/render/Renderer.cpp b/src/render/Renderer.cpp
+index 249f084..7b7422a 100644
+--- a/src/render/Renderer.cpp
++++ b/src/render/Renderer.cpp
+@@ -259,6 +259,29 @@ bool IHyprRenderer::shouldRenderWindow(PHLWINDOW pWindow, PHLMONITOR pMonitor) {
      if (pWindow->m_monitor == pMonitor)
          return true;
  
@@ -203,7 +208,7 @@ diff -urN a/src/render/Renderer.cpp b/src/render/Renderer.cpp
      if ((!pWindow->m_workspace || !pWindow->m_workspace->isVisible()) && pWindow->m_monitor != pMonitor)
          return false;
  
-@@ -1183,6 +1206,36 @@
+@@ -1183,6 +1206,44 @@ void IHyprRenderer::renderAllClientsForWorkspace(PHLMONITOR pMonitor, PHLWORKSPA
      else
          renderWorkspaceWindows(pMonitor, pWorkspace, time);
  
@@ -220,7 +225,15 @@ diff -urN a/src/render/Renderer.cpp b/src/render/Renderer.cpp
 +            continue;
 +
 +        const auto owner = PWS->m_monitor.lock();
-+        if (!owner || owner == pMonitor)
++        if (!owner)
++            continue;
++
++        // The active workspace of this monitor is drawn by the normal
++        // path above. A workspace of the same monitor that is only
++        // forced is drawn here: the neighbour of the strip lives on the
++        // same screen when only one monitor is connected, and it has to
++        // slide in from the outside while the strip moves.
++        if (owner == pMonitor && PWS == pMonitor->m_activeWorkspace)
 +            continue;
 +
 +        const auto offset = PWS->m_renderOffset->value();

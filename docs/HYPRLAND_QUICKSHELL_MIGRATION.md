@@ -596,6 +596,29 @@ UI, weather widget (geoclue2 present).
   unit are the screen width / 400 and a swipe commits at a full screen
   of travel or a flick within 150 ms. The dpi of the touchpad cannot be
   read (libinput has no API for it), so a dpi-based factor is guesswork.
+- **The commit rules of the GNOME workspace switch**
+  (js/ui/workspaceAnimation.js): the release snaps to the nearest
+  workspace, so a slow drag commits at half a workspace of travel, and
+  a flick commits on its own - the velocity of the last 150 ms projects
+  the end position past the snap point (DECELERATION_TOUCHPAD = 0.997,
+  the slope is decel / (1 - decel) / 1000). The velocity needs the
+  samples of the last EVENT_HISTORY_THRESHOLD_MS: the sum of their
+  deltas divided by the period they cover.
+- **A forced workspace is drawn on the monitor that owns it**, shifted by
+  the render offset (the strip patch). A neighbour of the strip is
+  placed with the offset that puts it one band outside the edge of the
+  strip: the travel plus the distance from the edge of the strip to the
+  position of the monitor that owns the neighbour. The renderer skips a
+  forced workspace that belongs to the monitor it is drawn on, except
+  for the active one - the patch has to keep that exception, or the
+  neighbour of a single screen is never drawn.
+- **Quickshell binds a window to a screen when it is created** and keeps
+  it there: a window whose screen disappears is gone until the shell
+  restarts. Bind the screen instead of leaving it to the default (the
+  primary screen): `Quickshell.screens` holds the outputs with their
+  `name`, `Hyprland.monitors.values` the monitors with their `name` and
+  `description`, and the Hyprland monitor name is the same connector
+  name as the output name.
 - **The fullscreen model is positional**: the list is a sequence, not a
   set of ids. With w1, w2, w3 and a fullscreen in w2, w2 holds only that
   app: it is fullscreened in place. w2 holds more: the list becomes w1,
