@@ -25,6 +25,8 @@ in {
       "nix"
       "toml"
       "rust"
+      "lua"
+      "qml"
     ];
     userSettings = {
       git_panel = {

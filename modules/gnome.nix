@@ -108,7 +108,7 @@ in
           wike
           gnome-solanum
           newsflash
-          gtg
+          #gtg
           gnome-graphs
 
           # Font management
@@ -116,7 +116,7 @@ in
 
           # AI
           alpaca
-          newelle
+          #newelle
 
           # Chat apps
           fractal

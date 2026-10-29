@@ -52,5 +52,4 @@ band7AttackThreshold=-18
 band7CompressorEnable=false
 band7SidechainLowcutFrequency=10
 band7SplitFrequency=18000
-bypass=true
 inputGain=-2.5

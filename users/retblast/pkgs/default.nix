@@ -14,7 +14,7 @@
 
     # misc
     libnotify
-    manim
+    stable.manim
 
     # AI
     whisperx

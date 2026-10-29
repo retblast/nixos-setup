@@ -1,10 +1,10 @@
 [StreamInputs]
-inputDevice=bluez_input.00:1B:66:C1:DD:8D
+inputDevice=alsa_input.pci-0000_00_1f.3.analog-stereo
 visiblePage=pluginsPage
 
 [StreamOutputs]
 mostUsedPresets=TrueTaihou
-outputDevice=alsa_output.pci-0000_00_1f.3.hdmi-stereo
+outputDevice=alsa_output.pci-0000_00_1f.3.analog-stereo
 plugins=filter#0,bass_enhancer#0,multiband_compressor#0,crystalizer#0,stereo_tools#0,limiter#0
 usedPresets=TrueTaihou:1
 visiblePage=pluginsPage
@@ -12,5 +12,5 @@ visiblePlugin=multiband_compressor#0
 
 [Window]
 autostartOnLogin=true
-height=649
-width=1142
+height=416
+width=704

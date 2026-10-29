@@ -13,7 +13,6 @@
 			luks = {
 				mitigateDMAAttacks = true;
 			};
-			systemd.enable = true;
 		};
 		kernelModules = [ "kvm-intel" ];
 		extraModulePackages = [ ];

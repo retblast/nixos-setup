@@ -122,6 +122,8 @@ in
         ptyxis
         file-roller
         papers
+        loupe
+        fractal
       ];
   };
 }

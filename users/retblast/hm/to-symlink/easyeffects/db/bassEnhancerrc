@@ -1,7 +1,6 @@
 [soe][BassEnhancer#0]
 amount=10
 blend=10
-bypass=true
 floor=25
 floorActive=true
 harmonics=9.999999999999995

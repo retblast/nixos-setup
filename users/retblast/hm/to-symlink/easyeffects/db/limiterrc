@@ -1,6 +1,5 @@
 [soe][Limiter#0]
 attack=2
-bypass=true
 lookahead=4.000000000000021
 outputGain=-1
 oversampling=22

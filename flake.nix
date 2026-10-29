@@ -57,14 +57,14 @@
       ...
     }@inputs:
     let
-      pkgs = import nixpkgs {
+      pkgs = import nixpkgs rec {
         # TODO: Delete this if overlays work fine under each system.
         # TODO: Consider making general overlays for multiple machines
         overlays = [
           # TODO: Someday get how the n-v-e overlay works/is constructed
           nix-vscode-extensions.overlays.default
         ]
-        ++ import ./overlay { inherit inputs; };
+        ++ import ./overlay { inherit inputs system; };
         system = "x86_64-linux";
         config = {
           allowUnfree = true;
