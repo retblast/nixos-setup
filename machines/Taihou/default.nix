@@ -288,7 +288,16 @@
       enable = true;
       keyboards = {
         default = {
-          ids = [ "*" ]; # Applies to all attached keyboards
+          # Only the internal laptop keyboard. keyd grabs a device and
+          # re-emits its events on a virtual keyboard, so the compositor
+          # sees one keyboard instead of the ones that are plugged in
+          # and cannot tell which one was used. The external keyboard
+          # stays a device of its own, and each keyboard then keeps its
+          # own layout.
+          #
+          # The name is the one the kernel reports (EVIOCGNAME):
+          # "AT Translated Set 2 keyboard".
+          ids = [ "AT Translated Set 2 keyboard" ];
           extraConfig = ''
             [main]
             # Tapping rightalt sends greater-than. Holding it acts as a layout layer.

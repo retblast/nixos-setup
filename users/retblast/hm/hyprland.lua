@@ -125,6 +125,27 @@ hl.bind("SUPER + Q", hl.dsp.window.close())
 hl.bind("SUPER + F", hl.dsp.window.fullscreen())
 hl.bind("SUPER + Space", hl.dsp.window.float({ action = "toggle" }))
 
+-- Keyboard layouts follow the keyboard that is used.
+--
+-- The internal laptop keyboard goes through keyd: the rightalt trick
+-- needs the key events to be remapped, and keyd grabs the device and
+-- re-emits them on a virtual keyboard. That virtual keyboard has no
+-- layout of its own, so it uses the global one.
+--
+-- The external keyboard is not grabbed by keyd, so it stays a device
+-- of its own. The compositor keeps one xkb state per keyboard and
+-- applies the layout of that device to it, so the external keyboard
+-- types in its own layout while the internal one keeps the global
+-- layout. The device rule below names the external keyboard: the
+-- kernel reports it as "DaKai Keyboard", and the rule matches the
+-- name with dashes instead of spaces.
+local EXTERNAL_KEYBOARD = "DaKai-Keyboard"
+
+hl.device({
+	name = EXTERNAL_KEYBOARD,
+	kb_layout = "us",
+})
+
 -- Keyboard layout toggle (es <-> us). hl.config called from a bind
 -- closure is a dynamic parse (isDynamicParse = not parsing config), so
 -- the input:kb_layout refresh bit schedules setKeyboardLayout and the
@@ -139,10 +160,18 @@ local function currentLayout()
 end
 
 local function toggleLayout()
+	local next = currentLayout() == "us" and "es" or "us"
 	hl.config({
 		input = {
-			kb_layout = currentLayout() == "us" and "es" or "us",
+			kb_layout = next,
 		},
+	})
+	-- The external keyboard has a layout of its own, so it follows the
+	-- toggle: the two layouts swap places. The device rule is replaced
+	-- field by field, and the refresh bit re-applies it to the device.
+	hl.device({
+		name = EXTERNAL_KEYBOARD,
+		kb_layout = next == "us" and "es" or "us",
 	})
 end
 
@@ -305,6 +334,23 @@ local function slideStrip(delta)
 		return
 	end
 	slideUnit(delta)
+end
+
+-- Can the strip move one step in this direction? The same limits as
+-- the slide: the left edge of the list is the end, and the right edge
+-- refuses to push an empty workspace past the last populated one.
+-- A swipe past the end is refused instead of showing a rubber band,
+-- the way GNOME refuses it.
+local function stripCanSlide(delta)
+	local mons = monitorsByPosition()
+	local base = stripBase(mons)
+	if not base or #mons == 0 then
+		return false
+	end
+	if delta > 0 then
+		return not edgeBlocked(base, #mons)
+	end
+	return base > 1
 end
 
 -- Numeric binds slide the window until the focused monitor shows the
@@ -484,6 +530,10 @@ end
 -- workspace on the monitor that owns it, shifted by the render offset,
 -- so the offset has to place the neighbour exactly one band to the
 -- left or to the right of the strip.
+--
+-- The next neighbour slides in at the right edge of the strip. The
+-- previous one has to clear the strip: it sits one screen to the left
+-- of the left edge, so it never covers the content of the strip.
 local function stripNeighbourOffset(drag, nb)
 	local ws = hl.get_workspace(tostring(nb.id))
 	if not ws then
@@ -504,7 +554,10 @@ local function stripNeighbourOffset(drag, nb)
 			right = edge
 		end
 	end
-	local edge = nb.side < 0 and left or right
+	local edge = right
+	if nb.side < 0 then
+		edge = left - owner.width
+	end
 	return drag.travel + edge - owner.x
 end
 
@@ -573,13 +626,14 @@ local function stripCommit(drag)
 		-- The workspace can die while the strip moves.
 		if ws then
 			local now = ws.monitor and ws.monitor.name or nil
-			if now and now ~= before[id] then
-				-- Changed its monitor: the compositor animates the move,
-				-- and the offset it starts from is where the finger left
-				-- the content.
-				hl.ws.force_render(tostring(id), false)
-			else
-				-- Stayed in place or left the strip: back at rest.
+			-- The offset of the drag unwinds with an animation, so the
+			-- content lands where the compositor puts it instead of
+			-- staying displaced where the finger left it.
+			hl.ws.animate_render_offset(tostring(id), 0, 0)
+			hl.ws.force_render(tostring(id), false)
+			if now and now == before[id] then
+				-- Stayed in place: back at rest right away, there is no
+				-- movement to follow.
 				hl.ws.reset(tostring(id))
 			end
 		end
@@ -655,6 +709,14 @@ hl.gesture({
 				-- Fingers left push the strip forward, fingers right pull
 				-- it back.
 				drag.step = travel < 0 and 1 or -1
+			end
+			if drag.step ~= 0 and not stripCanSlide(drag.step) then
+				-- The end of the list: the swipe is refused, so the
+				-- content stays where it is instead of showing the
+				-- workspace on the other side of the edge.
+				stripDrag = nil
+				stripRelease(drag, false)
+				return
 			end
 			drag.previous = drag.travel
 			drag.previousTime = drag.time

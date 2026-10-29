@@ -608,10 +608,33 @@ UI, weather widget (geoclue2 present).
   the render offset (the strip patch). A neighbour of the strip is
   placed with the offset that puts it one band outside the edge of the
   strip: the travel plus the distance from the edge of the strip to the
-  position of the monitor that owns the neighbour. The renderer skips a
+  position of the monitor that owns the neighbour. The previous
+  neighbour needs one screen more: it sits one screen to the left of
+  the left edge, otherwise it covers the content of the strip (it is
+  drawn on the same monitor). The renderer skips a
   forced workspace that belongs to the monitor it is drawn on, except
   for the active one - the patch has to keep that exception, or the
   neighbour of a single screen is never drawn.
+- **The ends of the strip refuse a swipe**: the left end of the list
+  has no workspace before it, and the right end does not push an empty
+  workspace past the last populated one. The check lives in one place
+  (the same limits as the slide), so the drag is cancelled and the
+  content released at the end instead of showing a rubber band.
+- **The render offset has to unwind when the swipe commits**: a
+  workspace that changed its monitor keeps its offset, and the
+  compositor animates the move from there. Without an animation that
+  brings the offset back to zero, the content stays displaced and the
+  glitch grows with the speed of the swipe.
+- **keyd hides the keyboards from the compositor**: it grabs a device
+  and re-emits its events on a virtual keyboard, so with keyd on every
+  keyboard the compositor sees one keyboard and cannot tell which
+  physical key was used. The layout is global in that case. Scope keyd
+  to one keyboard (its id is the kernel name, e.g. "AT Translated Set 2
+  keyboard") and the others stay devices of their own. The compositor
+  keeps one xkb state per keyboard, and a device rule (`hl.device`,
+  name with dashes instead of spaces) sets the layout of that device.
+  The `activelayout` event carries the keyboard it belongs to
+  ("<keyboard>,<layout>"), so a widget can follow one keyboard only.
 - **Quickshell binds a window to a screen when it is created** and keeps
   it there: a window whose screen disappears is gone until the shell
   restarts. Bind the screen instead of leaving it to the default (the
@@ -658,6 +681,12 @@ UI, weather widget (geoclue2 present).
   - `hl.dsp.focus({ workspace = id })` activates the ws on its OWNER
     and focuses that monitor; a missing id is created on the FOCUSED
     monitor (focus a monitor first to place the creation).
+  - The dispatchers live under `hl.dsp`. There is no `hl.focus` and no
+    `hl.window`: a call to them fails silently, so a script that
+    focuses a window and then acts on the focused window acts on the
+    window that had the focus. Pass the window to the dispatcher
+    instead: `hl.dsp.window.float({ window = "address:0x...", action =
+    "toggle" })`.
   - Empty non-active workspaces die at once (weak-ref tracker) —
     a workspace can vanish mid-slide; guard existence before moving
     it and let a later settle re-create the id.

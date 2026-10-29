@@ -41,10 +41,71 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 2026-10-28 | the CRT is the main display: it sits left of the laptop panel and takes the focus when it appears | the physical layout is CRT left, laptop right, and the automatic layout put the CRT on the wrong side |
 | 2026-10-29 | the strip swipe commits at 40 % of a workspace or on a flick, and the neighbours slide in | the old rule asked for a whole screen of travel, and with one screen the strip had no neighbour to show, so the drag ended on the wallpaper |
 | 2026-10-29 | the quickshell bar and dock follow the main display, the transient windows follow the focus | quickshell binds a window to its screen when it is created, so the bar stayed on the external screen after it was unplugged |
+| 2026-10-29 | the previous neighbour is drawn one screen outside the strip, and a swipe past the edge is refused | the neighbour was drawn on top of the strip, so the empty edge showed the content of the previous workspace, and the drag could go past the first workspace |
+| 2026-10-29 | the render offset unwinds with an animation when the swipe commits | the offset was kept for the workspaces that changed their monitor, so the content landed displaced and the glitch grew with the speed of the swipe |
+| 2026-10-29 | the float mode toggles every window of the workspace with the window as the dispatcher target | hl.focus does not exist in the Lua config (it is hl.dsp.focus), so the call failed silently and only the focused window floated |
+| 2026-10-29 | keyd grabs only the internal laptop keyboard, so every keyboard keeps its own layout | keyd re-emits the events of every keyboard on one virtual keyboard, so the compositor cannot tell the keyboards apart and the layout was global |
 
 ## Journal
 
 Newest first.
+
+### 2026-10-29 — the swipe stops at the edges, the landing is smooth, the float mode floats everything, every keyboard has its own layout (agent session, Master live)
+
+- **Context**: Master tested the swipe after the relog and found five
+  problems: at the empty edge workspace a swipe towards the next
+  workspace showed the content of the previous workspace, the swipe
+  could go past the first workspace, the wallpaper showed a lot on one
+  side, the landing was glitchy and the glitch grew with the speed of
+  the swipe, and SUPER+SHIFT+F floated only the focused window of the
+  workspace. He also asked for the keyboard layout to follow the
+  keyboard that is used.
+- **The neighbour geometry**: the compositor draws a forced workspace on
+  the monitor that owns it, shifted by the render offset. The previous
+  neighbour was shifted to the left edge of the strip, so it covered the
+  content of the strip - that is what showed the content of the previous
+  workspace at the empty edge. The previous neighbour now sits one
+  screen to the left of the left edge, the next one at the right edge,
+  so both are outside the strip.
+- **The edges**: a new helper (stripCanSlide) applies the same limits as
+  the slide: the left end of the list refuses a swipe to the left, the
+  right end refuses to push an empty workspace past the last populated
+  one. A swipe past the end is refused - the drag is cancelled and the
+  content released - instead of showing a rubber band.
+- **The landing**: the workspaces that changed their monitor kept their
+  render offset, so the content stayed where the finger left it and the
+  compositor animated it from there. The offset now unwinds with an
+  animation when the swipe commits, so the content lands where the
+  compositor puts it.
+- **The float mode**: the script focused the window with hl.focus and
+  then toggled the float of the focused window. hl.focus does not exist
+  in the Lua config (the dispatcher is hl.dsp.focus), so the focus call
+  failed silently and every window toggled the same window. The window
+  is now the target of the dispatcher:
+  hl.dsp.window.float({ window = "address:...", action = "toggle" }).
+- **The keyboard layouts**: keyd grabbed every keyboard and re-emitted
+  the events on one virtual keyboard, so the compositor saw a single
+  keyboard and the layout was global. keyd now grabs only the internal
+  laptop keyboard ("AT Translated Set 2 keyboard"), which keeps the
+  rightalt trick. The external keyboard ("DaKai Keyboard") stays a
+  device of its own, and the compositor keeps one xkb state per
+  keyboard, so the device rule gives it the us layout while the
+  internal keyboard keeps the global es layout. The toggle (SUPER+K and
+  the bar widget) swaps the two layouts.
+  - The name of the device rule is the kernel name with dashes instead
+    of spaces, which is what the Lua binding expects.
+  - The bar widget follows the layout of the internal keyboard only:
+    the activelayout event carries the keyboard it belongs to.
+- **Verification**: the luajit -bl gate passes; qmllint reports no new
+  warnings for the changed files; the toplevel build is green; the
+  built keyd configuration names only the internal keyboard.
+- **Gate (Master)**: rebuild and relog (the compositor patch did not
+  change, but the config and the keyd service did). Then: a swipe at
+  the first and the last workspace is refused, the neighbour slides in
+  next to the content without covering it, the landing is smooth, a
+  three-finger swipe of about half a screen switches the workspace,
+  SUPER+SHIFT+F floats every window of the workspace, and the external
+  keyboard types in US while the internal one keeps ES.
 
 ### 2026-10-29 — the strip swipe follows GNOME's commit rules, the panel follows the main display (agent session, Master live)
 

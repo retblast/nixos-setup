@@ -121,11 +121,18 @@ let
             # Lua config mode: hyprctl dispatch wraps its argument as Lua
             # (hl.dispatch(...)), so the actions are hl.* expressions — the
             # legacy dispatcher names are syntax errors in this mode.
-            hyprctl dispatch "hl.focus({ window = \"address:$addr\" })" >/dev/null 2>&1
+            #
+            # The window is the target of the dispatcher, so no focus
+            # change is needed. The old code focused the window first and
+            # then toggled the float of the focused window — the focus
+            # call used hl.focus, which does not exist in the Lua config
+            # (it is hl.dsp.focus) and failed silently, so every window
+            # toggled the window that had the focus and only that one
+            # ended up floating.
             # setfloating is a no-op in 0.56 (answers ok, does nothing);
             # window.float is the dispatcher that actually works. The
             # pre-read state makes it deterministic.
-            hyprctl dispatch "hl.dsp.window.float({ action = \"toggle\" })" >/dev/null 2>&1
+            hyprctl dispatch "hl.dsp.window.float({ window = \"address:$addr\", action = \"toggle\" })" >/dev/null 2>&1
         end
     end
 

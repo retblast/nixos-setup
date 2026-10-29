@@ -39,19 +39,35 @@ Item {
                 "eval",
                 'hl.config({ input = { kb_layout = "' + root.layout + '" } })'
             ]);
+            // The external keyboard has a layout of its own, so it
+            // follows the toggle: the two layouts swap places.
+            Quickshell.execDetached([
+                "hyprctl",
+                "eval",
+                'hl.device({ name = "DaKai-Keyboard", kb_layout = "' + (root.layout === "us" ? "es" : "us") + '" })'
+            ]);
         }
     }
 
     // setKeyboardLayout posts activelayout as "<keyboard>,<layout
     // display name>" on every reconfigure. Matched loosely so layout
     // variants ("Spanish (...)") still map.
+    //
+    // The event carries the keyboard it belongs to. The label follows
+    // the internal keyboard (the keyd virtual keyboard, or the
+    // internal device itself when keyd is not running); the external
+    // keyboard has a layout of its own.
     Connections {
         target: Hyprland
 
         function onRawEvent(event) {
             if (event.name !== "activelayout")
                 return;
-            const layout = String(event.data);
+            const data = String(event.data);
+            const keyboard = data.split(",")[0];
+            if (keyboard !== "keyd-virtual-keyboard" && keyboard !== "at-translated-set-2-keyboard")
+                return;
+            const layout = data;
             if (layout.indexOf("Spanish") !== -1)
                 root.layout = "es";
             else if (layout.indexOf("English") !== -1)
