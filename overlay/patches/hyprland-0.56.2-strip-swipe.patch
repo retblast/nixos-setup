@@ -1,3 +1,110 @@
+diff --git a/src/animation/WorkspaceAnimationController.cpp b/src/animation/WorkspaceAnimationController.cpp
+index 9d69587..889e14e 100644
+--- a/src/animation/WorkspaceAnimationController.cpp
++++ b/src/animation/WorkspaceAnimationController.cpp
+@@ -23,6 +23,14 @@ void Animation::Workspace::startAnimation(PHLWORKSPACE ws, eAnimationType type,
+ 
+     const bool IN = type == ANIMATION_TYPE_IN;
+ 
++    // Strip swipe: a workspace of the strip can be drawn at an offset,
++    // because the drag moves the render offset of the workspaces it
++    // carries. The switch animation has to continue from that offset.
++    // The default path warps the offset to the screen edge first, which
++    // throws the drag away: the content jumps to the edge and slides
++    // home from there, instead of continuing where the finger left it.
++    const bool CONTINUEFROMOFFSET = ws->m_forceRendering && ws->m_renderOffset->value() != Vector2D(0, 0);
++
+     if (!instant) {
+         const std::string ANIMNAME = std::format("{}{}", ws->m_isSpecialWorkspace ? "specialWorkspace" : "workspaces", IN ? "In" : "Out");
+ 
+@@ -79,12 +87,17 @@ void Animation::Workspace::startAnimation(PHLWORKSPACE ws, eAnimationType type,
+ 
+     if (ANIMSTYLE.starts_with("slidefade")) {
+         ws->m_alpha->setValueAndWarp(1.F);
+-        ws->m_renderOffset->setValueAndWarp(Vector2D(0, 0));
++        if (!CONTINUEFROMOFFSET)
++            ws->m_renderOffset->setValueAndWarp(Vector2D(0, 0));
+ 
+         if (vert) {
+             if (IN) {
+-                ws->m_alpha->setValueAndWarp(0.F);
+-                ws->m_renderOffset->setValueAndWarp(Vector2D(0.0, (left ? PMONITOR->m_size.y : -PMONITOR->m_size.y) * (movePerc / 100.F)));
++                // The workspace is already on the screen, it must not
++                // fade in from nothing.
++                if (!CONTINUEFROMOFFSET)
++                    ws->m_alpha->setValueAndWarp(0.F);
++                if (!CONTINUEFROMOFFSET)
++                    ws->m_renderOffset->setValueAndWarp(Vector2D(0.0, (left ? PMONITOR->m_size.y : -PMONITOR->m_size.y) * (movePerc / 100.F)));
+                 *ws->m_alpha        = 1.F;
+                 *ws->m_renderOffset = Vector2D(0, 0);
+             } else {
+@@ -94,8 +107,10 @@ void Animation::Workspace::startAnimation(PHLWORKSPACE ws, eAnimationType type,
+             }
+         } else {
+             if (IN) {
+-                ws->m_alpha->setValueAndWarp(0.F);
+-                ws->m_renderOffset->setValueAndWarp(Vector2D((left ? PMONITOR->m_size.x : -PMONITOR->m_size.x) * (movePerc / 100.F), 0.0));
++                if (!CONTINUEFROMOFFSET)
++                    ws->m_alpha->setValueAndWarp(0.F);
++                if (!CONTINUEFROMOFFSET)
++                    ws->m_renderOffset->setValueAndWarp(Vector2D((left ? PMONITOR->m_size.x : -PMONITOR->m_size.x) * (movePerc / 100.F), 0.0));
+                 *ws->m_alpha        = 1.F;
+                 *ws->m_renderOffset = Vector2D(0, 0);
+             } else {
+@@ -105,10 +120,12 @@ void Animation::Workspace::startAnimation(PHLWORKSPACE ws, eAnimationType type,
+             }
+         }
+     } else if (ANIMSTYLE == "fade") {
+-        ws->m_renderOffset->setValueAndWarp(Vector2D(0, 0));
++        if (!CONTINUEFROMOFFSET)
++            ws->m_renderOffset->setValueAndWarp(Vector2D(0, 0));
+ 
+         if (IN) {
+-            ws->m_alpha->setValueAndWarp(0.F);
++            if (!CONTINUEFROMOFFSET)
++                ws->m_alpha->setValueAndWarp(0.F);
+             *ws->m_alpha = 1.F;
+         } else {
+             ws->m_alpha->setValueAndWarp(1.F);
+@@ -119,8 +136,10 @@ void Animation::Workspace::startAnimation(PHLWORKSPACE ws, eAnimationType type,
+         ws->m_alpha->setValueAndWarp(1.F);
+ 
+         if (IN) {
+-            ws->m_renderOffset->setValueAndWarp(Vector2D(0.0, left ? YDISTANCE : -YDISTANCE));
+-            *ws->m_renderOffset = Vector2D(0, 0);
++            if (!CONTINUEFROMOFFSET)
++                ws->m_renderOffset->setValueAndWarp(Vector2D(0.0, left ? YDISTANCE : -YDISTANCE));
++            if (!ws->m_renderOffset->isBeingAnimated() || ws->m_renderOffset->goal() != Vector2D(0, 0))
++                *ws->m_renderOffset = Vector2D(0, 0);
+         } else
+             *ws->m_renderOffset = Vector2D(0.0, left ? -YDISTANCE : YDISTANCE);
+     } else {
+@@ -128,10 +147,21 @@ void Animation::Workspace::startAnimation(PHLWORKSPACE ws, eAnimationType type,
+         ws->m_alpha->setValueAndWarp(1.F);
+ 
+         if (IN) {
+-            ws->m_renderOffset->setValueAndWarp(Vector2D(left ? XDISTANCE : -XDISTANCE, 0.0));
+-            *ws->m_renderOffset = Vector2D(0, 0);
+-        } else
+-            *ws->m_renderOffset = Vector2D(left ? -XDISTANCE : XDISTANCE, 0.0);
++            // The strip drag: the content stays where the finger left it
++            // and slides home from there.
++            if (!CONTINUEFROMOFFSET)
++                ws->m_renderOffset->setValueAndWarp(Vector2D(left ? XDISTANCE : -XDISTANCE, 0.0));
++            // The switch is triggered twice (the workspace moves, then it
++            // is focused). The second trigger must not restart the
++            // animation, or the content catches in the middle of the
++            // slide.
++            if (!ws->m_renderOffset->isBeingAnimated() || ws->m_renderOffset->goal() != Vector2D(0, 0))
++                *ws->m_renderOffset = Vector2D(0, 0);
++        } else {
++            // The workspace leaves in the direction the drag was going.
++            const auto OUTDISTANCE = CONTINUEFROMOFFSET ? (ws->m_renderOffset->value().x < 0 ? -XDISTANCE : XDISTANCE) : (left ? -XDISTANCE : XDISTANCE);
++            *ws->m_renderOffset    = Vector2D(OUTDISTANCE, 0.0);
++        }
+     }
+ 
+     if (ws->m_isSpecialWorkspace) {
 diff --git a/src/config/lua/bindings/LuaBindingsConfigRules.cpp b/src/config/lua/bindings/LuaBindingsConfigRules.cpp
 index 8095b17..1b7ffd5 100644
 --- a/src/config/lua/bindings/LuaBindingsConfigRules.cpp

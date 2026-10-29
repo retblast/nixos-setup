@@ -45,10 +45,73 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 2026-10-29 | the render offset unwinds with an animation when the swipe commits | the offset was kept for the workspaces that changed their monitor, so the content landed displaced and the glitch grew with the speed of the swipe |
 | 2026-10-29 | the float mode toggles every window of the workspace with the window as the dispatcher target | hl.focus does not exist in the Lua config (it is hl.dsp.focus), so the call failed silently and only the focused window floated |
 | 2026-10-29 | keyd grabs only the internal laptop keyboard, so every keyboard keeps its own layout | keyd re-emits the events of every keyboard on one virtual keyboard, so the compositor cannot tell the keyboards apart and the layout was global |
+| 2026-10-29 | the switch animation continues from the render offset of the strip drag | the switch animation warps the offset to the screen edge first, which threw the drag away: the content jumped to the edge and slid home from there |
+| 2026-10-29 | the workspace offset and the window move share one animation curve | both run at the same time during a switch and are added together, so two different speeds made the band wobble on the way to its place |
 
 ## Journal
 
 Newest first.
+
+### 2026-10-29 — the swipe settles in one motion and the band crosses the monitors (agent session, Master live)
+
+- **Context**: Master tested the swipe and found the release rough: "the
+  workspace the user switched to switches position and then snaps back
+  in in a jittery motion, not smooth at all like KDE or GNOME". He also
+  asked to see the workspaces move across the monitors while he swipes.
+- **The cause of the rough release**: the compositor animates a
+  workspace switch in `Animation::Workspace::startAnimation`
+  (src/animation/WorkspaceAnimationController.cpp). It warps the render
+  offset of the workspace to + or - the width of the monitor and then
+  animates it to zero - that is the slide-in of a normal workspace
+  switch. The strip drag moves that same variable, so the commit threw
+  the drag away: the content jumped to the screen edge and slid home
+  from there. Two things made it worse:
+  - the config called `animate_render_offset` on the same variable a few
+    milliseconds later, which re-targeted the running curve, so the
+    content caught in the middle of the slide and jumped again;
+  - the neighbours were reset with `hl.ws.reset` before the slide, so
+    the workspace that slid in from the edge jumped to its place
+    instead of sliding in.
+- **The fix in the compositor** (the strip patch): the switch animation
+  continues from the current render offset when the workspace is
+  force-rendered, which is what the strip drag marks:
+  - the warp to the screen edge is skipped, so the content stays where
+    the finger left it and slides home from there;
+  - the workspace that leaves the strip leaves in the direction the
+    drag was going;
+  - the alpha is not faded in from nothing, the workspace is already on
+    the screen;
+  - the switch is triggered twice (the workspace moves, then it is
+    focused), so the animation must not restart on the second
+    trigger. Without that the content catches in the middle.
+- **The fix in the config**: the commit does not touch the render offset
+  any more, the compositor owns the animation from there. Only the
+  neighbour behind the strip is reset, and it sits off the screen, so
+  the reset is invisible. The neighbour in front of the strip becomes
+  part of the strip and the compositor slides it in.
+- **One curve for the switch**: a switch moves two things at once. The
+  windows of the workspace change their monitor (the "windows" leaf,
+  and "windowsMove" inherits from it) and the workspace moves its
+  render offset (the "workspaces" leaf, and "workspacesIn" inherits
+  from it). The two are added together, so they had the same speed and
+  bezier: with two different speeds the band wobbled on the way to its
+  place.
+- **The neighbours were never drawn**: a workspace that is not active
+  has an alpha of zero and the renderer skips it. The drag gives the
+  neighbours their alpha back, so the workspace that comes next is
+  really visible while it slides in - before, the wallpaper showed
+  through.
+- **The band across the monitors**: the patch draws a forced workspace
+  on every monitor its content overlaps, so the content of one monitor
+  slides onto the other while the finger moves, and during the settle.
+- **Verification**: the luajit -bl gate passes; the toplevel build is
+  green with the patched compositor; the regenerated patch applies
+  cleanly to a pristine tree.
+- **Gate (Master)**: rebuild and relog (the compositor changed). Then:
+  the swipe continues from the finger into one smooth settle, the
+  workspace that comes next slides in instead of jumping, the content
+  crosses the monitor border while the finger moves, and a normal
+  `SUPER+2` switch still slides in the usual way.
 
 ### 2026-10-29 — the swipe stops at the edges, the landing is smooth, the float mode floats everything, every keyboard has its own layout (agent session, Master live)
 

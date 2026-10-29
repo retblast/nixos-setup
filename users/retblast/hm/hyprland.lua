@@ -95,7 +95,13 @@ hl.config({
 hl.curve("smooth", { type = "bezier", points = { { 0.25, 0.9 }, { 0.1, 1.0 } } })
 hl.animation({ leaf = "windows", enabled = true, speed = 4, bezier = "smooth" })
 hl.animation({ leaf = "fade", enabled = true, speed = 4, bezier = "smooth" })
-hl.animation({ leaf = "workspaces", enabled = true, speed = 3, bezier = "smooth" })
+-- The workspace switch moves two things at once: the windows of the
+-- workspace change their monitor ("windows", and "windowsMove" inherits
+-- from it) and the workspace itself moves its render offset
+-- ("workspaces", and "workspacesIn" inherits from it). Both curves are
+-- added together, so they have to be the same: with different speeds
+-- the band wobbles on the way to its place.
+hl.animation({ leaf = "workspaces", enabled = true, speed = 4, bezier = "smooth" })
 
 -- Session start: publish env to systemd/D-Bus, then regenerate the
 -- wallpaper palette (the daemon needs a moment to restore the image).
@@ -563,11 +569,16 @@ end
 
 -- Moves the whole strip by the travelled distance. Every workspace
 -- gets the same offset, so the band keeps its shape.
+--
+-- The alpha of a workspace that is not active is zero, and the
+-- renderer skips those. The neighbours have to be visible while they
+-- slide in, so the drag gives them their alpha back.
 local function stripApply(drag)
 	for i = 1, #drag.ids do
 		local id = tostring(drag.ids[i])
 		if hl.get_workspace(id) then
 			hl.ws.force_render(id, true)
+			hl.ws.set_alpha(id, 1)
 			hl.ws.set_render_offset(id, drag.travel, 0)
 		end
 	end
@@ -576,6 +587,7 @@ local function stripApply(drag)
 		local id = tostring(nb.id)
 		if offset and hl.get_workspace(id) then
 			hl.ws.force_render(id, true)
+			hl.ws.set_alpha(id, 1)
 			hl.ws.set_render_offset(id, offset, 0)
 		end
 	end
@@ -605,39 +617,28 @@ local function stripRelease(drag, animate)
 end
 
 -- The commit hands the workspaces over to the compositor: the step
--- moves them between the monitors and the compositor animates it. A
--- workspace that changed its monitor keeps its offset, so the
--- animation starts where the finger left the content. A workspace that
--- stayed or left the strip is put back at rest.
+-- moves them between the monitors and the compositor animates it.
+--
+-- The compositor owns the animation from here. Its switch animation
+-- continues from the render offset of the drag (the compositor patch
+-- makes it skip the warp to the screen edge), so the content slides
+-- from where the finger left it into its new place. Calling the offset
+-- animation from here would restart that curve in the middle of the
+-- slide, and the content would catch before it settled.
 local function stripCommit(drag)
-	local before = drag.monitors
-	-- The neighbours leave the drag before the strip moves: one of them
-	-- can become part of the strip, and it has to be at rest.
+	-- The neighbour behind the strip goes back to its resting place. It
+	-- sits off the screen, so the reset is invisible. The neighbour in
+	-- front of the strip becomes part of the strip, and the compositor
+	-- slides it in.
 	for _, nb in ipairs(drag.neighbours) do
-		local id = tostring(nb.id)
-		if hl.get_workspace(id) then
-			hl.ws.reset(id)
-		end
-	end
-	slideStrip(drag.step)
-	for i = 1, #drag.ids do
-		local id = drag.ids[i]
-		local ws = hl.get_workspace(tostring(id))
-		-- The workspace can die while the strip moves.
-		if ws then
-			local now = ws.monitor and ws.monitor.name or nil
-			-- The offset of the drag unwinds with an animation, so the
-			-- content lands where the compositor puts it instead of
-			-- staying displaced where the finger left it.
-			hl.ws.animate_render_offset(tostring(id), 0, 0)
-			hl.ws.force_render(tostring(id), false)
-			if now and now == before[id] then
-				-- Stayed in place: back at rest right away, there is no
-				-- movement to follow.
-				hl.ws.reset(tostring(id))
+		if nb.side < 0 then
+			local id = tostring(nb.id)
+			if hl.get_workspace(id) then
+				hl.ws.reset(id)
 			end
 		end
 	end
+	slideStrip(drag.step)
 end
 
 hl.gesture({
@@ -667,13 +668,8 @@ hl.gesture({
 				return
 			end
 			local ids = stripIds(base, #mons)
-			local monitors = {}
-			for i = 1, #mons do
-				monitors[ids[i]] = mons[i].name
-			end
 			stripDrag = {
 				ids = ids,
-				monitors = monitors,
 				-- The monitor objects, in position order: the edges of
 				-- the band are read from them.
 				monitorList = mons,

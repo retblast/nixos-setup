@@ -620,11 +620,31 @@ UI, weather widget (geoclue2 present).
   workspace past the last populated one. The check lives in one place
   (the same limits as the slide), so the drag is cancelled and the
   content released at the end instead of showing a rubber band.
-- **The render offset has to unwind when the swipe commits**: a
-  workspace that changed its monitor keeps its offset, and the
-  compositor animates the move from there. Without an animation that
-  brings the offset back to zero, the content stays displaced and the
-  glitch grows with the speed of the swipe.
+- **A workspace switch warps the render offset**
+  (`Animation::Workspace::startAnimation` in
+  src/animation/WorkspaceAnimationController.cpp): the offset is set to
+  the width of the monitor (plus the gap) and animated to zero. That is
+  the slide-in of a normal switch. Anything that draws a workspace at an
+  offset (the strip drag) has to make the switch animation continue from
+  that offset, or the content jumps to the screen edge and slides home
+  from there. The strip patch does that for a forced workspace. The
+  switch is triggered twice - the workspace moves, then it is focused -
+  so the animation must not restart on the second trigger.
+- **The two curves of a switch have to match**: the windows of the
+  workspace change their monitor ("windowsMove", inherited from
+  "windows") and the workspace moves its render offset ("workspacesIn",
+  inherited from "workspaces"). Both run at the same time and are added
+  together, so a different speed on the two leaves makes the band
+  wobble on the way to its place.
+- **A workspace that is not active has an alpha of zero** and the
+  renderer skips it. A workspace that has to be visible outside its own
+  monitor (the neighbours of the strip) needs its alpha set as well, not
+  only the forced rendering.
+- **The commit must not animate the render offset itself**: the
+  compositor animates the switch, and its curve is the one that carries
+  the content to its new place. A second animation on the same variable
+  re-targets the running curve, and the content catches in the middle of
+  the slide.
 - **keyd hides the keyboards from the compositor**: it grabs a device
   and re-emits its events on a virtual keyboard, so with keyd on every
   keyboard the compositor sees one keyboard and cannot tell which
