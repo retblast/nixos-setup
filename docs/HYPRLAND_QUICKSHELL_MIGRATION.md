@@ -577,10 +577,43 @@ UI, weather widget (geoclue2 present).
   tracker holds weak refs), so gaps only come from windows sitting on
   stacked ids or far jumps. Enforced at the creation sites:
   SUPER+1..0 binds clamp to `max existing id + 1` (closures in
-  hyprland.lua), and the fullscreen handler moves to `max + 1`. There
-  is no Lua API to remove a workspace — removal cannot be forced, only
-  prevented at these sites. The bar renders one pill per existing
-  workspace (no numbers).
+  hyprland.lua), and the fullscreen handler moves the window to the id
+  right after its own (the origin id + 1) and shifts the content above
+  the origin one id up. There is no Lua API to remove a workspace —
+  removal cannot be forced, only prevented at these sites. The bar
+  renders one pill per existing workspace (no numbers).
+- **The gesture delta is per event, not cumulative**: the Lua gesture
+  event carries the delta of ONE event. The compositor accumulates it
+  internally (TrackpadGestures.cpp: m_currentTotalDelta), the binding
+  gets the raw value. A drag must add the delta to its own travel, or
+  the strip jumps back and forth and never commits.
+- **GNOME 50 swipe model** (gnome-shell, js/ui/swipeTracker.js):
+  TOUCHPAD_BASE_WIDTH = 400 (a full horizontal swipe is 400 touchpad
+  units), TOUCHPAD_BASE_HEIGHT = 300, VELOCITY_THRESHOLD_TOUCHPAD = 0.6,
+  EVENT_HISTORY_THRESHOLD_MS = 150, GESTURE_FINGER_COUNT = 3. mutter
+  feeds raw libinput swipe deltas (meta-seat-impl.c:
+  notify_swipe_gesture_event). Use the 400-unit model: the pixels per
+  unit are the screen width / 400 and a swipe commits at a full screen
+  of travel or a flick within 150 ms. The dpi of the touchpad cannot be
+  read (libinput has no API for it), so a dpi-based factor is guesswork.
+- **The fullscreen model is positional**: the list is a sequence, not a
+  set of ids. With w1, w2, w3 and a fullscreen in w2, w2 holds only that
+  app: it is fullscreened in place. w2 holds more: the list becomes w1,
+  w2 (the other apps), w3 (the fullscreen app), w4 (the old w3
+  content) — the content above the origin moves one id up, the app takes
+  the origin id + 1, and the strip advances. Unfullscreen reverses all
+  of it. The shift uses silent window moves: a move creates a missing id
+  on the FOCUSED monitor without activating it, so focus the monitor of
+  the source first and restore the focus afterwards.
+- **Monitor rules match the EDID description, not the connector name**:
+  the connector (`HDMI-A-1`) depends on the port, the description does
+  not — `desc:CRT HDMI` identifies the same screen everywhere. The
+  automatic layout ordered the screens by connector, which put the CRT
+  on the wrong side, so the positions are explicit (the CRT at 0,0 with
+  scale 5/3, the laptop panel at 1536,0 with scale 4/3 — the laptop
+  starts where the CRT ends). Hyprland has no "preferred monitor" rule
+  in Lua: the main display is made by focusing the CRT when it appears
+  (`monitor.added`).
 - **Sliding workspace window (the workspace model)**: monitors are
   ordered by physical position; monitor i shows `base+i-1`. Swipes
   move the whole window and may push the right edge one empty

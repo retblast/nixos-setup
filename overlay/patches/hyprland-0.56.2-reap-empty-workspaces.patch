@@ -1,21 +1,27 @@
 diff --git a/src/desktop/Workspace.cpp b/src/desktop/Workspace.cpp
-index 16e1909..b20bf14 100644
+index 16e1909..7f4cab5 100644
 --- a/src/desktop/Workspace.cpp
 +++ b/src/desktop/Workspace.cpp
-@@ -403,6 +403,21 @@ void CWorkspace::markInert() {
+@@ -403,6 +403,27 @@ void CWorkspace::markInert() {
      m_monitor.reset();
  }
  
 +void CWorkspace::tryReap() {
-+    if (m_inert || m_isSpecialWorkspace || m_persistent || m_id <= 0)
++    if (m_inert || m_isSpecialWorkspace || m_persistent || m_id <= 0) {
++        Log::logger->log(Log::DEBUG, "reap: workspace id {} is not reapable", m_id);
 +        return;
++    }
 +
 +    const auto PMONITOR = m_monitor.lock();
-+    if (PMONITOR && (PMONITOR->m_activeWorkspace == m_self.lock() || PMONITOR->m_activeSpecialWorkspace == m_self.lock()))
++    if (PMONITOR && (PMONITOR->m_activeWorkspace == m_self.lock() || PMONITOR->m_activeSpecialWorkspace == m_self.lock())) {
++        Log::logger->log(Log::DEBUG, "reap: workspace id {} is still the active one", m_id);
 +        return;
++    }
 +
-+    if (getWindowCount() > 0)
++    if (getWindowCount() > 0) {
++        Log::logger->log(Log::DEBUG, "reap: workspace id {} still holds {} windows", m_id, getWindowCount());
 +        return;
++    }
 +
 +    Log::logger->log(Log::DEBUG, "reaping empty workspace id {}", m_id);
 +    markInert();

@@ -6,18 +6,25 @@
 
 -- Laptop panel: 133% — the same fraction GNOME applies on this
 -- machine (monitors.xml stores its float32 rounding: 1.3333333730697632).
+--
+-- The panel is the right screen: the external screen stands to its
+-- left. The external screen is 2560 wide at 166%, so it takes 1536
+-- logical pixels.
 hl.monitor({
 	output = "eDP-1",
 	scale = 4/3,
+	position = "1536,0",
 })
 
 -- External screen, matched by EDID instead of port: vendor code "CRT"
 -- (unregistered in the PNP table, so it stays literal) + product name
 -- "HDMI" from the EDID 0xFC descriptor. Port-independent; a different
 -- screen with a different EDID falls through to the catch-all below.
+-- It is the left screen and the main display.
 hl.monitor({
 	output = "desc:CRT HDMI",
 	scale = 5/3,
+	position = "0,0",
 })
 
 -- Catch-all: any other screen (projectors, new docks) at 100%.
@@ -25,6 +32,16 @@ hl.monitor({
 	output = "",
 	scale = 1,
 })
+
+-- The external screen is the main display when it is connected: it
+-- takes the focus, so the keyboard and the new workspaces follow it.
+-- The screen is found by its EDID description, so the port does not
+-- matter.
+hl.on("monitor.added", function(mon)
+	if mon.description == "CRT HDMI" then
+		hl.dispatch(hl.dsp.focus({ monitor = mon.name }))
+	end
+end)
 
 hl.config({
     xwayland = {
@@ -364,16 +381,15 @@ hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
 -- overview. Focus cycling runs its command.
 --
 -- The swipe is finger tracked: the content of the strip follows the
--- fingers one to one, so a millimetre of finger travel moves a
--- millimetre of screen. The factor between the gesture delta (touchpad
--- units) and the pixels is computed at runtime from the physical size
--- of the monitor, so the same gesture feels the same on every screen.
+-- fingers, and the gesture decides how far the content travels.
 --
--- The touchpad reports no resolution and libinput has no public API
--- for one, so the resolution is a config value. 1000 dots per inch is
--- what libinput itself assumes for a device without one: its fallback
--- size of 69mm for a typical raw range lands on about 1000 dots per
--- inch.
+-- The factor follows the model GNOME uses for its own workspace swipe
+-- (js/ui/swipeTracker.js in gnome-shell): a full horizontal swipe is
+-- TOUCHPAD_BASE_WIDTH touchpad units, and the swipe is normalized
+-- against it. The screen width is therefore STRIP_SWIPE_UNITS units of
+-- finger travel. This is normalized, so it does not depend on the
+-- resolution of the touchpad: the touchpad reports no resolution and
+-- libinput has no public API for one, so nothing better is available.
 --
 -- The strip keeps its layout while it moves: the leftmost monitor
 -- shows the base workspace, the next monitor the next id. The drag
@@ -381,25 +397,17 @@ hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
 -- across the border onto the left one while the left monitor's
 -- content leaves the screen. The release commits the step through the
 -- same path the keyboard binds use.
-local STRIP_TOUCHPAD_DPI = 1000
-local STRIP_COMMIT_RATIO = 0.15
+local STRIP_SWIPE_UNITS = 400
 local STRIP_FLICK_MS = 150
 
--- Pixels per touchpad unit on this monitor. The screen decides the
--- factor: a finger travel of one inch moves the content by one inch
--- of the screen.
+-- Pixels per touchpad unit on this monitor. A full screen width is a
+-- full swipe of STRIP_SWIPE_UNITS units.
 local function stripPixelsPerUnit(mon)
 	local width = mon.width
 	if not width or width <= 0 then
 		return nil
 	end
-	local physical = mon.physical_width
-	if physical and physical > 0 then
-		return 25.4 * width / (STRIP_TOUCHPAD_DPI * physical)
-	end
-	-- No physical size reported: fall back to the compositor's own
-	-- convention, where the swipe distance spans a full screen.
-	return width / 300
+	return width / STRIP_SWIPE_UNITS
 end
 
 -- The workspaces of the strip: one per monitor, the ids counting up
@@ -498,7 +506,9 @@ hl.gesture({
 				monitors = monitors,
 				units = units,
 				limit = mon.width,
-				threshold = STRIP_COMMIT_RATIO * mon.width,
+				-- The swipe completes when it covers a whole screen,
+				-- the same normalization GNOME uses.
+				threshold = mon.width,
 				travel = 0,
 				previous = 0,
 				time = event.time_ms,
@@ -511,8 +521,10 @@ hl.gesture({
 			if not drag then
 				return
 			end
-			-- The gesture delta is cumulative since the gesture began.
-			local travel = event.delta.x * drag.units
+			-- The gesture delta is the movement of this event, not the
+			-- total since the gesture began, so the travel accumulates
+			-- here.
+			local travel = drag.travel + event.delta.x * drag.units
 			if travel > drag.limit then
 				travel = drag.limit
 			elseif travel < -drag.limit then
@@ -578,32 +590,113 @@ hl.gesture({
 	end,
 })
 
--- Fullscreened windows get their own workspace. Entering fullscreen
--- moves the window to a fresh workspace id (highest existing + 1): a
--- fresh id cannot name an existing workspace on the other monitor, and
--- Hyprland creates new ids on the focused monitor, so the window never
--- changes screens. The origin workspace is remembered per window and
--- restored on leaving fullscreen. The memory is dropped on close, so a
--- recycled address can never inherit a stale entry. FSMODE_NONE=0,
--- FSMODE_MAXIMIZED=1, FSMODE_FULLSCREEN=2 — maximize must not isolate.
--- The event covers every fullscreen path — the SUPER+F bind, video
--- players, games. Verified: fresh-id moves land on the focused
--- monitor; window objects are accepted as the move target.
+-- Fullscreen isolation.
 --
--- Two compositor rules shape the rest of the implementation:
+-- The workspace list is positional: the workspaces above the
+-- fullscreened one move one place to the right, so the fullscreened
+-- window takes the place right after the one it came from.
 --
--- 1. A workspace id that does not exist yet is created on the FOCUSED
---    monitor (resolveWorkspaceStr). The window's own monitor is focused
---    first, so a fullscreen stays on that screen instead of jumping to
---    whichever screen held the keyboard focus.
+-- - The origin workspace holds only the fullscreened window: the window
+--   is fullscreened in place. The list keeps its shape.
 --
--- 2. The reaper skips a workspace that is still a monitor's active one
---    (tryReap in the reap patch). The temporary workspace is released by
---    moving the window back: the move follows the window, so that
---    monitor switches to the origin workspace. The origin id is
---    recreated on the focused monitor, so it is focused first as well.
---    The empty temporary workspace then dies in the debounced sweep.
+-- - The origin workspace holds other windows too: the content of every
+--   workspace above the origin moves one id up, the fullscreened window
+--   moves into the next id, and the strip advances by one place. The
+--   window stays on the monitor it was fullscreened on. The content of
+--   the other monitors moves in the background, without an animation
+--   of their own.
+--
+-- The origin workspace is reaped by the compositor when the window
+-- leaves it and it was the last window there. Unfullscreening puts
+-- everything back: the content moves down again, the window returns to
+-- its origin id, and the origin workspace is recreated on its monitor.
+--
+-- The workspace change animates on the monitor of the fullscreened
+-- window. The other monitors change in the background.
+--
+-- TODO: support the same for vertical setups.
 local fullscreenOrigins = {}
+
+-- The windows of a workspace.
+local function workspaceWindows(id)
+	local ws = hl.get_workspace(tostring(id))
+	if not ws then
+		return {}
+	end
+	return ws:get_windows() or {}
+end
+
+-- Moves the content of the workspaces from `lowest` to `highest` one id
+-- up: the workspace that held the content of id `n` holds it under id
+-- `n+1`. The windows move silently, so the change happens in the
+-- background, no monitor follows them and no workspace is activated.
+--
+-- The workspaces above the origin are walked from the top down, so the
+-- target of a move is empty when the windows arrive. Only the topmost
+-- workspace needs a new id: a silent window move creates it on the
+-- focused monitor, so the monitor of the source is focused first.
+local function shiftContentUp(lowest, highest)
+	local focused = hl.get_active_monitor()
+	for id = highest, lowest, -1 do
+		local ws = hl.get_workspace(tostring(id))
+		if ws then
+			local monitor = ws.monitor and ws.monitor.name or nil
+			local target = tostring(id + 1)
+			local wins = ws:get_windows() or {}
+			if #wins > 0 then
+				if not hl.get_workspace(target) and monitor then
+					hl.dispatch(hl.dsp.focus({ monitor = monitor }))
+				end
+				for _, win in ipairs(wins) do
+					hl.dispatch(hl.dsp.window.move({ workspace = target, window = win, follow = false }))
+				end
+			end
+		end
+	end
+	restoreFocus(focused and focused.name or nil)
+end
+
+-- The other way round: the content of id `n` moves to id `n-1`. The
+-- workspaces are walked from the bottom up, so the target of a move is
+-- empty when the windows arrive.
+local function shiftContentDown(lowest, highest)
+	local focused = hl.get_active_monitor()
+	for id = lowest, highest do
+		local ws = hl.get_workspace(tostring(id))
+		if ws then
+			local monitor = ws.monitor and ws.monitor.name or nil
+			local target = tostring(id - 1)
+			local wins = ws:get_windows() or {}
+			if #wins > 0 then
+				if not hl.get_workspace(target) and monitor then
+					hl.dispatch(hl.dsp.focus({ monitor = monitor }))
+				end
+				for _, win in ipairs(wins) do
+					hl.dispatch(hl.dsp.window.move({ workspace = target, window = win, follow = false }))
+				end
+			end
+		end
+	end
+	restoreFocus(focused and focused.name or nil)
+end
+
+-- The strip advances by one place: every monitor shows the next
+-- workspace of the list. The monitor of the fullscreened window keeps
+-- its own window and follows it; the other monitors change in the
+-- background.
+local function advanceStrip(monitor, delta)
+	for _, mon in ipairs(monitorsByPosition()) do
+		if mon.name ~= monitor then
+			local ws = mon.active_workspace
+			if ws and ws.id > 0 then
+				local target = tostring(ws.id + delta)
+				if hl.get_workspace(target) then
+					hl.dispatch(hl.dsp.workspace.move({ workspace = target, monitor = mon.name }))
+				end
+			end
+		end
+	end
+end
 
 local function focusMonitorByName(name)
 	if name then
@@ -616,13 +709,38 @@ hl.on("window.fullscreen", function(w)
 	local origin = fullscreenOrigins[w.address]
 	if mode == 2 and not origin then
 		local monitor = w.monitor and w.monitor.name or nil
-		fullscreenOrigins[w.address] = { workspace = w.workspace.id, monitor = monitor }
+		local id = w.workspace.id
+		local others = workspaceWindows(id)
+		-- The fullscreened window is the only window of its workspace:
+		-- it is fullscreened in place and the list keeps its shape.
+		if #others <= 1 then
+			fullscreenOrigins[w.address] = { workspace = id, monitor = monitor, shifted = false }
+			return
+		end
+		fullscreenOrigins[w.address] = { workspace = id, monitor = monitor, shifted = true }
+		-- The workspaces above the origin move one place to the right.
+		shiftContentUp(id + 1, maxWorkspaceId())
+		-- The fullscreened window takes the place right after its own.
 		focusMonitorByName(monitor)
-		hl.dispatch(hl.dsp.window.move({ workspace = tostring(maxWorkspaceId() + 1), window = w }))
+		if hl.get_workspace(tostring(id + 1)) then
+			hl.dispatch(hl.dsp.workspace.move({ workspace = tostring(id + 1), monitor = monitor }))
+		end
+		hl.dispatch(hl.dsp.window.move({ workspace = tostring(id + 1), window = w }))
+		-- The strip advances by one place.
+		advanceStrip(monitor, 1)
 	elseif mode == 0 and origin then
 		fullscreenOrigins[w.address] = nil
+		if not origin.shifted then
+			return
+		end
+		-- The window returns to its origin, which the compositor
+		-- recreates on the monitor it came from.
 		focusMonitorByName(origin.monitor)
 		hl.dispatch(hl.dsp.window.move({ workspace = tostring(origin.workspace), window = w }))
+		-- The workspaces above the origin move one place back.
+		shiftContentDown(origin.workspace + 2, maxWorkspaceId())
+		-- The strip goes back by one place.
+		advanceStrip(origin.monitor, -1)
 	end
 end)
 

@@ -36,10 +36,75 @@ Runbook: `docs/HYPRLAND_QUICKSHELL_MIGRATION.md`.
 | 2026-10-28 | fullscreen isolation focuses the window's monitor before the move | a workspace id that does not exist yet is created on the FOCUSED monitor (resolveWorkspaceStr), so the fresh fullscreen id would land on the wrong screen |
 | 2026-10-28 | overview click goes through the compositor focus dispatcher | the generic wlr activate() needs a pointer device and does nothing when the pointer never moved, which is the normal case for a keyboard-opened overview |
 | 2026-10-28 | workspace swipe is a Lua-driven continuous gesture, the strip straddle comes from a compositor patch | the built-in gesture slides one monitor only and the renderer draws a workspace only on its own monitor, so a strip across monitors needs both halves patched |
+| 2026-10-28 | the strip swipe uses the GNOME 50 model: 400 touchpad units per full screen | the Lua gesture delta is per event, not cumulative, so the old code moved the strip in jerks and never reached the commit threshold |
+| 2026-10-28 | a fullscreen window moves to the workspace right after its own and pushes the list | the list is positional, so the content above the origin moves one place up and the origin is recreated in place on exit |
+| 2026-10-28 | the CRT is the main display: it sits left of the laptop panel and takes the focus when it appears | the physical layout is CRT left, laptop right, and the automatic layout put the CRT on the wrong side |
 
 ## Journal
 
 Newest first.
+
+### 2026-10-28 — strip swipe fixed, fullscreen shifts the list, CRT becomes the main display (agent session, Master live)
+
+- **Context**: Master reported three problems: the 3-finger swipe was
+  jerky and could not switch workspaces, a fullscreen window had to land
+  on the workspace right after its own, and he wanted to know which
+  value GNOME uses for the swipe distance.
+- **The swipe bug**: the Lua gesture event carries the delta of ONE
+  event. The compositor accumulates it internally
+  (TrackpadGestures.cpp: m_currentTotalDelta), but the Lua binding gets
+  the raw per-event delta. The old config treated it as cumulative, so
+  every update replaced the offset instead of adding to it: the strip
+  jumped back and forth and the accumulated travel never passed the
+  commit threshold. The config now adds the delta to the travel of the
+  drag.
+- **GNOME's value**: gnome-shell 50, js/ui/swipeTracker.js:
+  TOUCHPAD_BASE_WIDTH = 400 (a full horizontal swipe is 400 touchpad
+  units), TOUCHPAD_BASE_HEIGHT = 300, VELOCITY_THRESHOLD_TOUCHPAD = 0.6,
+  EVENT_HISTORY_THRESHOLD_MS = 150, GESTURE_FINGER_COUNT = 3. mutter
+  feeds the raw libinput swipe deltas to the shell
+  (meta-seat-impl.c: notify_swipe_gesture_event). The config now uses
+  the same model: 400 units per screen, the pixels per unit are the
+  screen width / 400, and a swipe commits when it travels a full screen
+  or when it flicks within 150 ms. The old dpi-based factor is gone: it
+  could not be measured and the shell has a fixed unit anyway.
+- **The fullscreen model**: the workspace list is positional. With
+  w1, w2, w3 and a fullscreen in w2:
+  - w2 holds only that app: the app is fullscreened in place, the list
+    keeps its shape.
+  - w2 holds more: the list becomes w1, w2 (the other apps), w3 (the
+    fullscreen app), w4 (the old w3 content). The content above the
+    origin moves one id up and the app takes the id right after its
+    own. Unfullscreen moves it back, moves the content down again and
+    restores the origin workspace in the same place.
+  The other monitors move in the background (a silent window move
+  creates the new id on the focused monitor without activating it), the
+  animation stays on the monitor of the app. The vertical case is not
+  handled yet; it is marked with a TODO in the config.
+- **The reap**: the origin workspace is reaped by the compositor patch
+  once the app leaves it. The patch never logged a reap in the live
+  session although the debug log is on, so tryReap returns early
+  somewhere. The patch now logs the three early returns (not reapable,
+  still the active one, still holds windows). The reason shows up in the
+  log after the next switch; the fix follows from it.
+- **The monitors**: the CRT reports the EDID description "CRT HDMI". It
+  now sits at position 0,0 with scale 5/3 and the laptop panel at
+  1536,0 with scale 4/3, which puts the CRT left of the laptop. The CRT
+  takes the focus when it appears (monitor.added). Hyprland has no
+  "preferred monitor" rule in Lua, so this is the available mechanism.
+- **Verification**: the luajit -bl syntax gate passes; the patched
+  compositor builds; the toplevel build is green. The reap patch was
+  regenerated in the same format as its sibling and applies cleanly to
+  a pristine Hyprland tree.
+- **Gate (Master)**: rebuild and relog. Then: a 3-finger swipe follows
+  the finger and commits at a full-screen travel or a flick; a fullscreen
+  in a shared workspace gives w1, w2 (others), w3 (the app), w4 (the old
+  w3) and the strip advances, and unfullscreen restores the old list;
+  the CRT appears left of the laptop and takes the focus when plugged
+  in. The reap reason is in the log after the fullscreen round trip.
+- **Open**: does Hyprland keep the configured position of a monitor when
+  it is the only one? The laptop alone may sit at x = 1536. The
+  vertical swipe case is not implemented.
 
 ### 2026-10-28 — finger-tracked workspace strip: compositor patch + 1:1 gesture (agent session, Master live)
 
